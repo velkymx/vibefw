@@ -516,6 +516,89 @@ Always use these conventions:
 <?php $endSection(); ?>
 ```
 
+### View Helpers Reference
+
+All view templates have access to these built-in helper functions and support classes.
+
+#### Template Functions
+
+| Helper | Signature | Description |
+|--------|-----------|-------------|
+| `$e()` | `fn(string $value): string` | Escape HTML (htmlspecialchars with ENT_QUOTES) |
+| `$url()` | `fn(string $name, array $params = []): string` | Generate URL from named route |
+| `$csrf()` | `fn(): string` | Output CSRF token as hidden form field |
+| `$old()` | `fn(string $key, mixed $default = null): mixed` | Get old form input from session |
+| `$section()` | `fn(string $name): void` | Start a named section |
+| `$endSection()` | `fn(): void` | End the current section |
+| `$yield()` | `fn(string $name, string $default = ''): string` | Output section content in layout |
+| `$strLimit()` | `fn(string $value, int $limit = 100, string $end = '...'): string` | Truncate string |
+| `$strSlug()` | `fn(string $value): string` | Convert to URL slug |
+| `$strUpper()` | `fn(string $value): string` | Uppercase |
+| `$strLower()` | `fn(string $value): string` | Lowercase |
+| `$strTitle()` | `fn(string $value): string` | Title case |
+| `$strExcerpt()` | `fn(string $text, string $phrase = '', int $radius = 100): ?string` | Extract excerpt around phrase |
+| `$formatDate()` | `fn(?\DateTimeInterface $date, string $format = 'F j, Y'): string` | Format date |
+| `$timeAgo()` | `fn(?\DateTimeInterface $date): string` | Human-readable time diff ("2 hours ago") |
+| `$cache()` | `fn(string $key, int $ttl = 3600): bool` | Start fragment cache (true = cache miss) |
+| `$endCache()` | `fn(): void` | End fragment cache |
+
+#### Support Classes
+
+Three utility classes are available as variables in all views:
+
+**`$Str`** - String utilities (`Fw\Support\Str`)
+```php
+<?= $Str::slug('Hello World') ?>          <!-- hello-world -->
+<?= $Str::limit('Long text...', 50) ?>    <!-- Long text... -->
+<?= $Str::title('hello world') ?>         <!-- Hello World -->
+<?= $Str::camel('foo_bar') ?>             <!-- fooBar -->
+<?= $Str::kebab('fooBar') ?>              <!-- foo-bar -->
+<?= $Str::snake('fooBar') ?>              <!-- foo_bar -->
+<?= $Str::random(16) ?>                   <!-- random string -->
+<?= $Str::uuid() ?>                       <!-- UUID v4 -->
+<?= $Str::contains('hello', 'ell') ?>     <!-- true -->
+<?= $Str::mask('secret@email.com', '*', 3) ?>
+
+<!-- Fluent chaining with Str::of() -->
+<?= $Str::of('hello world')->title()->slug()->value() ?>
+```
+
+Key methods: `after`, `afterLast`, `before`, `beforeLast`, `between`, `camel`, `contains`, `endsWith`, `startsWith`, `finish`, `headline`, `is`, `isJson`, `isUuid`, `kebab`, `length`, `limit`, `lower`, `upper`, `title`, `slug`, `snake`, `studly`, `substr`, `trim`, `words`, `wordCount`, `plural`, `singular`, `random`, `uuid`, `ulid`, `mask`, `replaceFirst`, `replaceLast`, `reverse`, `squish`, `wrap`, `of` (fluent)
+
+**`$DateTime`** - DateTime utilities (`Fw\Support\DateTime`)
+```php
+<?php $now = $DateTime::now(); ?>
+<?php $date = $DateTime::parse('2024-01-15'); ?>
+<?php $ts = $DateTime::fromTimestamp(1700000000); ?>
+
+<?= $date->format('F j, Y') ?>             <!-- January 15, 2024 -->
+<?= $date->toDateString() ?>               <!-- 2024-01-15 -->
+<?= $date->diffForHumans() ?>              <!-- 1 year ago -->
+<?= $date->addDays(30)->format('Y-m-d') ?> <!-- 2024-02-14 -->
+<?= $now->isWeekend() ? 'Weekend' : 'Weekday' ?>
+```
+
+Key methods: `now`, `today`, `yesterday`, `tomorrow`, `parse`, `fromTimestamp`, `create`, `format`, `toDateString`, `toTimeString`, `toDateTimeString`, `toIso8601`, `diffForHumans`, `diffInDays`, `diffInHours`, `addDays`, `addHours`, `addMonths`, `subDays`, `subHours`, `startOfDay`, `endOfDay`, `startOfMonth`, `endOfMonth`, `isToday`, `isPast`, `isFuture`, `isWeekend`, `isWeekday`, `isBefore`, `isAfter`, `isBetween`, `age`, `year`, `month`, `day`
+
+**`$Arr`** - Array utilities (`Fw\Support\Arr`)
+```php
+<?php
+$config = ['db' => ['host' => 'localhost', 'port' => 3306]];
+$host = $Arr::get($config, 'db.host');              // 'localhost'
+$names = $Arr::pluck($users, 'name');                // ['John', 'Jane']
+$admins = $Arr::where($users, fn($u) => $u['role'] === 'admin');
+$first = $Arr::first($items, fn($i) => $i > 10);
+?>
+```
+
+Key methods: `get`, `set`, `has`, `forget` (dot notation), `pluck`, `only`, `except`, `first`, `last`, `flatten`, `dot`, `undot`, `where`, `whereNotNull`, `groupBy`, `keyBy`, `sortBy`, `sortByDesc`, `unique`, `wrap`, `collapse`, `random`, `shuffle`, `any`, `all`, `map`, `mapWithKeys`, `isAssoc`, `isList`
+
+#### Reserved Variable Names
+
+These names are reserved for helpers and cannot be used as view data keys:
+
+`e`, `url`, `csrf`, `old`, `section`, `endSection`, `yield`, `strLimit`, `strSlug`, `strUpper`, `strLower`, `strTitle`, `strExcerpt`, `formatDate`, `timeAgo`, `Str`, `DateTime`, `Arr`, `path`, `data`, `this`, `cache`, `endCache`
+
 ### CLI Usage Patterns
 
 Always use the `fw` CLI for generation:
