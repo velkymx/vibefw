@@ -2,6 +2,14 @@
 
 declare(strict_types=1);
 
+// Serve static files directly when using PHP's built-in server
+if (php_sapi_name() === 'cli-server') {
+    $path = __DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if (is_file($path) && !str_ends_with($path, '.php')) {
+        return false;
+    }
+}
+
 define('BASE_PATH', dirname(__DIR__));
 
 // Only start session when needed (has session cookie or state-changing request)
