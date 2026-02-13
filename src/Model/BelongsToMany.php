@@ -41,7 +41,7 @@ final class BelongsToMany extends Relation
         }
 
         $relatedTable = ($this->related)::getTable();
-        $relatedKey = ($this->related)::$primaryKey;
+        $relatedKey = ($this->related)::getKeyName();
 
         // Join through pivot table
         return $this->query
@@ -64,7 +64,7 @@ final class BelongsToMany extends Relation
     public function eagerLoad(Collection $models, string $name): void
     {
         $parentTable = $this->parent::getTable();
-        $parentKey = $this->parent::$primaryKey;
+        $parentKey = $this->parent::getKeyName();
 
         // Get all parent keys
         $keys = $models->pluck($parentKey);
@@ -78,7 +78,7 @@ final class BelongsToMany extends Relation
         }
 
         $relatedTable = ($this->related)::getTable();
-        $relatedKey = ($this->related)::$primaryKey;
+        $relatedKey = ($this->related)::getKeyName();
 
         // Fetch all related models with pivot info
         $connection = Model::getConnection();

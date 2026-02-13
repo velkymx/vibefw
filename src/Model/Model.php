@@ -799,6 +799,14 @@ abstract class Model
     }
 
     /**
+     * Get the primary key column name.
+     */
+    public static function getKeyName(): string
+    {
+        return static::$primaryKey;
+    }
+
+    /**
      * Get the primary key value.
      */
     public function getKey(): mixed
