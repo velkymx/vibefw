@@ -230,7 +230,7 @@ final class RequestFiber
         }
 
         if (is_array($result)) {
-            $this->app->response->setHeader('Content-Type', 'application/json');
+            $this->app->response->header('Content-Type', 'application/json');
             return json_encode($result, JSON_THROW_ON_ERROR);
         }
 

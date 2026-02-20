@@ -312,7 +312,7 @@ abstract class Component
      */
     protected function json(array $data): string
     {
-        $this->app->response->setHeader('Content-Type', 'application/json');
+        $this->app->response->header('Content-Type', 'application/json');
         return json_encode($data, JSON_THROW_ON_ERROR);
     }
 
@@ -323,7 +323,7 @@ abstract class Component
     protected function redirect(string $url, int $status = 302): string
     {
         $this->app->response->setStatus($status);
-        $this->app->response->setHeader('Location', $url);
+        $this->app->response->header('Location', $url);
         return '';
     }
 
