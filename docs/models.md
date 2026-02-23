@@ -343,19 +343,33 @@ $post->published_at->format('Y-m-d');   // 2024-01-15
 
 ## Serialization
 
+Models implement `\JsonSerializable`, so they serialize correctly in all contexts.
+
 ### To Array
 
 ```php
 $array = $post->toArray();
 ```
 
+Includes all attributes (with type casting applied for storage) and any loaded relationships.
+
 ### To JSON
 
 ```php
+// Explicit
 $json = $post->toJson();
-// or
+
+// Via json_encode — works correctly because Model implements JsonSerializable
 $json = json_encode($post);
+
+// Works transparently in nested structures too
+$json = json_encode(['post' => $post, 'meta' => $meta]);
+
+// Collections are also JsonSerializable
+$json = json_encode(Post::all());
 ```
+
+`toJson()` and `json_encode()` produce identical output. Both call `toArray()` internally, which includes loaded relations.
 
 ## Example: Complete Model
 

@@ -36,7 +36,7 @@ use Fw\Model\MassAssignmentException;
  *     $users = User::where('active', true)->get();
  *     $user = User::create(['email' => 'a@b.com', 'name' => 'Test']);
  */
-abstract class Model
+abstract class Model implements \JsonSerializable
 {
     /**
      * The database connection instance.
@@ -1181,6 +1181,19 @@ abstract class Model
     public function toJson(int $options = 0): string
     {
         return json_encode($this->toArray(), $options | JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Specify data which should be serialized to JSON.
+     *
+     * Allows json_encode($model) to produce the same output as toArray(),
+     * fixing silent wrong output when models are passed to json_encode directly.
+     *
+     * @return array<string, mixed>
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
     }
 
     // ========================================
