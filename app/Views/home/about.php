@@ -270,12 +270,12 @@ $title = 'About Fw Framework';
         <h2 class="mb-3">Ready to Build Something Fast?</h2>
         <p class="lead text-muted mb-4">Get started in under a minute.</p>
         <div class="code-block d-inline-block text-start mb-4">
-git clone https://github.com/velkymx/fw myapp
+git clone https://github.com/velkymx/vibefw myapp
 cd myapp && composer install && php fw serve
         </div>
         <div>
             <a href="/posts" class="btn btn-primary btn-lg me-2">See It In Action</a>
-            <a href="https://github.com/velkymx/fw" class="btn btn-outline-secondary btn-lg">View on GitHub</a>
+            <a href="https://github.com/velkymx/vibefw" class="btn btn-outline-secondary btn-lg">View on GitHub</a>
         </div>
     </section>
 
