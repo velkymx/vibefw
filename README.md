@@ -25,6 +25,14 @@ A high-performance, security-focused PHP 8.4+ MVC framework built for modern web
 
 ## Quick Start
 
+### Install as a Library
+
+```bash
+composer require velkymx/vibefw
+```
+
+### Install as a Project
+
 ```bash
 # Clone and install
 git clone https://github.com/velkymx/vibefw.git
