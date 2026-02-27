@@ -1,4 +1,4 @@
-# Fw Framework
+# VibeFW
 
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -27,8 +27,8 @@ A high-performance, security-focused PHP 8.4+ MVC framework built for modern web
 
 ```bash
 # Clone and install
-git clone https://github.com/yourrepo/fw.git
-cd fw
+git clone https://github.com/velkymx/vibefw.git
+cd vibefw
 composer install
 
 # Configure environment
@@ -45,7 +45,7 @@ Visit `http://localhost:8000` to see your app.
 
 ## CLI Commands
 
-FW includes a powerful CLI for development tasks:
+VibeFW includes a powerful CLI for development tasks:
 
 ```bash
 php fw                              # List all commands
@@ -207,7 +207,7 @@ Benchmarked with FrankenPHP worker mode on Apple M3 Pro:
 
 ## Security
 
-Fw Framework includes comprehensive security features:
+VibeFW includes comprehensive security features:
 
 - **CSRF Protection** - Automatic token validation with timing-safe comparison
 - **SQL Injection Prevention** - Parameterized queries and operator whitelisting

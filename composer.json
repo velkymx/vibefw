@@ -1,6 +1,6 @@
 {
-    "name": "fw/framework",
-    "description": "A lightweight PHP 8.4+ MVC framework optimized for speed and security",
+    "name": "velkymx/vibefw",
+    "description": "VibeFW: A high-performance, security-focused PHP 8.4+ MVC framework",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -12,16 +12,16 @@
         "performance",
         "security"
     ],
-    "homepage": "https://github.com/fw-php/framework",
+    "homepage": "https://github.com/velkymx/vibefw",
     "authors": [
         {
             "name": "Fw Framework Contributors",
-            "homepage": "https://github.com/fw-php/framework/contributors"
+            "homepage": "https://github.com/velkymx/vibefw/contributors"
         }
     ],
     "support": {
-        "issues": "https://github.com/fw-php/framework/issues",
-        "source": "https://github.com/fw-php/framework"
+        "issues": "https://github.com/velkymx/vibefw/issues",
+        "source": "https://github.com/velkymx/vibefw"
     },
     "require": {
         "php": ">=8.4",
@@ -40,22 +40,21 @@
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^11.0"
     },
-    "autoload": {
-        "psr-4": {
-            "Fw\\": "src/",
-            "App\\": "app/",
-            "Database\\Seeders\\": "database/seeders/"
-        },
-        "files": [
-            "src/Queue/helpers.php"
-        ]
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Fw\\Tests\\": "tests/"
-        }
-    },
-    "scripts": {
+                "autoload": {
+                    "psr-4": {
+                        "Fw\\": "src/"
+                    },
+                    "files": [
+                        "src/Queue/helpers.php"
+                    ]
+                },
+                "autoload-dev": {
+                    "psr-4": {
+                        "Fw\\Tests\\": "tests/",
+                        "App\\": "app/",
+                        "Database\\Seeders\\": "database/seeders/"
+                    }
+                },    "scripts": {
         "test": "phpunit",
         "test:unit": "phpunit --testsuite=unit",
         "test:feature": "phpunit --testsuite=feature",
