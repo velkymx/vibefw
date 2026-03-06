@@ -1,21 +1,31 @@
-# VibeFW
+# VibeFW v2.0
 
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)]()
 
-A high-performance, security-focused PHP 8.4+ MVC framework built for modern web development.
+A high-performance, security-focused PHP 8.4+ MVC framework built for modern, high-concurrency web development.
+
+## v2.0: The Concurrency Update
+
+VibeFW v2.0 is a ground-up architectural refactor designed for persistent runtimes like **FrankenPHP Worker Mode**. It introduces true request isolation and massive performance gains.
+
+### Key v2.0 Features
+- **40,000+ Requests/Sec** - Optimized for high-concurrency worker environments.
+- **Fiber-Isolated State** - Automatic request isolation using Fiber-local container singletons and `WeakMap` context.
+- **Zero-Side-Effect Response** - `Response` is now a pure value object, decoupled from PHP's output buffer.
+- **Strictly Immutable QueryBuilder** - Prevents silent query contamination across branching logic.
+- **Bulletproof Memory Management** - Automatic state resetting and container flushing prevents leaks in long-running processes.
 
 ## Features
 
-- **Blazing Fast** - 15,500+ requests/sec with FrankenPHP worker mode
-- **Security First** - Built-in protection against CSRF, XSS, SQL injection, timing attacks
-- **Fiber-Based Async** - Non-blocking I/O with PHP Fibers
-- **Result/Option Types** - Null-safe, exception-free error handling
-- **Active Record ORM** - Elegant database interactions with mass assignment protection
-- **CQRS Support** - Command/Query separation built-in
-- **Modern PHP** - Property hooks, asymmetric visibility, readonly classes
-- **Zero Dependencies** - Core framework has no external dependencies
+- **Blazing Fast** - 40,000+ requests/sec with FrankenPHP worker mode.
+- **Security First** - Built-in protection against CSRF, XSS, SQL injection, and timing attacks.
+- **True Async I/O** - Non-blocking HTTP and Database execution using PHP Fibers and EventLoop.
+- **Result/Option Types** - Null-safe, exception-free error handling.
+- **Active Record ORM** - Elegant, immutable database interactions with mass assignment protection.
+- **CQRS & Events** - Command/Query separation and event-driven architecture built-in.
+- **Modern PHP** - Leveraging property hooks, asymmetric visibility, and readonly properties.
 
 ## Requirements
 
@@ -44,16 +54,17 @@ cp .env.example .env
 
 # Run migrations
 php fw migrate
-
-# Start development server
-php fw serve
 ```
 
-Visit `http://localhost:8000` to see your app.
+### Run in High-Performance Worker Mode (Recommended)
+
+VibeFW is designed to run at peak performance using FrankenPHP:
+
+```bash
+./frankenphp php-server --listen :8080 --worker public/index.php
+```
 
 ## CLI Commands
-
-VibeFW includes a powerful CLI for development tasks:
 
 ```bash
 php fw                              # List all commands
@@ -62,194 +73,73 @@ php fw                              # List all commands
 php fw make:model Post -m           # Model + migration
 php fw make:controller PostController -r  # Resource controller
 php fw make:migration create_posts_table
-php fw make:middleware RateLimitMiddleware
 
 # Database
 php fw migrate                      # Run pending migrations
-php fw migrate:status               # Show migration status
-php fw migrate:rollback             # Rollback last batch
 php fw migrate:fresh                # Drop all & re-migrate
 
 # Development
-php fw serve --port=8080            # Start dev server
+php fw serve --port=8080            # Start standard dev server
 php fw routes:list                  # List all routes
-php fw cache:clear                  # Clear caches
-
-# Security
-php fw validate:security            # Scan for vulnerabilities
-```
-
-## Directory Structure
-
-```
-app/
-├── Controllers/      # HTTP request handlers
-├── Models/           # Database models
-├── Views/            # PHP templates
-│   └── layouts/      # Layout templates
-└── Providers/        # Service providers
-
-config/
-├── app.php           # Application settings
-├── database.php      # Database configuration
-├── routes.php        # Route definitions
-├── middleware.php    # Middleware configuration
-└── providers.php     # Service provider registration
-
-database/
-└── migrations/       # Database migrations
-
-public/
-└── index.php         # Application entry point
-
-src/                  # Framework core
-├── Console/          # CLI framework & commands
-├── Core/             # Application, Router, Container
-├── Database/         # ORM, QueryBuilder, Migrations
-├── Model/            # Active Record base
-└── ...
-
-stubs/                # Code generation templates
-fw                    # CLI entry point
 ```
 
 ## Documentation
 
+- [**Upgrading to v2.0.0**](docs/UPGRADING-1.0.5-to-2.0.0.md)
 - [Controllers](docs/controllers.md)
 - [Models](docs/models.md)
 - [Views](docs/views.md)
 - [Routing](docs/routing.md)
 - [Middleware](docs/middleware.md)
-- [Validation](docs/validation.md)
 - [Result & Option Types](docs/result-option.md)
 - [Database & Migrations](docs/database.md)
-- [Service Providers](docs/providers.md)
-- [CQRS](docs/cqrs.md)
-- [Authentication](docs/authentication.md)
-- [Caching](docs/caching.md)
-
-## Core Concepts
-
-### No Null, No Exceptions
-
-FW uses `Result` and `Option` types instead of null and exceptions:
-
-```php
-// Instead of returning null
-User::find($id)->match(
-    some: fn($user) => $user->name,
-    none: fn() => 'Guest'
-);
-
-// Instead of try/catch
-$result = $this->createUser($data);
-if ($result->isOk()) {
-    return $this->redirect('/users/' . $result->getValue()->id);
-}
-return $this->view('users.create', ['errors' => $result->getError()]);
-```
-
-### Simple Routing
-
-```php
-// config/routes.php
-return function (Router $router): void {
-    $router->get('/', [HomeController::class, 'index']);
-    $router->get('/posts/{id}', [PostController::class, 'show']);
-
-    $router->group('/admin', function (Router $router) {
-        $router->get('/dashboard', [AdminController::class, 'dashboard']);
-    }, ['auth']);
-};
-```
-
-### Elegant Models
-
-```php
-class Post extends Model
-{
-    protected static ?string $table = 'posts';
-    protected static array $fillable = ['title', 'content', 'user_id'];
-
-    public function author(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-}
-
-// Usage
-$posts = Post::where('published', true)->orderBy('created_at', 'desc')->get();
-```
-
-### Clean Controllers
-
-```php
-class PostController extends Controller
-{
-    public function store(Request $request): Response
-    {
-        $validation = $this->validate($request, [
-            'title' => 'required|min:3',
-            'content' => 'required|min:10',
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->view('posts.create', ['errors' => $validation->getError()]);
-        }
-
-        $post = Post::create($validation->getValue());
-        return $this->redirect('/posts/' . $post->id);
-    }
-}
-```
 
 ## Performance
 
-Benchmarked with FrankenPHP worker mode on Apple M3 Pro:
+Benchmarked with FrankenPHP worker mode on Apple M2 (MacBook Air):
 
-| Endpoint | Requests/sec | Avg Latency | P99 Latency |
-|----------|-------------|-------------|-------------|
-| /health | 15,530 | 12.94ms | 18.2ms |
-| /api/users | 8,240 | 24.31ms | 35.1ms |
-| /dashboard | 5,120 | 39.06ms | 52.3ms |
+| Metric | Result |
+| :--- | :--- |
+| **Requests per Second** | **40,058.37** |
+| **Average Latency** | **5.15ms** |
+| **Total Requests (30s)** | **1,202,023** |
+| **Memory Stability** | **Perfect** (Zero leaks after 1.2M requests) |
 
-## Security
+## Core Concepts
 
-VibeFW includes comprehensive security features:
+### Immutable Query Building
 
-- **CSRF Protection** - Automatic token validation with timing-safe comparison
-- **SQL Injection Prevention** - Parameterized queries and operator whitelisting
-- **XSS Prevention** - Auto-escaping in views, input sanitization
-- **Mass Assignment Protection** - Fillable/guarded attributes with strict mode
-- **Timing Attack Mitigation** - Constant-time comparison for authentication
-- **Serialization Security** - HMAC-signed queue payloads prevent RCE
-- **Rate Limiting** - Built-in request throttling with cache backend
-- **Trusted Proxy Support** - Secure X-Forwarded-* header handling
+The QueryBuilder is now immutable. Chaining works normally, but conditional steps require re-assignment:
 
-See [SECURITY.md](SECURITY.md) for our security policy.
+```php
+$query = User::where('active', true);
+
+if ($adminOnly) {
+    $query = $query->where('role', 'admin'); // Capture the new instance
+}
+
+$users = $query->orderBy('name')->get();
+```
+
+### Side-Effect Free Responses
+
+Controllers return `Response` objects which are emitted by the kernel. No more global `header()` calls or `exit()`.
+
+```php
+public function index(Request $request): Response
+{
+    return $this->view('welcome')
+        ->header('X-Framework', 'VibeFW')
+        ->cache(3600);
+}
+```
 
 ## Testing
 
 ```bash
-# Run all tests
-composer test
-
-# Run with coverage
-composer test:coverage
-
-# Static analysis
-composer analyse
-
-# Code style
-composer lint
-
-# Full CI pipeline
-composer ci
+composer test      # Runs all 920+ tests
+composer ci        # Full pipeline (Lint, Static Analysis, Tests)
 ```
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 

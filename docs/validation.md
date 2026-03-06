@@ -1,6 +1,6 @@
 # Validation
 
-FW provides simple, declarative validation for request data.
+VibeFW provides simple, declarative validation for request data.
 
 ## Basic Usage
 

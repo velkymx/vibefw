@@ -7,6 +7,7 @@ define('BASE_PATH', __DIR__);
 
 require BASE_PATH . '/vendor/autoload.php';
 
+use Fw\Core\Application;
 use Fw\Queue\Queue;
 use Fw\Queue\Worker;
 
@@ -28,12 +29,6 @@ if (isset($options['h']) || isset($options['help'])) {
           --once              Process a single job and exit
       -h, --help              Show this help message
 
-    Examples:
-      php worker.php -q emails
-      php worker.php --queue=default --max-jobs=100
-      php worker.php -q images -m 256 -t 3600
-      php worker.php --once
-
     HELP;
     exit(0);
 }
@@ -45,17 +40,20 @@ $maxTime = (int) ($options['t'] ?? $options['max-time'] ?? 0);
 $memory = (int) ($options['m'] ?? $options['memory'] ?? 128);
 $once = isset($options['once']);
 
-// Initialize the queue
-$queue = Queue::getInstance();
+// 1. Initialize Application
+$app = Application::getInstance();
+$container = $app->getContainer();
 
-// Create and configure worker
-$worker = (new Worker($queue))
-    ->sleep($sleep)
+// 2. Resolve Worker from container (it will auto-resolve its Queue dependency)
+$worker = $container->get(Worker::class);
+
+// 3. Configure worker
+$worker->sleep($sleep)
     ->maxJobs($maxJobs)
     ->maxTime($maxTime)
     ->memory($memory);
 
-// Run
+// 4. Run
 if ($once) {
     $processed = $worker->workOnce($queueName);
     exit($processed ? 0 : 1);

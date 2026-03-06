@@ -31,7 +31,8 @@ use Fw\Support\Option;
  */
 final class RequestContext
 {
-    private static ?self $current = null;
+    /** @var \WeakMap<object, RequestContext> */
+    private static ?\WeakMap $instances = null;
 
     /**
      * @var array<string, mixed>
@@ -52,8 +53,9 @@ final class RequestContext
      */
     public static function create(Request $request): self
     {
-        self::$current = new self($request);
-        return self::$current;
+        $instance = new self($request);
+        self::getInstances()[self::getCurrentKey()] = $instance;
+        return $instance;
     }
 
     /**
@@ -63,7 +65,7 @@ final class RequestContext
      */
     public static function current(): ?self
     {
-        return self::$current;
+        return self::getInstances()[self::getCurrentKey()] ?? null;
     }
 
     /**
@@ -73,7 +75,35 @@ final class RequestContext
      */
     public static function clear(): void
     {
-        self::$current = null;
+        unset(self::getInstances()[self::getCurrentKey()]);
+    }
+
+    /**
+     * Internal helper to get the instances WeakMap.
+     *
+     * @return \WeakMap<object, RequestContext>
+     */
+    private static function getInstances(): \WeakMap
+    {
+        return self::$instances ??= new \WeakMap();
+    }
+
+    /**
+     * Get the key for the current execution context (Fiber or a fallback object).
+     */
+    private static function getCurrentKey(): object
+    {
+        return \Fiber::getCurrent() ?? self::getGlobalKey();
+    }
+
+    /**
+     * Static object used as a key for the global (non-fiber) context.
+     */
+    private static ?object $globalKey = null;
+
+    private static function getGlobalKey(): object
+    {
+        return self::$globalKey ??= new \stdClass();
     }
 
     /**

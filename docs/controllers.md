@@ -25,9 +25,61 @@ class PostController extends Controller
 }
 ```
 
-## Controller Methods
+## Request & Response
 
-Every controller action receives a `Request` and must return a `Response`.
+VibeFW v2.0.0 uses immutable/readonly objects for handling the HTTP lifecycle.
+
+### Request Object
+
+The `Request` object provides access to all incoming data. All its public properties are **readonly**.
+
+```php
+$request->method;           // GET, POST, PUT, etc.
+$request->uri;              // /posts/1
+$request->query;            // Readonly array of GET data
+$request->post;             // Readonly array of POST data
+$request->server;           // Readonly array of $_SERVER
+$request->files;            // Readonly array of $_FILES
+$request->headers;          // Readonly array of headers
+```
+
+#### Request Methods
+
+```php
+$request->get('key');       // Safely get from query string
+$request->post('key');      // Safely get from POST data
+$request->all();            // Combined input (query + post)
+$request->header('Accept'); // Get specific header
+$request->isAjax();         // Boolean
+$request->ip();             // Client IP address
+```
+
+### Response Object
+
+The `Response` object is a **value object**. Most methods return a new instance or the same instance after modification (FW uses internal mutation for performance where safe, but treats it as a value object).
+
+```php
+// Basic response
+return new Response('Hello World', 200);
+
+// Using fluent interface
+return (new Response())
+    ->setStatus(201)
+    ->setBody('Created')
+    ->header('X-Resource-Id', '123')
+    ->contentType('application/json');
+
+// Redirects
+return (new Response())->redirect('/home');
+return (new Response())->redirect('/login', 302);
+
+// Caching
+return (new Response())
+    ->setBody($content)
+    ->cache(3600); // Cache for 1 hour
+```
+
+## Controller Methods
 
 ### Resource Controller Pattern
 
@@ -165,7 +217,9 @@ return $this->noContent();                         // 204
 
 ## Request Data
 
-### Getting Input
+### Request Input
+
+Use these controller helper methods for convenient access:
 
 ```php
 // Get single value
@@ -184,17 +238,7 @@ if ($this->has($request, 'published')) {
 }
 ```
 
-### Request Object Methods
-
-```php
-$request->method;           // GET, POST, PUT, etc.
-$request->uri;              // /posts/1
-$request->get('key');       // Query parameter
-$request->post('key');      // POST data
-$request->all();            // All input
-$request->header('Accept'); // Header value
-$request->isAjax();         // Check if AJAX
-```
+See the **Request Object** section above for low-level access via `$request`.
 
 ## Validation
 
@@ -304,7 +348,7 @@ class PostController extends Controller
 {
     public function index(Request $request): Response
     {
-        $cache = $this->app->container->get(CacheInterface::class);
+        $cache = $this->app->getContainer()->get(CacheInterface::class);
         // ...
     }
 }

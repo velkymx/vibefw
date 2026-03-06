@@ -5,331 +5,152 @@ declare(strict_types=1);
 namespace Fw\Async;
 
 /**
- * Non-blocking HTTP client using Fibers.
- *
- * Provides async HTTP requests that suspend the current Fiber
- * during network I/O and resume when the response is ready.
- *
- * @example
- * $http = new AsyncHttp();
- * $response = $http->get('https://api.example.com/users')->await();
+ * Truly non-blocking HTTP client using Fibers and EventLoop.
  */
 final class AsyncHttp
 {
-    /** @var array<string, string> Default headers */
     private array $defaultHeaders = [
         'User-Agent' => 'Fw-AsyncHttp/1.0',
         'Accept' => 'application/json',
+        'Connection' => 'close',
     ];
 
-    /** @var int Connection timeout in seconds */
-    private int $connectTimeout = 10;
-
-    /** @var int Request timeout in seconds */
     private int $timeout = 30;
 
-    /**
-     * Set default headers for all requests.
-     *
-     * @param array<string, string> $headers
-     */
-    public function setDefaultHeaders(array $headers): self
+    public function request(string $method, string $url, mixed $body = null, array $headers = []): Deferred
     {
-        $this->defaultHeaders = array_merge($this->defaultHeaders, $headers);
-        return $this;
+        $deferred = new Deferred();
+        $loop = EventLoop::getInstance();
+
+        $loop->defer(function () use ($deferred, $method, $url, $body, $headers, $loop) {
+            try {
+                $this->executeAsync($deferred, $method, $url, $body, $headers, $loop);
+            } catch (\Throwable $e) {
+                $deferred->reject($e);
+            }
+        });
+
+        return $deferred;
     }
 
-    /**
-     * Set connection timeout.
-     */
-    public function setConnectTimeout(int $seconds): self
+    private function executeAsync(Deferred $deferred, string $method, string $url, mixed $body, array $headers, EventLoop $loop): void
     {
-        $this->connectTimeout = $seconds;
-        return $this;
+        $parsed = parse_url($url);
+        $host = $parsed['host'] ?? '';
+        $port = $parsed['port'] ?? ($parsed['scheme'] === 'https' ? 443 : 80);
+        $path = ($parsed['path'] ?? '/') . (isset($parsed['query']) ? '?' . $parsed['query'] : '');
+        $scheme = $parsed['scheme'] ?? 'http';
+
+        $transport = $scheme === 'https' ? 'ssl' : 'tcp';
+        $address = "{$transport}://{$host}:{$port}";
+
+        $errno = 0;
+        $errstr = '';
+        $socket = @stream_socket_client(
+            $address,
+            $errno,
+            $errstr,
+            (float) $this->timeout,
+            STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT
+        );
+
+        if (!$socket) {
+            throw new \RuntimeException("Could not connect to {$address}: {$errstr}");
+        }
+
+        stream_set_blocking($socket, false);
+
+        // Build request
+        $allHeaders = array_merge($this->defaultHeaders, $headers);
+        $allHeaders['Host'] = $host;
+        
+        $content = '';
+        if ($body !== null) {
+            $content = is_array($body) ? json_encode($body) : (string) $body;
+            $allHeaders['Content-Length'] = (string) strlen($content);
+            if (is_array($body) && !isset($allHeaders['Content-Type'])) {
+                $allHeaders['Content-Type'] = 'application/json';
+            }
+        }
+
+        $request = "{$method} {$path} HTTP/1.1\r\n";
+        foreach ($allHeaders as $name => $value) {
+            $request .= "{$name}: {$value}\r\n";
+        }
+        $request .= "\r\n" . $content;
+
+        $written = 0;
+        $loop->addWriteStream($socket, function ($socket) use ($request, &$written, $loop, $deferred, &$responseBuffer, $method, $url) {
+            $result = fwrite($socket, substr($request, $written));
+            if ($result === false) {
+                $loop->removeWriteStream($socket, true);
+                $deferred->reject(new \RuntimeException("Write failed"));
+                return;
+            }
+            $written += $result;
+            if ($written >= strlen($request)) {
+                $loop->removeWriteStream($socket);
+                $this->waitForResponse($socket, $loop, $deferred);
+            }
+        });
     }
 
-    /**
-     * Set request timeout.
-     */
-    public function setTimeout(int $seconds): self
+    private function waitForResponse($socket, EventLoop $loop, Deferred $deferred): void
     {
-        $this->timeout = $seconds;
-        return $this;
+        $buffer = '';
+        $loop->addReadStream($socket, function ($socket) use (&$buffer, $loop, $deferred) {
+            $chunk = fread($socket, 8192);
+            if ($chunk === false) {
+                $loop->removeReadStream($socket, true);
+                $deferred->reject(new \RuntimeException("Read failed"));
+                return;
+            }
+
+            if ($chunk === '') {
+                if (feof($socket)) {
+                    $loop->removeReadStream($socket, true);
+                    $this->parseResponse($buffer, $deferred);
+                }
+                return;
+            }
+
+            $buffer .= $chunk;
+        });
     }
 
-    /**
-     * Perform async GET request.
-     *
-     * @param array<string, string> $headers
-     * @return Deferred Resolves to HttpResponse
-     */
+    private function parseResponse(string $buffer, Deferred $deferred): void
+    {
+        $parts = explode("\r\n\r\n", $buffer, 2);
+        if (count($parts) < 1) {
+            $deferred->reject(new \RuntimeException("Invalid response"));
+            return;
+        }
+
+        $headerLines = explode("\r\n", $parts[0]);
+        $statusLine = array_shift($headerLines);
+        
+        preg_match('/HTTP\/[\d.]+\s+(\d+)/', $statusLine, $matches);
+        $statusCode = isset($matches[1]) ? (int) $matches[1] : 200;
+
+        $headers = [];
+        foreach ($headerLines as $line) {
+            if (str_contains($line, ':')) {
+                [$name, $value] = explode(':', $line, 2);
+                $headers[strtolower(trim($name))] = trim($value);
+            }
+        }
+
+        $body = $parts[1] ?? '';
+        $deferred->resolve(new HttpResponse($statusCode, $headers, $body));
+    }
+
     public function get(string $url, array $headers = []): Deferred
     {
         return $this->request('GET', $url, null, $headers);
     }
 
-    /**
-     * Perform async POST request.
-     *
-     * @param array<string, string> $headers
-     * @return Deferred Resolves to HttpResponse
-     */
     public function post(string $url, mixed $body = null, array $headers = []): Deferred
     {
         return $this->request('POST', $url, $body, $headers);
-    }
-
-    /**
-     * Perform async PUT request.
-     *
-     * @param array<string, string> $headers
-     * @return Deferred Resolves to HttpResponse
-     */
-    public function put(string $url, mixed $body = null, array $headers = []): Deferred
-    {
-        return $this->request('PUT', $url, $body, $headers);
-    }
-
-    /**
-     * Perform async PATCH request.
-     *
-     * @param array<string, string> $headers
-     * @return Deferred Resolves to HttpResponse
-     */
-    public function patch(string $url, mixed $body = null, array $headers = []): Deferred
-    {
-        return $this->request('PATCH', $url, $body, $headers);
-    }
-
-    /**
-     * Perform async DELETE request.
-     *
-     * @param array<string, string> $headers
-     * @return Deferred Resolves to HttpResponse
-     */
-    public function delete(string $url, array $headers = []): Deferred
-    {
-        return $this->request('DELETE', $url, null, $headers);
-    }
-
-    /**
-     * Perform async HTTP request.
-     *
-     * @param array<string, string> $headers
-     * @return Deferred Resolves to HttpResponse
-     */
-    public function request(string $method, string $url, mixed $body = null, array $headers = []): Deferred
-    {
-        $deferred = new Deferred();
-
-        // Use non-blocking stream context for true async (when possible)
-        EventLoop::getInstance()->defer(function () use ($deferred, $method, $url, $body, $headers) {
-            try {
-                $response = $this->executeRequest($method, $url, $body, $headers);
-                $deferred->resolve($response);
-            } catch (\Throwable $e) {
-                $deferred->reject($e);
-            }
-        });
-
-        return $deferred;
-    }
-
-    /**
-     * Execute the HTTP request synchronously.
-     *
-     * @param array<string, string> $headers
-     */
-    private function executeRequest(string $method, string $url, mixed $body, array $headers): HttpResponse
-    {
-        $allHeaders = array_merge($this->defaultHeaders, $headers);
-
-        // Prepare body
-        $content = null;
-        if ($body !== null) {
-            if (is_array($body)) {
-                $content = json_encode($body, JSON_THROW_ON_ERROR);
-                $allHeaders['Content-Type'] = 'application/json';
-            } else {
-                $content = (string) $body;
-            }
-            $allHeaders['Content-Length'] = (string) strlen($content);
-        }
-
-        // Build header string
-        $headerStrings = [];
-        foreach ($allHeaders as $name => $value) {
-            $headerStrings[] = "$name: $value";
-        }
-
-        // Create stream context
-        $contextOptions = [
-            'http' => [
-                'method' => $method,
-                'header' => implode("\r\n", $headerStrings),
-                'timeout' => $this->timeout,
-                'ignore_errors' => true,
-                'follow_location' => true,
-                'max_redirects' => 5,
-            ],
-            'ssl' => [
-                'verify_peer' => true,
-                'verify_peer_name' => true,
-            ],
-        ];
-
-        if ($content !== null) {
-            $contextOptions['http']['content'] = $content;
-        }
-
-        $context = stream_context_create($contextOptions);
-
-        // Execute request
-        $responseBody = @file_get_contents($url, false, $context);
-
-        if ($responseBody === false) {
-            $error = error_get_last();
-            throw new \RuntimeException(
-                sprintf('HTTP request failed: %s', $error['message'] ?? 'Unknown error')
-            );
-        }
-
-        // Parse response headers
-        $responseHeaders = [];
-        $statusCode = 200;
-
-        if (isset($http_response_header) && is_array($http_response_header)) {
-            foreach ($http_response_header as $header) {
-                if (preg_match('/^HTTP\/[\d.]+\s+(\d+)/', $header, $matches)) {
-                    $statusCode = (int) $matches[1];
-                } elseif (str_contains($header, ':')) {
-                    [$name, $value] = explode(':', $header, 2);
-                    $responseHeaders[strtolower(trim($name))] = trim($value);
-                }
-            }
-        }
-
-        return new HttpResponse($statusCode, $responseHeaders, $responseBody);
-    }
-
-    /**
-     * Fetch JSON from a URL (convenience method).
-     *
-     * @param array<string, string> $headers
-     * @return Deferred Resolves to array|null
-     */
-    public function getJson(string $url, array $headers = []): Deferred
-    {
-        $deferred = new Deferred();
-
-        $this->get($url, $headers)->await();
-
-        EventLoop::getInstance()->defer(function () use ($deferred, $url, $headers) {
-            try {
-                $response = $this->executeRequest('GET', $url, null, $headers);
-                $data = $response->json();
-                $deferred->resolve($data);
-            } catch (\Throwable $e) {
-                $deferred->reject($e);
-            }
-        });
-
-        return $deferred;
-    }
-
-    /**
-     * Post JSON and get JSON response (convenience method).
-     *
-     * @param array<string, mixed> $data
-     * @param array<string, string> $headers
-     * @return Deferred Resolves to array|null
-     */
-    public function postJson(string $url, array $data, array $headers = []): Deferred
-    {
-        $deferred = new Deferred();
-
-        EventLoop::getInstance()->defer(function () use ($deferred, $url, $data, $headers) {
-            try {
-                $response = $this->executeRequest('POST', $url, $data, $headers);
-                $result = $response->json();
-                $deferred->resolve($result);
-            } catch (\Throwable $e) {
-                $deferred->reject($e);
-            }
-        });
-
-        return $deferred;
-    }
-}
-
-/**
- * HTTP response object.
- */
-final class HttpResponse
-{
-    public function __construct(
-        public readonly int $statusCode,
-        /** @var array<string, string> */
-        public readonly array $headers,
-        public readonly string $body
-    ) {}
-
-    /**
-     * Check if the response was successful (2xx status).
-     */
-    public function isSuccess(): bool
-    {
-        return $this->statusCode >= 200 && $this->statusCode < 300;
-    }
-
-    /**
-     * Check if the response is a redirect (3xx status).
-     */
-    public function isRedirect(): bool
-    {
-        return $this->statusCode >= 300 && $this->statusCode < 400;
-    }
-
-    /**
-     * Check if the response is a client error (4xx status).
-     */
-    public function isClientError(): bool
-    {
-        return $this->statusCode >= 400 && $this->statusCode < 500;
-    }
-
-    /**
-     * Check if the response is a server error (5xx status).
-     */
-    public function isServerError(): bool
-    {
-        return $this->statusCode >= 500;
-    }
-
-    /**
-     * Get a header value.
-     */
-    public function header(string $name): ?string
-    {
-        return $this->headers[strtolower($name)] ?? null;
-    }
-
-    /**
-     * Parse body as JSON.
-     *
-     * @return array<string, mixed>|null
-     */
-    public function json(): ?array
-    {
-        $data = json_decode($this->body, true);
-        return is_array($data) ? $data : null;
-    }
-
-    /**
-     * Get body as string.
-     */
-    public function text(): string
-    {
-        return $this->body;
     }
 }

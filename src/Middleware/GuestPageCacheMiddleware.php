@@ -27,7 +27,7 @@ class GuestPageCacheMiddleware implements MiddlewareInterface
 
     public function __construct(\Fw\Core\Application $app, int|string $ttl = 60)
     {
-        $this->cache = $app->container->get(CacheInterface::class);
+        $this->cache = $app->getContainer()->get(CacheInterface::class);
         $this->ttl = (int) $ttl;
     }
 

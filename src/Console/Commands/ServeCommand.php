@@ -54,7 +54,7 @@ final class ServeCommand extends Command
         }
 
         $this->newLine();
-        $this->info('FW Development Server');
+        $this->info('VibeFW Development Server');
         $this->newLine();
         $this->line("Server running at: " . $this->output->color("http://$host:$port", 'cyan'));
         $this->line("Document root: " . $this->output->color($docRoot, 'gray'));

@@ -6,13 +6,11 @@ namespace Fw\Tests;
 
 use Fw\Core\Application;
 use Fw\Database\Connection;
+use Fw\Core\RequestContext;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 
 /**
  * Base TestCase for all framework tests.
- *
- * Provides helper methods for setting up the application,
- * database, and making HTTP requests.
  */
 abstract class TestCase extends BaseTestCase
 {
@@ -23,7 +21,10 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        // Clear session between tests
+        // Clear RequestContext to prevent leakage between tests
+        RequestContext::clear();
+
+        // Clear session and globals between tests
         $_SESSION = [];
         $_GET = [];
         $_POST = [];
@@ -38,6 +39,9 @@ abstract class TestCase extends BaseTestCase
     {
         $this->app = null;
         $this->db = null;
+
+        // Ensure cleanup
+        RequestContext::clear();
 
         parent::tearDown();
     }
@@ -75,7 +79,6 @@ abstract class TestCase extends BaseTestCase
             $this->createDatabase();
         }
 
-        // Create users table
         $this->db->query("
             CREATE TABLE users (
                 id VARCHAR(36) PRIMARY KEY,
@@ -89,7 +92,6 @@ abstract class TestCase extends BaseTestCase
             )
         ");
 
-        // Create posts table
         $this->db->query("
             CREATE TABLE posts (
                 id VARCHAR(36) PRIMARY KEY,
@@ -105,9 +107,6 @@ abstract class TestCase extends BaseTestCase
         ");
     }
 
-    /**
-     * Simulate a GET request.
-     */
     protected function get(string $uri): void
     {
         $_SERVER['REQUEST_METHOD'] = 'GET';
@@ -116,9 +115,6 @@ abstract class TestCase extends BaseTestCase
         $_POST = [];
     }
 
-    /**
-     * Simulate a POST request.
-     */
     protected function post(string $uri, array $data = []): void
     {
         $_SERVER['REQUEST_METHOD'] = 'POST';
@@ -127,9 +123,6 @@ abstract class TestCase extends BaseTestCase
         $_POST = $data;
     }
 
-    /**
-     * Set request headers.
-     */
     protected function withHeaders(array $headers): static
     {
         foreach ($headers as $name => $value) {
@@ -139,21 +132,14 @@ abstract class TestCase extends BaseTestCase
         return $this;
     }
 
-    /**
-     * Assert that a session key has a specific value.
-     */
     protected function assertSessionHas(string $key, mixed $value = null): void
     {
         $this->assertArrayHasKey($key, $_SESSION, "Session does not contain key: $key");
-
         if ($value !== null) {
             $this->assertEquals($value, $_SESSION[$key]);
         }
     }
 
-    /**
-     * Assert that a session key does not exist.
-     */
     protected function assertSessionMissing(string $key): void
     {
         $this->assertArrayNotHasKey($key, $_SESSION, "Session contains key: $key");

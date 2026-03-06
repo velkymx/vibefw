@@ -1,6 +1,6 @@
 # Caching
 
-FW provides a flexible caching system with multiple drivers for improved performance.
+VibeFW provides a flexible caching system with multiple drivers for improved performance.
 
 ## Configuration
 
@@ -17,8 +17,8 @@ Available drivers: `file`, `apcu`, `memory`
 ### Getting the Cache
 
 ```php
-// In controllers (via container)
-$cache = $this->app->container->get(CacheInterface::class);
+// In controllers (via getContainer())
+$cache = $this->app->getContainer()->get(CacheInterface::class);
 
 // Or inject in services
 public function __construct(
@@ -195,7 +195,7 @@ class PostController extends Controller
 {
     public function index(Request $request): Response
     {
-        $cache = $this->app->container->get(CacheInterface::class);
+        $cache = $this->app->getContainer()->get(CacheInterface::class);
 
         $posts = $cache->remember('posts:published', function () {
             return Post::wherePublished()
@@ -219,7 +219,7 @@ class PostController extends Controller
         // ... create post ...
 
         // Invalidate cache
-        $cache = $this->app->container->get(CacheInterface::class);
+        $cache = $this->app->getContainer()->get(CacheInterface::class);
         $cache->delete('posts:published');
 
         return $this->redirect('/posts');
@@ -248,7 +248,7 @@ class ApiController extends Controller
 {
     public function products(Request $request): Response
     {
-        $cache = $this->app->container->get(CacheInterface::class);
+        $cache = $this->app->getContainer()->get(CacheInterface::class);
         $cacheKey = 'api:products:' . md5($request->uri . serialize($request->all()));
 
         $data = $cache->remember($cacheKey, function () {
@@ -305,7 +305,7 @@ require __DIR__ . '/vendor/autoload.php';
 define('BASE_PATH', __DIR__);
 
 $app = Application::getInstance();
-$cache = $app->container->get(CacheInterface::class);
+$cache = $app->getContainer()->get(CacheInterface::class);
 
 // Warm popular queries
 $cache->set('posts:published', Post::wherePublished()->get(), 3600);

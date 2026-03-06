@@ -112,7 +112,7 @@ final class RequestFiberTest extends TestCase
         $fiber->start();
 
         $this->assertTrue($fiber->isCompleted());
-        $this->assertEquals('{"status":"ok","data":[1,2,3]}', $fiber->getOutput());
+        $this->assertEquals(['status' => 'ok', 'data' => [1, 2, 3]], $fiber->getOutput());
     }
 
     public function testFiberCapturesExceptions(): void

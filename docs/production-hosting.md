@@ -1,6 +1,6 @@
 # Production Hosting Guide
 
-This guide covers optimal production deployment for the FW framework on PHP 8.5.
+This guide covers optimal production deployment for the VibeFW framework on PHP 8.5.
 
 ## System Requirements
 
@@ -11,6 +11,7 @@ The framework requires PHP 8.5 or later for:
 - Asymmetric visibility (`public private(set)`)
 - `array_first()` / `array_last()` functions
 - Pipe operator support
+- `readonly` properties for Request object
 
 ### Required PHP Extensions
 
@@ -328,7 +329,7 @@ example.com {
 
 ### Worker Mode Bootstrap
 
-Create `public/index.php` for worker mode:
+Create `public/index.php` for worker mode. In VibeFW v2.0.0, the `HttpKernel` automatically handles state resetting and Fiber isolation, making the worker loop much simpler:
 
 ```php
 <?php
@@ -340,48 +341,35 @@ define('BASE_PATH', dirname(__DIR__));
 require BASE_PATH . '/vendor/autoload.php';
 
 use Fw\Core\Application;
-use Fw\Core\RequestContext;
-use Fw\Auth\Auth;
-use Fw\Database\Connection;
-use Fw\Async\EventLoop;
-use Fw\Model\Model;
+use Fw\Core\Request;
+use Fw\Core\SapiEmitter;
 
-// Check if running in worker mode
-$isWorkerMode = function_exists('frankenphp_handle_request');
+// 1. Initialize Application (Boots only once)
+$app = Application::getInstance();
+$kernel = $app->getKernel();
+$emitter = new SapiEmitter();
 
-if ($isWorkerMode) {
-    // Worker mode: keep app bootstrapped, handle multiple requests
-    $app = Application::getInstance();
+// 2. Define the Request Handler
+$handler = static function () use ($kernel, $emitter) {
+    // In FrankenPHP, superglobals are populated per-request inside the worker loop
+    $request = Request::createFromGlobals();
+    
+    // handle() returns a Response object and automatically resets state 
+    // (resets Connection, clears Cache L1, flushes Container context)
+    $response = $kernel->handle($request);
+    
+    $emitter->emit($response);
+};
 
-    $maxRequests = 1000; // Restart worker after N requests to prevent memory leaks
-    $requestCount = 0;
-
-    while (frankenphp_handle_request()) {
-        try {
-            // Run the application
-            $app->run();
-        } finally {
-            // CRITICAL: Clean up request-scoped state
-            RequestContext::clear();
-            Auth::clearRequestState();
-            Connection::getInstance()->resetRequestState();
-            EventLoop::getInstance()->closeAllStreams();
-
-            // Optional: clear model cache periodically
-            if (++$requestCount % 100 === 0) {
-                Model::clearMetadataCache();
-            }
-        }
-
-        // Restart worker to prevent memory bloat
-        if ($requestCount >= $maxRequests) {
-            break;
-        }
+// 3. Execution Loop
+if (function_exists('frankenphp_handle_request')) {
+    // FrankenPHP Worker Mode
+    while (frankenphp_handle_request($handler)) {
+        // Application remains in memory
     }
 } else {
-    // Traditional mode: one request per process
-    $app = Application::getInstance();
-    $app->run();
+    // Standard PHP-FPM / CLI-Server Mode
+    $handler();
 }
 ```
 

@@ -201,6 +201,17 @@ $router->group('/api', function (Router $router) {
 }, ['throttle']);
 ```
 
+## Route Lifecycle
+
+In VibeFW v2.0.0, the route handling process is side-effect free. The `Router` receives a `Request` object and dispatches it through any middleware to the controller, which must return a `Response` object.
+
+```php
+// In VibeFW v2.0.0, this core process always returns a Response
+$response = $router->dispatch($request);
+```
+
+> **Note:** The `Request` object properties are `readonly` and the `Response` object is a value object. Avoid using global state or superglobals like `$_GET` or `$_POST` directly in your controllers.
+
 ## Fallback Routes
 
 Handle 404s with a catch-all:

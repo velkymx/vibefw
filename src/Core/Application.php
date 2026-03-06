@@ -11,42 +11,32 @@ use Fw\Database\Connection;
 use Fw\Events\EventDispatcher;
 use Fw\Log\Logger;
 use Fw\Security\Csrf;
+use Fw\Core\ProviderRegistry;
 use Fw\Cache\CacheInterface;
+use Fw\Cache\MemoryCache;
+use Fw\Cache\Cache;
 
 /**
- * Application - the main framework orchestrator.
- *
- * This class bootstraps the application and coordinates between
- * the various subsystems. It delegates to specialized classes:
- *
- * - Config: Configuration loading and access
- * - ProviderRegistry: Service provider management
- * - HttpKernel: Request/response lifecycle
- * - ErrorHandler: Exception and error handling
- *
- * @example
- *     // In public/index.php
- *     $app = Application::getInstance();
- *     $app->run();
+ * Main application class.
  */
 final class Application
 {
-    private static ?Application $instance = null;
+    private static ?self $instance = null;
 
-    // Core services (public for controller access)
+    private Container $container;
+    public private(set) Logger $log;
+    public private(set) ?Connection $db = null;
+    public private(set) View $view;
+    public private(set) Router $router;
     public private(set) Request $request;
     public private(set) Response $response;
-    public private(set) Router $router;
-    public private(set) View $view;
-    public private(set) ?Connection $db = null;
     public private(set) Csrf $csrf;
-    public private(set) Logger $log;
-    public private(set) Container $container;
     public private(set) EventDispatcher $events;
-    public private(set) ?CommandBus $commands = null;
-    public private(set) ?QueryBus $queries = null;
+    public private(set) CommandBus $commands;
+    public private(set) QueryBus $queries;
 
     // Extracted subsystems
+    private Env $env;
     private Config $configRepository;
     private ProviderRegistry $providers;
     private HttpKernel $kernel;
@@ -54,171 +44,123 @@ final class Application
 
     private function __construct()
     {
-        // 1. Initialize configuration
+        // 0. Set instance immediately to prevent recursive constructor calls
+        self::$instance = $this;
+
+        // 1. Initialize container first
+        $this->container = Container::getInstance();
+
+        // 2. Initialize environment and config
+        $this->env = Env::getInstance();
+        $this->env->loadVars(BASE_PATH . '/.env');
         $this->configRepository = new Config(BASE_PATH);
         $this->configRepository->load();
 
-        // 2. Initialize container
-        $this->container = Container::getInstance();
-        $this->registerCoreServices();
-
-        // 3. Initialize logging and events (resolved from container for proper DI)
-        $this->log = $this->container->get(Logger::class);
+        // 3. Initialize fundamental objects
+        $this->log = new Logger();
         $this->events = new EventDispatcher($this->container->resolver());
-
-        // 4. Initialize request/response cycle
         $this->request = new Request();
         $this->response = new Response();
-        $this->router = new Router();
+        $this->router = new Router($this->container);
         $this->csrf = new Csrf(fn() => $this->initSession());
-
-        // 5. Initialize buses
         $this->commands = new CommandBus($this->container->resolver());
         $this->queries = new QueryBus($this->container->resolver());
+        
+        // 4. Initialize Provider Registry
+        $this->providers = new ProviderRegistry($this, $this->container, $this->log);
+        $this->registerCoreProviders();
 
-        // 6. Register core instances in container
+        // 5. Bind core singletons manually so they are available before full boot
+        $this->registerCoreSingletons();
+        
+        // 6. Register instances in container
         $this->registerContainerInstances();
 
-        // 7. Initialize provider registry and register providers
-        $this->providers = new ProviderRegistry($this, $this->container, $this->log);
-        $this->providers->loadFrom(BASE_PATH . '/config/providers.php');
-        $this->providers->register();
+        // 7. Boot providers (this calls register() then boot() on all added providers)
+        $this->providers->boot();
 
-        // 8. Create View (after cache provider is registered)
-        $cache = $this->container->get(CacheInterface::class);
+        // 8. Initialize View (needs Cache from providers)
+        $cache = $this->container->has(CacheInterface::class) 
+            ? $this->container->get(CacheInterface::class)
+            : new Cache(new MemoryCache());
+
         $this->view = new View(
             BASE_PATH . '/app/Views',
             $cache,
             $this->router,
-            $this->csrf,
+            $this->csrf
         );
 
-        // Enable view caching for rendered output
-        $this->view->enableCache(BASE_PATH . '/storage/cache/views');
+        // 9. Re-register components
+        $this->registerContainerInstances();
 
-        // 9. Boot providers
-        $this->providers->boot();
-
-        // 10. Initialize database
+        // 10. Subsystems
         $this->initializeDatabase();
+        $this->errorHandler = new ErrorHandler($this->response, $this->log, $this->configRepository);
+        $this->kernel = new HttpKernel($this, $this->container, $this->router, $this->events, $this->errorHandler, $this->configRepository);
 
-        // 11. Configure queue
-        $this->configureQueue();
-
-        // 12. Create error handler and HTTP kernel
-        $this->errorHandler = new ErrorHandler(
-            $this->response,
-            $this->log,
-            $this->configRepository,
-        );
-
-        $this->kernel = new HttpKernel(
-            $this,
-            $this->router,
-            $this->container,
-            $this->events,
-            $this->errorHandler,
-            $this->configRepository,
-        );
-
-        // 13. Emit application booted event
+        // 11. Done
         $this->events->dispatch(new ApplicationBooted($this));
     }
 
-    /**
-     * Register core services in the container.
-     */
-    private function registerCoreServices(): void
+    private function registerCoreSingletons(): void
     {
-        // Register Logger as singleton and sync with static instance
-        $this->container->singleton(Logger::class, function () {
-            $logger = new Logger();
-            Logger::setInstance($logger);
-            return $logger;
-        });
-
-        // Register EventLoop as singleton and sync with static instance
-        $this->container->singleton(EventLoop::class, function () {
-            $loop = new EventLoop();
-            EventLoop::setInstance($loop);
-            return $loop;
-        });
+        // Provide a default MemoryCache if CacheServiceProvider hasn't booted yet
+        if (!$this->container->has(CacheInterface::class)) {
+            $this->container->singleton(CacheInterface::class, fn() => new Cache(new MemoryCache()), true);
+        }
     }
 
-    /**
-     * Register core instances in the container.
-     */
+    private function registerCoreProviders(): void
+    {
+        // We use add() here to add them to the registry. boot() will then trigger their lifecycle.
+        $this->providers->add(\Fw\Providers\EventServiceProvider::class);
+        $this->providers->add(\Fw\Providers\BusServiceProvider::class);
+        $this->providers->add(\Fw\Providers\MiddlewareServiceProvider::class);
+        $this->providers->add(\Fw\Providers\DatabaseServiceProvider::class);
+        $this->providers->add(\Fw\Providers\CacheServiceProvider::class);
+        $this->providers->add(\Fw\Providers\QueueServiceProvider::class);
+    }
+
     private function registerContainerInstances(): void
     {
-        $this->container->instance(self::class, $this);
-        $this->container->instance(Config::class, $this->configRepository);
-        $this->container->instance(Request::class, $this->request);
-        $this->container->instance(Response::class, $this->response);
-        $this->container->instance(Router::class, $this->router);
-        $this->container->instance(Csrf::class, $this->csrf);
-        $this->container->instance(EventDispatcher::class, $this->events);
-        $this->container->instance(CommandBus::class, $this->commands);
-        $this->container->instance(QueryBus::class, $this->queries);
+        $this->container->instance(Env::class, $this->env, true);
+        $this->container->instance(self::class, $this, true);
+        $this->container->instance(Config::class, $this->configRepository, true);
+        
+        // Safety checks for typed properties
+        if (isset($this->request)) $this->container->instance(Request::class, $this->request);
+        if (isset($this->response)) $this->container->instance(Response::class, $this->response);
+        if (isset($this->router)) $this->container->instance(Router::class, $this->router);
+        if (isset($this->csrf)) $this->container->instance(Csrf::class, $this->csrf);
+        if (isset($this->events)) $this->container->instance(EventDispatcher::class, $this->events);
+        if (isset($this->commands)) $this->container->instance(CommandBus::class, $this->commands);
+        if (isset($this->queries)) $this->container->instance(QueryBus::class, $this->queries);
+        if (isset($this->log)) $this->container->instance(Logger::class, $this->log, true);
+        
+        $this->container->singleton(EventLoop::class, fn() => new EventLoop(), true);
     }
 
-    /**
-     * Initialize database connection.
-     */
     private function initializeDatabase(): void
     {
         if (!$this->configRepository->get('database.enabled', false)) {
             return;
         }
-
-        $this->db = Connection::getInstance(
-            $this->configRepository->section('database')
-        );
-
-        $this->container->instance(Connection::class, $this->db);
-
-        // Set connection on model classes
-        \Fw\Model\Model::setConnection($this->db);
-        \Fw\Database\Model::setConnection($this->db);
-        \Fw\Auth\PasswordReset::setConnection($this->db);
+        $this->container->singleton(Connection::class, function () {
+            return Connection::createFresh($this->configRepository->section('database'));
+        }, false);
+        $this->db = $this->container->get(Connection::class);
     }
 
-    /**
-     * Configure the queue system.
-     */
-    private function configureQueue(): void
-    {
-        \Fw\Queue\Queue::configure(
-            $this->configRepository->section('queue'),
-            $this->db
-        );
-    }
-
-    /**
-     * Get the singleton instance.
-     */
     public static function getInstance(): self
     {
         return self::$instance ??= new self();
     }
 
-    /**
-     * Run the application.
-     *
-     * Delegates to the HttpKernel for request handling.
-     */
-    public function run(): void
-    {
-        $this->kernel->handle($this->request, $this->response);
-    }
-
-    /**
-     * Initialize session (called lazily when needed).
-     */
     public function initSession(): void
     {
         if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
             $secure = $this->resolveSecureCookieSetting();
-
             session_set_cookie_params([
                 'lifetime' => 0,
                 'path' => '/',
@@ -227,82 +169,34 @@ final class Application
                 'httponly' => true,
                 'samesite' => 'Strict',
             ]);
-
             session_start();
         }
     }
 
-    /**
-     * Resolve the secure cookie setting.
-     *
-     * In production, forces secure=true and warns if connection is not HTTPS.
-     * In development, respects the config setting.
-     */
     private function resolveSecureCookieSetting(): bool
     {
         $configSecure = $this->configRepository->get('app.secure_cookies', true);
         $isProduction = $this->configRepository->get('app.env', 'production') === 'production';
-        $isHttps = $this->request->isSecure();
-
-        // In production, always use secure cookies
-        if ($isProduction) {
-            // Warn if production is accessed over HTTP (potential misconfiguration)
-            if (!$isHttps && $configSecure) {
-                error_log(
-                    'Warning: Secure cookies enabled but request is not over HTTPS. ' .
-                    'This may indicate a misconfigured proxy or insecure production setup.'
-                );
-            }
-            return true;
-        }
-
-        // In development, respect the config but auto-detect if not set
-        if ($configSecure === null) {
-            return $isHttps;
-        }
-
-        return (bool) $configSecure;
+        return $isProduction ?: (bool) $configSecure;
     }
 
-    /**
-     * Get a configuration value.
-     *
-     * @deprecated Use config() method or inject Config class
-     */
     public function config(string $key, mixed $default = null): mixed
     {
         return $this->configRepository->get($key, $default);
     }
 
-    /**
-     * Get the configuration repository.
-     */
     public function getConfig(): Config
     {
         return $this->configRepository;
     }
 
-    /**
-     * Get the provider registry.
-     */
-    public function getProviders(): ProviderRegistry
-    {
-        return $this->providers;
-    }
-
-    /**
-     * Get the HTTP kernel.
-     */
     public function getKernel(): HttpKernel
     {
         return $this->kernel;
     }
 
-    /**
-     * Get the error handler.
-     */
-    public function getErrorHandler(): ErrorHandler
+    public function getContainer(): Container
     {
-        return $this->errorHandler;
+        return $this->container;
     }
 }

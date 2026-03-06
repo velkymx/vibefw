@@ -82,13 +82,16 @@ return $this->view('posts.index', ['posts' => $posts]);
 
 ### Using Layouts in Controller
 
+While you can define the layout within your view template, you can also specify it in your controller. The `Response` object is an immutable value object, and methods like `layout()` return a new instance with the updated configuration.
+
 ```php
 public function index(Request $request): Response
 {
     $posts = Post::all();
-    return new Response(
-        $this->app->view->layout('app')->render('posts.index', compact('posts'))
-    );
+    
+    // Set the layout and pass data to the view
+    return $this->view('posts.index', compact('posts'))
+        ->layout('app');
 }
 ```
 
