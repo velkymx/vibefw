@@ -11,7 +11,7 @@ A high-performance, security-focused PHP 8.4+ MVC framework built for modern, hi
 VibeFW v2.0 is a ground-up architectural refactor designed for persistent runtimes like **FrankenPHP Worker Mode**. It introduces true request isolation and massive performance gains.
 
 ### Key v2.0 Features
-- **35,000+ Requests/Sec** - Optimized for high-concurrency worker environments.
+- **40,000+ Requests/Sec** - Optimized for high-concurrency worker environments.
 - **Fiber-Isolated State** - Automatic request isolation using Fiber-local container singletons and `WeakMap` context.
 - **Zero-Side-Effect Response** - `Response` is now a pure value object, decoupled from PHP's output buffer.
 - **Strictly Immutable QueryBuilder** - Prevents silent query contamination across branching logic.
@@ -19,7 +19,7 @@ VibeFW v2.0 is a ground-up architectural refactor designed for persistent runtim
 
 ## Features
 
-- **Blazing Fast** - 35,000+ requests/sec with FrankenPHP worker mode.
+- **Blazing Fast** - 40,000+ requests/sec with FrankenPHP worker mode.
 - **Security First** - Built-in protection against CSRF, XSS, SQL injection, and timing attacks.
 - **True Async I/O** - Non-blocking HTTP and Database execution using PHP Fibers and EventLoop.
 - **Result/Option Types** - Null-safe, exception-free error handling.
@@ -100,10 +100,10 @@ Benchmarked with FrankenPHP worker mode on Apple M2 (MacBook Air):
 
 | Metric | Result |
 | :--- | :--- |
-| **Requests per Second** | **35,666.46** |
-| **Average Latency** | **5.79ms** |
-| **Total Requests (30s)** | **1,073,922** |
-| **Memory Stability** | **Perfect** (Zero leaks after 1M requests) |
+| **Requests per Second** | **40,058.37** |
+| **Average Latency** | **5.15ms** |
+| **Total Requests (30s)** | **1,202,023** |
+| **Memory Stability** | **Perfect** (Zero leaks after 1.2M requests) |
 
 ## Core Concepts
 
