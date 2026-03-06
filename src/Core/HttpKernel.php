@@ -11,7 +11,7 @@ use Fw\Lifecycle\Component;
 use Fw\Lifecycle\RequestFiber;
 use Fw\Middleware\Pipeline;
 use Fw\Support\ResettableInterface;
-use Fw\Support\RouteMatch;
+use Fw\Core\RouteMatch;
 
 final class HttpKernel
 {

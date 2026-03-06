@@ -21,9 +21,9 @@ final class ErrorHandler
     ) {}
 
     /**
-     * Handle routing errors (404 Not Found, 405 Method Not Allowed).
+     * Create a response for routing errors.
      */
-    public function handleRoutingError(RouteNotFound|MethodNotAllowed $error): void
+    public function createRoutingResponse(RouteNotFound|MethodNotAllowed $error, Request $request): Response
     {
         $this->log->warning('Route error: {message}', [
             'message' => $error->getMessage(),
@@ -31,24 +31,22 @@ final class ErrorHandler
             'uri' => $error->uri,
         ]);
 
+        $response = new Response();
+
         if ($error instanceof MethodNotAllowed) {
-            $this->response
+            return $response
                 ->setStatus(405)
                 ->header('Allow', implode(', ', $error->allowedMethods))
-                ->emit('405 Method Not Allowed');
-            return;
+                ->setBody('405 Method Not Allowed');
         }
 
-        $this->response->setStatus(404)->emit('404 Not Found');
+        return $response->setStatus(404)->setBody('404 Not Found');
     }
 
     /**
-     * Handle uncaught exceptions.
-     *
-     * In debug mode, shows detailed error information.
-     * In production, shows a generic error message.
+     * Create a response for uncaught exceptions.
      */
-    public function handleException(\Throwable $e, ?Request $request = null): void
+    public function createExceptionResponse(\Throwable $e, Request $request): Response
     {
         $debug = $this->config->get('app.debug', false);
 
@@ -58,27 +56,27 @@ final class ErrorHandler
             'exception' => $e,
             'file' => $e->getFile(),
             'line' => $e->getLine(),
-            'uri' => $request?->uri ?? 'unknown',
-            'method' => $request?->method ?? 'unknown',
+            'uri' => $request->uri,
+            'method' => $request->method,
         ]);
 
-        $this->response->setStatus(500);
+        $response = new Response();
+        $response->setStatus(500);
 
         if ($debug) {
-            $this->renderDebugError($e);
-        } else {
-            $this->response->emit('500 Internal Server Error');
+            return $response
+                ->contentType('text/html')
+                ->setBody($this->renderDebugErrorHtml($e));
         }
+
+        return $response->setBody('500 Internal Server Error');
     }
 
     /**
      * Render detailed error information for debug mode.
-     *
-     * WARNING: This exposes sensitive information. Never enable debug mode in production.
      */
-    private function renderDebugError(\Throwable $e): void
+    private function renderDebugErrorHtml(\Throwable $e): string
     {
-        // Check if this might be a production environment with debug enabled
         $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
         $isProduction = in_array($env, ['production', 'prod', 'live'], true);
         $securityWarning = '';
@@ -91,7 +89,7 @@ final class ErrorHandler
         </div>';
         }
 
-        $html = sprintf(
+        return sprintf(
             '<!DOCTYPE html>
 <html>
 <head>
@@ -130,8 +128,6 @@ final class ErrorHandler
             $e->getLine(),
             $this->formatTrace($e)
         );
-
-        $this->response->contentType('text/html')->emit($html);
     }
 
     /**
@@ -140,14 +136,12 @@ final class ErrorHandler
     private function formatTrace(\Throwable $e): string
     {
         $lines = [];
-
         foreach ($e->getTrace() as $i => $frame) {
             $file = $frame['file'] ?? '[internal]';
             $line = $frame['line'] ?? 0;
             $function = $frame['function'] ?? '';
             $class = $frame['class'] ?? '';
             $type = $frame['type'] ?? '';
-
             $call = $class ? "{$class}{$type}{$function}()" : "{$function}()";
 
             $lines[] = sprintf(
@@ -158,39 +152,42 @@ final class ErrorHandler
                 htmlspecialchars($call, ENT_QUOTES, 'UTF-8')
             );
         }
-
         return implode("\n", $lines);
     }
 
     /**
-     * Handle a 404 Not Found error.
+     * @deprecated Use createRoutingResponse
      */
-    public function notFound(string $message = '404 Not Found'): void
+    public function handleRoutingError(RouteNotFound|MethodNotAllowed $error): void
     {
-        $this->response->setStatus(404)->emit($message);
+        // This is now handled by HttpKernel returning the response
     }
 
     /**
-     * Handle a 403 Forbidden error.
+     * @deprecated Use createExceptionResponse
      */
-    public function forbidden(string $message = '403 Forbidden'): void
+    public function handleException(\Throwable $e, ?Request $request = null): void
     {
-        $this->response->setStatus(403)->emit($message);
+        // This is now handled by HttpKernel returning the response
     }
 
-    /**
-     * Handle a 400 Bad Request error.
-     */
-    public function badRequest(string $message = '400 Bad Request'): void
+    public function notFound(string $message = '404 Not Found'): Response
     {
-        $this->response->setStatus(400)->emit($message);
+        return (new Response())->setStatus(404)->setBody($message);
     }
 
-    /**
-     * Handle a 500 Server Error.
-     */
-    public function serverError(string $message = '500 Internal Server Error'): void
+    public function forbidden(string $message = '403 Forbidden'): Response
     {
-        $this->response->setStatus(500)->emit($message);
+        return (new Response())->setStatus(403)->setBody($message);
+    }
+
+    public function badRequest(string $message = '400 Bad Request'): Response
+    {
+        return (new Response())->setStatus(400)->setBody($message);
+    }
+
+    public function serverError(string $message = '500 Internal Server Error'): Response
+    {
+        return (new Response())->setStatus(500)->setBody($message);
     }
 }

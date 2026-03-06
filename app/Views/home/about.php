@@ -1,5 +1,5 @@
 <?php
-$title = 'About Fw Framework';
+$title = 'About VibeFW Framework';
 ?>
 
 <style>
@@ -75,9 +75,9 @@ $title = 'About Fw Framework';
 
 <div class="hero-section">
     <div class="container">
-        <h1>Fw Framework</h1>
+        <h1>VibeFW Framework</h1>
         <p class="lead">The PHP framework built for speed, simplicity, and vibes.</p>
-        <div class="speed-badge">13,593 requests/sec</div>
+        <div class="speed-badge">35,666 requests/sec</div>
     </div>
 </div>
 
@@ -88,29 +88,29 @@ $title = 'About Fw Framework';
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <p class="lead text-center text-muted mb-4">
-                    Fw is engineered for raw speed. No bloat, no unnecessary abstractions, just pure performance.
+                    VibeFW is engineered for raw speed. No bloat, no unnecessary abstractions, just pure performance.
                 </p>
 
                 <!-- Framework Comparison -->
                 <h5 class="text-center mb-3">Framework Benchmark Comparison</h5>
                 <p class="text-center text-muted small mb-4">
                     Requests per second (higher is better)<br>
-                    <em>Tested on Mac M2 with FrankenPHP worker mode - 8 threads, 200 connections, 15s</em>
+                    <em>Tested on Apple M2 (MacBook Air) with FrankenPHP worker mode - 8 threads, 200 connections, 30s</em>
                 </p>
 
                 <div class="mb-4">
                     <div class="d-flex align-items-center mb-2">
-                        <div style="width: 120px;"><strong>Fw Framework</strong></div>
+                        <div style="width: 120px;"><strong>VibeFW Framework</strong></div>
                         <div class="flex-grow-1 mx-3">
                             <div class="benchmark-bar" style="width: 100%; position: relative;">
-                                <span style="position: absolute; right: 10px; color: white; font-weight: 600; line-height: 24px;">13,593 req/s</span>
+                                <span style="position: absolute; right: 10px; color: white; font-weight: 600; line-height: 24px;">35,666 req/s</span>
                             </div>
                         </div>
                     </div>
                     <div class="d-flex align-items-center mb-2">
                         <div style="width: 120px;">Slim 4</div>
                         <div class="flex-grow-1 mx-3">
-                            <div class="benchmark-bar" style="width: 29%; background: #6c757d; position: relative;">
+                            <div class="benchmark-bar" style="width: 11%; background: #6c757d; position: relative;">
                                 <span style="position: absolute; right: 10px; color: white; font-weight: 600; line-height: 24px;">~4,000 req/s</span>
                             </div>
                         </div>
@@ -118,7 +118,7 @@ $title = 'About Fw Framework';
                     <div class="d-flex align-items-center mb-2">
                         <div style="width: 120px;">Symfony</div>
                         <div class="flex-grow-1 mx-3">
-                            <div class="benchmark-bar" style="width: 11%; background: #6c757d; position: relative;">
+                            <div class="benchmark-bar" style="width: 4%; background: #6c757d; position: relative;">
                                 <span style="position: absolute; left: 100%; margin-left: 10px; color: #333; font-weight: 600; line-height: 24px;">~1,500 req/s</span>
                             </div>
                         </div>
@@ -126,7 +126,7 @@ $title = 'About Fw Framework';
                     <div class="d-flex align-items-center mb-2">
                         <div style="width: 120px;">Laravel</div>
                         <div class="flex-grow-1 mx-3">
-                            <div class="benchmark-bar" style="width: 6%; background: #6c757d; position: relative;">
+                            <div class="benchmark-bar" style="width: 2%; background: #6c757d; position: relative;">
                                 <span style="position: absolute; left: 100%; margin-left: 10px; color: #333; font-weight: 600; line-height: 24px;">~800 req/s</span>
                             </div>
                         </div>
@@ -135,15 +135,15 @@ $title = 'About Fw Framework';
 
                 <div class="row text-center mt-5">
                     <div class="col-md-4">
-                        <div class="display-4 text-primary fw-bold">17x</div>
+                        <div class="display-4 text-primary fw-bold">44x</div>
                         <p class="text-muted">faster than Laravel</p>
                     </div>
                     <div class="col-md-4">
-                        <div class="display-4 text-primary fw-bold">9x</div>
+                        <div class="display-4 text-primary fw-bold">23x</div>
                         <p class="text-muted">faster than Symfony</p>
                     </div>
                     <div class="col-md-4">
-                        <div class="display-4 text-primary fw-bold">14.8ms</div>
+                        <div class="display-4 text-primary fw-bold">5.79ms</div>
                         <p class="text-muted">average latency</p>
                     </div>
                 </div>
@@ -207,7 +207,7 @@ $title = 'About Fw Framework';
         <div class="row align-items-center">
             <div class="col-lg-5">
                 <h2 class="mb-3">Built for Vibe Coding</h2>
-                <p class="lead">Write code that flows. Fw gets out of your way and lets you build.</p>
+                <p class="lead">Write code that flows. VibeFW gets out of your way and lets you build.</p>
                 <ul class="list-unstyled">
                     <li class="mb-2">✓ Clean, expressive syntax</li>
                     <li class="mb-2">✓ Sensible defaults everywhere</li>

@@ -32,7 +32,7 @@ final class Pipeline
     private function loadAliases(): void
     {
         // Try to get config from container (set by MiddlewareServiceProvider)
-        $config = $this->app->container->tryGet('middleware.config');
+        $config = $this->app->getContainer()->tryGet('middleware.config');
 
         if ($config->isSome()) {
             $this->aliases = $config->unwrap()->aliases;
@@ -124,10 +124,10 @@ final class Pipeline
 
         // Use the container to create the middleware instance
         // This allows for automatic dependency injection
-        $instance = $this->app->container->make($class, $params);
+        $instance = $this->app->getContainer()->make($class, $params);
 
         if ($name === 'can' && !empty($params)) {
-            $instance = $this->app->container->make(\Fw\Middleware\CanMiddleware::class, [
+            $instance = $this->app->getContainer()->make(\Fw\Middleware\CanMiddleware::class, [
                 'permissions' => $params,
             ]);
         }

@@ -43,7 +43,7 @@ final class UserServiceProvider
      */
     public static function register(Application $app): void
     {
-        $container = $app->container;
+        $container = $app->getContainer();
 
         // Register repository as singleton
         $container->singleton(UserRepository::class, function (Container $c) use ($app) {

@@ -66,17 +66,20 @@ final class Application
         $this->commands = new CommandBus($this->container->resolver());
         $this->queries = new QueryBus($this->container->resolver());
         
-        // 4. Register core providers
+        // 4. Initialize Provider Registry
         $this->providers = new ProviderRegistry($this, $this->container, $this->log);
         $this->registerCoreProviders();
 
-        // 5. Register instances in container
+        // 5. Bind core singletons manually so they are available before full boot
+        $this->registerCoreSingletons();
+        
+        // 6. Register instances in container
         $this->registerContainerInstances();
 
-        // 6. Boot providers
+        // 7. Boot providers (this calls register() then boot() on all added providers)
         $this->providers->boot();
 
-        // 7. Initialize View (needs Cache from providers)
+        // 8. Initialize View (needs Cache from providers)
         $cache = $this->container->has(CacheInterface::class) 
             ? $this->container->get(CacheInterface::class)
             : new Cache(new MemoryCache());
@@ -88,26 +91,35 @@ final class Application
             $this->csrf
         );
 
-        // 8. Final instance registration
+        // 9. Re-register components
         $this->registerContainerInstances();
 
-        // 9. Subsystems
+        // 10. Subsystems
         $this->initializeDatabase();
         $this->errorHandler = new ErrorHandler($this->response, $this->log, $this->configRepository);
         $this->kernel = new HttpKernel($this, $this->container, $this->router, $this->events, $this->errorHandler, $this->configRepository);
 
-        // 10. Done
+        // 11. Done
         $this->events->dispatch(new ApplicationBooted($this));
+    }
+
+    private function registerCoreSingletons(): void
+    {
+        // Provide a default MemoryCache if CacheServiceProvider hasn't booted yet
+        if (!$this->container->has(CacheInterface::class)) {
+            $this->container->singleton(CacheInterface::class, fn() => new Cache(new MemoryCache()), true);
+        }
     }
 
     private function registerCoreProviders(): void
     {
-        $this->providers->register(\Fw\Providers\EventServiceProvider::class);
-        $this->providers->register(\Fw\Providers\BusServiceProvider::class);
-        $this->providers->register(\Fw\Providers\MiddlewareServiceProvider::class);
-        $this->providers->register(\Fw\Providers\DatabaseServiceProvider::class);
-        $this->providers->register(\Fw\Providers\CacheServiceProvider::class);
-        $this->providers->register(\Fw\Providers\QueueServiceProvider::class);
+        // We use add() here to add them to the registry. boot() will then trigger their lifecycle.
+        $this->providers->add(\Fw\Providers\EventServiceProvider::class);
+        $this->providers->add(\Fw\Providers\BusServiceProvider::class);
+        $this->providers->add(\Fw\Providers\MiddlewareServiceProvider::class);
+        $this->providers->add(\Fw\Providers\DatabaseServiceProvider::class);
+        $this->providers->add(\Fw\Providers\CacheServiceProvider::class);
+        $this->providers->add(\Fw\Providers\QueueServiceProvider::class);
     }
 
     private function registerContainerInstances(): void

@@ -1,6 +1,6 @@
 # Authentication
 
-FW provides session-based authentication for web applications and token-based authentication for APIs.
+VibeFW provides session-based authentication for web applications and token-based authentication for APIs.
 
 ## Session Authentication
 

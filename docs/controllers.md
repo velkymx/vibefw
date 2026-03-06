@@ -348,7 +348,7 @@ class PostController extends Controller
 {
     public function index(Request $request): Response
     {
-        $cache = $this->app->container->get(CacheInterface::class);
+        $cache = $this->app->getContainer()->get(CacheInterface::class);
         // ...
     }
 }

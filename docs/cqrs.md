@@ -1,6 +1,6 @@
 # CQRS - Commands & Queries
 
-FW supports the Command Query Responsibility Segregation (CQRS) pattern, separating write operations (commands) from read operations (queries).
+VibeFW supports the Command Query Responsibility Segregation (CQRS) pattern, separating write operations (commands) from read operations (queries).
 
 ## Why CQRS?
 

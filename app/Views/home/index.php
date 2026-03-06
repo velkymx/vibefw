@@ -16,7 +16,7 @@ $isAuthenticated = isset($user) && $user !== null;
 <div class="row">
     <div class="col-lg-8">
         <div class="mb-5">
-            <h1 class="display-5 fw-bold">Welcome to Fw Framework</h1>
+            <h1 class="display-5 fw-bold">Welcome to VibeFW Framework</h1>
             <p class="lead text-muted">
                 A modern PHP framework built with PHP 8.4 features, designed for simplicity and performance.
             </p>

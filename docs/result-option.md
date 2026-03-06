@@ -1,6 +1,6 @@
 # Result & Option Types
 
-FW uses `Result` and `Option` types instead of exceptions and null values. This makes error handling explicit and prevents null pointer errors.
+VibeFW uses `Result` and `Option` types instead of exceptions and null values. This makes error handling explicit and prevents null pointer errors.
 
 ## Why?
 

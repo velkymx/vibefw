@@ -1,6 +1,6 @@
 # PHP 8.5 Features
 
-FW leverages PHP 8.5's new features for cleaner, more expressive code.
+VibeFW leverages PHP 8.5's new features for cleaner, more expressive code.
 
 ## array_first() and array_last()
 

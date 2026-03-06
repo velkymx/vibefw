@@ -1,6 +1,6 @@
 # Database & Migrations
 
-FW provides a simple database layer with migrations for schema management.
+VibeFW provides a simple database layer with migrations for schema management.
 
 ## Configuration
 

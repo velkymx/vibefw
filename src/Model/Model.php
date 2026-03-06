@@ -6,6 +6,7 @@ namespace Fw\Model;
 
 use Fw\Database\Connection;
 use Fw\Database\QueryBuilder;
+use Fw\Core\Container;
 use Fw\Support\Arr;
 use Fw\Support\Option;
 use Fw\Support\Str;
