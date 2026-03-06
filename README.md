@@ -96,7 +96,7 @@ php fw routes:list                  # List all routes
 
 ## Performance
 
-Benchmarked with FrankenPHP worker mode on Apple M3 Pro:
+Benchmarked with FrankenPHP worker mode on Apple M2 (MacBook Air):
 
 | Metric | Result |
 | :--- | :--- |
