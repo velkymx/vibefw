@@ -9,14 +9,14 @@ Configure your database in `config/database.php`:
 ```php
 return [
     'enabled' => true,
-    'driver' => Env::string('DB_DRIVER', 'sqlite'),
-    'database' => Env::string('DB_DATABASE', BASE_PATH . '/database/database.sqlite'),
+    'driver' => Env::get('DB_DRIVER', 'sqlite'),
+    'database' => Env::get('DB_DATABASE', BASE_PATH . '/database/database.sqlite'),
 
     // For MySQL/PostgreSQL:
-    // 'host' => Env::string('DB_HOST', 'localhost'),
-    // 'port' => Env::string('DB_PORT', '3306'),
-    // 'username' => Env::string('DB_USERNAME', 'root'),
-    // 'password' => Env::string('DB_PASSWORD', ''),
+    // 'host' => Env::get('DB_HOST', 'localhost'),
+    // 'port' => Env::get('DB_PORT', '3306'),
+    // 'username' => Env::get('DB_USERNAME', 'root'),
+    // 'password' => Env::get('DB_PASSWORD', ''),
 ];
 ```
 
@@ -34,6 +34,8 @@ DB_DATABASE=myapp
 DB_USERNAME=root
 DB_PASSWORD=secret
 ```
+
+> **Note on Env:** `Env` is now an instantiable service, but static wrappers like `Env::get()` still work for convenience.
 
 ## Migrations
 
@@ -282,22 +284,23 @@ $db->transaction(function () use ($db) {
 
 ### Using Models
 
-Prefer using Models over raw queries:
+Prefer using Models over raw queries. In VibeFW v2.0.0, the **QueryBuilder is strictly immutable**. Every method returns a **CLONE** of the builder, so you must capture the result when building queries in stages:
 
 ```php
 // Select
 $users = User::where('active', true)->get();
-$user = User::find($id);
 
-// Insert
-$user = User::create(['name' => 'John', 'email' => 'john@example.com']);
-
-// Update
-$user->update(['name' => 'Jane']);
-
-// Delete
-$user->delete();
+// Building in stages (MUST re-assign variable)
+$query = User::where('active', true);
+if ($role) {
+    $query = $query->where('role', $role);
+}
+$users = $query->get();
 ```
+
+> **IMPORTANT:** Chaining works normally (e.g. `User::where('a', 1)->where('b', 2)->get()`), but conditional query building requires re-assignment (e.g. `$query = $query->where('status', 'active')`).
+
+$user = User::find($id);
 
 See [Models](models.md) for full documentation.
 

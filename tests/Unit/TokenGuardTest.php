@@ -19,6 +19,9 @@ final class TokenGuardTest extends TestCase
     {
         parent::setUp();
 
+        // Initialize RequestContext for tests that use it (via TokenGuard)
+        \Fw\Core\RequestContext::create(new \Fw\Core\Request());
+
         // Reset TokenGuard state
         TokenGuard::logout();
 

@@ -97,7 +97,7 @@ abstract class Model implements \JsonSerializable
     /**
      * Global strict mode for all models (set during bootstrap).
      */
-    private static bool $globalStrictMode = false;
+    private static bool $globalStrictMode = true;
 
     /**
      * Attribute casting rules. Maps column => class or type.
@@ -225,20 +225,16 @@ abstract class Model implements \JsonSerializable
     }
 
     /**
-     * Resolve connection - requires explicit setConnection() call during bootstrap.
-     *
-     * This method no longer uses service locator pattern. The connection must be
-     * explicitly set via Model::setConnection() during application bootstrap.
+     * Resolve connection - uses Container for fiber-safe resolution.
      */
     protected static function resolveConnection(): Connection
     {
-        if (static::$connection === null) {
-            throw new \RuntimeException(
-                'No database connection set. Call Model::setConnection() during application bootstrap.'
-            );
+        if (static::$connection !== null) {
+            return static::$connection;
         }
 
-        return static::$connection;
+        // Try to get from Container (which is now fiber-safe)
+        return Container::getInstance()->get(Connection::class);
     }
 
     // ========================================

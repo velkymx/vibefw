@@ -598,3 +598,92 @@ $view->invalidate('pages.about');           // Single page
 $view->invalidateFragment('sidebar');        // Single fragment
 $view->clearCache();                         // All cached views
 ```
+
+---
+
+## Request Object
+
+The `Request` object is passed as the first argument to controller methods. In v2.0.0, the `Request` object uses PHP's `readonly` property feature to ensure data integrity during the request lifecycle.
+
+```php
+public function show(Request $request): Response
+{
+    // Access properties directly
+    $id = $request->id;
+    $user = $request->user;
+    
+    // Attempting to modify will throw an error
+    // $request->id = 5; // Error: Cannot modify readonly property
+}
+```
+
+---
+
+## Response Helpers
+
+Controllers provide a fluent interface for modifying the `Response` object before it is returned. The `Response` is an immutable value object; each method call returns a new instance with the requested change, allowing for clean method chaining.
+
+### Fluent Interface
+
+#### `with(string $key, mixed $value)` - Add Flash Data
+
+```php
+return $this->redirect('/dashboard')
+    ->with('success', 'Profile updated!');
+```
+
+#### `withErrors(array $errors)` - Add Validation Errors
+
+```php
+return $this->redirect('/register')
+    ->withErrors(['email' => 'Email already exists']);
+```
+
+#### `header(string $name, string $value)` - Set HTTP Header
+
+```php
+return $this->json($data)
+    ->header('X-Custom-Header', 'Value');
+```
+
+#### `setStatus(int $code)` - Set HTTP Status Code
+
+```php
+return $this->view('errors.404')
+    ->setStatus(404);
+```
+
+#### `setBody(string $content)` - Overwrite Response Body
+
+```php
+return $this->view('page')
+    ->setBody('Custom content');
+```
+
+#### `redirect(string $url, int $code = 302)` - Set Redirect
+
+```php
+return $this->view('page')
+    ->redirect('/new-location');
+```
+
+#### `contentType(string $type)` - Set Content-Type Header
+
+```php
+return $this->view('rss')
+    ->contentType('application/rss+xml');
+```
+
+#### `cache(int $seconds)` - Set Cache-Control Header
+
+```php
+return $this->view('home')
+    ->cache(3600); // Cache for 1 hour
+```
+
+#### `noCache()` - Disable Caching
+
+```php
+return $this->view('dashboard')
+    ->noCache();
+```

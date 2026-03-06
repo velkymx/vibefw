@@ -12,19 +12,33 @@ if (php_sapi_name() === 'cli-server') {
 
 define('BASE_PATH', dirname(__DIR__));
 
-// Only start session when needed (has session cookie or state-changing request)
-if (session_status() === PHP_SESSION_NONE) {
-    $hasSessionCookie = isset($_COOKIE[session_name()]);
-    $isStateChanging = in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['POST', 'PUT', 'PATCH', 'DELETE'], true);
-
-    if ($hasSessionCookie || $isStateChanging) {
-        session_start();
-    }
-}
-
 require BASE_PATH . '/vendor/autoload.php';
 
 use Fw\Core\Application;
+use Fw\Core\Request;
+use Fw\Core\SapiEmitter;
 
+// 1. Initialize Application (Boots only once in Worker Mode)
 $app = Application::getInstance();
-$app->run();
+$kernel = $app->getKernel();
+$emitter = new SapiEmitter();
+
+// 2. Define the Request Handler
+$handler = static function () use ($kernel, $emitter) {
+    // In FrankenPHP, superglobals are populated per-request inside the worker loop
+    $request = Request::createFromGlobals();
+    $response = $kernel->handle($request);
+    $emitter->emit($response);
+};
+
+// 3. Execution Loop
+if (function_exists('frankenphp_handle_request')) {
+    // FrankenPHP Worker Mode
+    // This loop continues until the server signals a shutdown
+    while (frankenphp_handle_request($handler)) {
+        // Optional: Perform any cross-request maintenance here if needed
+    }
+} else {
+    // Standard PHP-FPM / CLI-Server Mode
+    $handler();
+}

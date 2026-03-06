@@ -6,38 +6,41 @@ namespace Fw\Core;
 
 /**
  * Environment variable loader and accessor.
- *
- * Loads variables from .env files and provides a clean API for accessing them.
- * Supports type casting and default values.
  */
 final class Env
 {
-    private static bool $loaded = false;
-    private static array $variables = [];
+    private static ?Env $instance = null;
 
-    /**
-     * Load environment variables from a .env file.
-     */
-    public static function load(string $path): void
+    private bool $loaded = false;
+    private array $variables = [];
+
+    public static function getInstance(): self
+    {
+        return self::$instance ??= new self();
+    }
+
+    public static function setInstance(self $env): void
+    {
+        self::$instance = $env;
+    }
+
+    public function loadVars(string $path): void
     {
         if (!file_exists($path)) {
             return;
         }
 
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
         if ($lines === false) {
             return;
         }
 
         foreach ($lines as $line) {
-            // Skip comments
             $line = trim($line);
             if ($line === '' || str_starts_with($line, '#')) {
                 continue;
             }
 
-            // Parse KEY=value
             $pos = strpos($line, '=');
             if ($pos === false) {
                 continue;
@@ -46,7 +49,6 @@ final class Env
             $key = trim(substr($line, 0, $pos));
             $value = trim(substr($line, $pos + 1));
 
-            // Remove quotes if present
             if (
                 (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
                 (str_starts_with($value, "'") && str_ends_with($value, "'"))
@@ -54,167 +56,150 @@ final class Env
                 $value = substr($value, 1, -1);
             }
 
-            // Store in our cache
-            self::$variables[$key] = $value;
-
-            // Also set in $_ENV and putenv for compatibility
+            $this->variables[$key] = $value;
             $_ENV[$key] = $value;
-            putenv("{$key}={$value}");
         }
 
-        self::$loaded = true;
+        $this->loaded = true;
     }
 
-    /**
-     * Get an environment variable.
-     */
-    public static function get(string $key, mixed $default = null): mixed
+    public static function load(string $path): void
     {
-        // Check our cache first
-        if (isset(self::$variables[$key])) {
-            return self::castValue(self::$variables[$key]);
-        }
+        self::getInstance()->loadVars($path);
+    }
 
-        // Fall back to $_ENV
+    public function getVar(string $key, mixed $default = null): mixed
+    {
+        if (isset($this->variables[$key])) {
+            return $this->castValue($this->variables[$key]);
+        }
         if (isset($_ENV[$key])) {
-            return self::castValue($_ENV[$key]);
+            return $this->castValue($_ENV[$key]);
         }
-
-        // Fall back to getenv
         $value = getenv($key);
         if ($value !== false) {
-            return self::castValue($value);
+            return $this->castValue($value);
         }
-
         return $default;
     }
 
-    /**
-     * Get a string environment variable.
-     */
-    public static function string(string $key, string $default = ''): string
+    public static function get(string $key, mixed $default = null): mixed
     {
-        $value = self::get($key);
+        return self::getInstance()->getVar($key, $default);
+    }
+
+    public function getString(string $key, string $default = ''): string
+    {
+        $value = $this->getVar($key);
         return $value !== null ? (string) $value : $default;
     }
 
-    /**
-     * Get an integer environment variable.
-     */
-    public static function int(string $key, int $default = 0): int
+    public static function string(string $key, string $default = ''): string
     {
-        $value = self::get($key);
+        return self::getInstance()->getString($key, $default);
+    }
+
+    public function getInt(string $key, int $default = 0): int
+    {
+        $value = $this->getVar($key);
         return $value !== null ? (int) $value : $default;
     }
 
-    /**
-     * Get a boolean environment variable.
-     */
-    public static function bool(string $key, bool $default = false): bool
+    public static function int(string $key, int $default = 0): int
     {
-        $value = self::get($key);
+        return self::getInstance()->getInt($key, $default);
+    }
 
+    public function getBool(string $key, bool $default = false): bool
+    {
+        $value = $this->getVar($key);
         if ($value === null) {
             return $default;
         }
-
         if (is_bool($value)) {
             return $value;
         }
-
         $value = strtolower((string) $value);
-
         return in_array($value, ['true', '1', 'yes', 'on'], true);
     }
 
-    /**
-     * Get an array environment variable (comma-separated).
-     */
-    public static function array(string $key, array $default = []): array
+    public static function bool(string $key, bool $default = false): bool
     {
-        $value = self::get($key);
+        return self::getInstance()->getBool($key, $default);
+    }
 
+    public function getArray(string $key, array $default = []): array
+    {
+        $value = $this->getVar($key);
         if ($value === null || $value === '') {
             return $default;
         }
-
         return array_map('trim', explode(',', (string) $value));
     }
 
-    /**
-     * Check if an environment variable is set.
-     */
-    public static function has(string $key): bool
+    public static function array(string $key, array $default = []): array
     {
-        return self::get($key) !== null;
+        return self::getInstance()->getArray($key, $default);
     }
 
-    /**
-     * Get a required environment variable (throws if not set).
-     */
-    public static function require(string $key): mixed
+    public function hasVar(string $key): bool
     {
-        $value = self::get($key);
+        return $this->getVar($key) !== null;
+    }
 
+    public static function has(string $key): bool
+    {
+        return self::getInstance()->hasVar($key);
+    }
+
+    public function requireVar(string $key): mixed
+    {
+        $value = $this->getVar($key);
         if ($value === null) {
             throw new \RuntimeException("Required environment variable '{$key}' is not set");
         }
-
         return $value;
     }
 
-    /**
-     * Cast string values to appropriate PHP types.
-     */
-    private static function castValue(string $value): mixed
+    public static function require(string $key): mixed
+    {
+        return self::getInstance()->requireVar($key);
+    }
+
+    private function castValue(string $value): mixed
     {
         $lower = strtolower($value);
-
-        // Boolean values
-        if ($lower === 'true') {
-            return true;
-        }
-        if ($lower === 'false') {
-            return false;
-        }
-
-        // Null
-        if ($lower === 'null' || $lower === '') {
-            return null;
-        }
-
-        // Numeric values
+        if ($lower === 'true') return true;
+        if ($lower === 'false') return false;
+        if ($lower === 'null' || $lower === '') return null;
         if (is_numeric($value)) {
-            if (str_contains($value, '.')) {
-                return (float) $value;
-            }
-            return (int) $value;
+            return str_contains($value, '.') ? (float) $value : (int) $value;
         }
-
         return $value;
     }
 
-    /**
-     * Check if .env has been loaded.
-     */
-    public static function isLoaded(): bool
+    public function isLoadedVar(): bool
     {
-        return self::$loaded;
+        return $this->loaded;
     }
 
-    /**
-     * Clear all loaded environment variables (useful for testing).
-     */
+    public static function isLoaded(): bool
+    {
+        return self::getInstance()->isLoadedVar();
+    }
+
+    public function resetVars(): void
+    {
+        $this->variables = [];
+        $this->loaded = false;
+    }
+
     public static function clear(): void
     {
-        self::$variables = [];
-        self::$loaded = false;
+        self::getInstance()->resetVars();
     }
 }
 
-/**
- * Helper function to get environment variables.
- */
 function env(string $key, mixed $default = null): mixed
 {
     return Env::get($key, $default);

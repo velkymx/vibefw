@@ -223,18 +223,7 @@ final class RequestFiber
      */
     private function executeCallable(callable $handler): mixed
     {
-        $result = $handler($this->request, ...$this->params);
-
-        if ($result instanceof Response) {
-            return $result;
-        }
-
-        if (is_array($result)) {
-            $this->app->response->header('Content-Type', 'application/json');
-            return json_encode($result, JSON_THROW_ON_ERROR);
-        }
-
-        return (string) $result;
+        return $handler($this->request, ...$this->params);
     }
 
     /**

@@ -4,19 +4,31 @@ declare(strict_types=1);
 
 namespace Fw\Cache;
 
+use Fw\Support\ResettableInterface;
+
 /**
  * In-memory cache driver.
  *
  * Fast but only persists for the current request.
  * Ideal for caching repeated queries within a single request.
  */
-final class MemoryCache implements CacheInterface
+final class MemoryCache implements CacheInterface, ResettableInterface
 {
     /** @var array<string, array{value: mixed, expires: ?int}> */
     private array $store = [];
 
     private int $hits = 0;
     private int $misses = 0;
+
+    /**
+     * Reset the cache state (implements ResettableInterface).
+     */
+    public function reset(): void
+    {
+        $this->clear();
+        $this->hits = 0;
+        $this->misses = 0;
+    }
 
     public function get(string $key, mixed $default = null): mixed
     {

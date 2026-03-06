@@ -113,13 +113,18 @@ class LogRequestMiddleware implements MiddlewareInterface
         private Application $app,
     ) {}
 
-    public function handle(Request $request, callable $next): Response|string|array
+    public function handle(Request $request, callable $next): Response
     {
         // Before request
         $start = microtime(true);
 
         // Pass to next middleware
         $response = $next($request);
+
+        // Ensure we have a Response object (VibeFW v2.0.0 controllers return Response)
+        if (!$response instanceof Response) {
+            $response = new Response((string) $response);
+        }
 
         // After response
         $duration = microtime(true) - $start;
@@ -159,7 +164,7 @@ class RoleMiddleware implements MiddlewareInterface
         $this->role = $role;
     }
 
-    public function handle(Request $request, callable $next): Response|string|array
+    public function handle(Request $request, callable $next): Response
     {
         $user = $_SESSION['user'] ?? null;
 
@@ -177,11 +182,11 @@ Usage: `->middleware('role:admin')`
 ### Early Return (Abort)
 
 ```php
-public function handle(Request $request, callable $next): Response|string|array
+public function handle(Request $request, callable $next): Response
 {
     if (!$this->isAuthorized($request)) {
         // Return early - don't call $next()
-        return new Response('', 302, ['Location' => '/login']);
+        return (new Response())->redirect('/login');
     }
 
     return $next($request);
@@ -191,11 +196,11 @@ public function handle(Request $request, callable $next): Response|string|array
 ### Modifying Response
 
 ```php
-public function handle(Request $request, callable $next): Response|string|array
+public function handle(Request $request, callable $next): Response
 {
     $response = $next($request);
 
-    // Add headers to response
+    // Add headers to response (Response is a value object)
     if ($response instanceof Response) {
         $response->header('X-Custom-Header', 'value');
     }
@@ -225,12 +230,12 @@ class AuthMiddleware implements MiddlewareInterface
 {
     public function __construct(private Application $app) {}
 
-    public function handle(Request $request, callable $next): Response|string|array
+    public function handle(Request $request, callable $next): Response
     {
         if (!isset($_SESSION['user'])) {
             // Store intended URL for redirect after login
             $_SESSION['intended_url'] = $request->uri;
-            return new Response('', 302, ['Location' => '/login']);
+            return (new Response())->redirect('/login');
         }
 
         return $next($request);
@@ -245,7 +250,7 @@ class CsrfMiddleware implements MiddlewareInterface
 {
     public function __construct(private Application $app) {}
 
-    public function handle(Request $request, callable $next): Response|string|array
+    public function handle(Request $request, callable $next): Response
     {
         // Skip for safe methods
         if (in_array($request->method, ['GET', 'HEAD', 'OPTIONS'])) {
@@ -281,7 +286,7 @@ class RateLimitMiddleware implements MiddlewareInterface
         $this->decayMinutes = (int) $decayMinutes;
     }
 
-    public function handle(Request $request, callable $next): Response|string|array
+    public function handle(Request $request, callable $next): Response
     {
         $key = $this->resolveKey($request);
         $attempts = $this->getAttempts($key);
@@ -321,12 +326,12 @@ class CanMiddleware implements MiddlewareInterface
         $this->model = $model;
     }
 
-    public function handle(Request $request, callable $next): Response|string|array
+    public function handle(Request $request, callable $next): Response
     {
         $user = $_SESSION['user'] ?? null;
 
         if (!$user) {
-            return new Response('', 302, ['Location' => '/login']);
+            return (new Response())->redirect('/login');
         }
 
         if (!$this->authorize($user, $this->ability, $this->model)) {

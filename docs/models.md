@@ -109,13 +109,31 @@ $post = Post::firstOrCreate(
 
 ### Query Builder
 
+In VibeFW v2.0.0, the **QueryBuilder is immutable**. Every method (`where`, `select`, `orderBy`, `limit`, `offset`, `join`, etc.) returns a **CLONE** of the builder. This prevents side effects when reusing builder instances but requires you to capture the result when building queries conditionally.
+
+```php
+// Chaining works as expected:
+$posts = Post::where('status', 'published')
+    ->where('user_id', $userId)
+    ->get();
+
+// Building in stages requires re-assignment:
+$query = Post::where('status', 'published');
+
+if ($request->get('category')) {
+    // MUST RE-ASSIGN:
+    $query = $query->where('category_id', $request->get('category'));
+}
+
+$posts = $query->orderBy('created_at', 'desc')->get();
+```
+
+#### Available Methods
+
 ```php
 // Where clauses
 $posts = Post::where('status', 'published')->get();
 $posts = Post::where('views', '>', 100)->get();
-$posts = Post::where('status', 'published')
-    ->where('user_id', $userId)
-    ->get();
 
 // Or where
 $posts = Post::where('status', 'published')

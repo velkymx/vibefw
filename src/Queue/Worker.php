@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Fw\Queue;
 
+use Fw\Core\Container;
+use Fw\Core\RequestContext;
+
 final class Worker
 {
     private Queue $queue;
+    private Container $container;
     private bool $shouldStop = false;
     private int $sleep = 3;
     private int $maxJobs = 0;
@@ -18,9 +22,10 @@ final class Worker
     /** @var callable|null */
     private $outputHandler = null;
 
-    public function __construct(Queue $queue)
+    public function __construct(Queue $queue, Container $container)
     {
         $this->queue = $queue;
+        $this->container = $container;
         $this->startTime = microtime(true);
     }
 
@@ -72,13 +77,15 @@ final class Worker
             $job = $this->queue->pop($queue);
 
             if ($job === null) {
-                $this->output("No jobs available, sleeping for {$this->sleep}s...");
                 sleep($this->sleep);
                 continue;
             }
 
             $this->processJob($job);
             $this->processedJobs++;
+
+            // Clean up state between jobs to prevent memory leaks and state contamination
+            $this->resetState();
 
             if ($this->maxJobs > 0 && $this->processedJobs >= $this->maxJobs) {
                 $this->output("Max jobs ($this->maxJobs) reached, stopping...");
@@ -98,7 +105,22 @@ final class Worker
         }
 
         $this->processJob($job);
+        $this->resetState();
         return true;
+    }
+
+    private function resetState(): void
+    {
+        foreach ($this->container->getResettables() as $resettable) {
+            $resettable->reset();
+        }
+
+        // Flush Fiber-local instances (even though worker doesn't use Fibers currently,
+        // it ensures any state keyed to 'global' or current execution is cleared).
+        $this->container->flush();
+        
+        // Ensure RequestContext is clear
+        RequestContext::clear();
     }
 
     private function processJob(array $jobData): void
@@ -149,16 +171,12 @@ final class Worker
 
     private function logFailedJob(JobInterface $job, \Throwable $e): void
     {
-        $logFile = defined('BASE_PATH')
-            ? BASE_PATH . '/storage/logs/failed_jobs.log'
-            : sys_get_temp_dir() . '/failed_jobs.log';
-
+        $logFile = BASE_PATH . '/storage/logs/failed_jobs.log';
         $dir = dirname($logFile);
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
-        // Sanitize stack trace to remove potentially sensitive data
         $sanitizedTrace = $this->sanitizeStackTrace($e->getTrace());
 
         $entry = sprintf(
@@ -172,33 +190,20 @@ final class Worker
         file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
     }
 
-    /**
-     * Sanitize a stack trace to remove potentially sensitive data.
-     *
-     * Removes function arguments which may contain passwords, API keys,
-     * or other sensitive information.
-     *
-     * @param array<int, array<string, mixed>> $trace
-     */
     private function sanitizeStackTrace(array $trace): string
     {
         $lines = [];
-
         foreach ($trace as $i => $frame) {
             $file = $frame['file'] ?? '[internal function]';
             $line = $frame['line'] ?? 0;
             $class = $frame['class'] ?? '';
             $type = $frame['type'] ?? '';
             $function = $frame['function'] ?? '';
-
-            // Count arguments but don't show their values
             $argCount = isset($frame['args']) ? count($frame['args']) : 0;
             $argsPlaceholder = $argCount > 0 ? '...' . $argCount . ' args...' : '';
-
             $call = $class . $type . $function . '(' . $argsPlaceholder . ')';
             $lines[] = "#{$i} {$file}({$line}): {$call}";
         }
-
         return implode("\n", $lines);
     }
 
@@ -226,9 +231,7 @@ final class Worker
         if (!extension_loaded('pcntl')) {
             return;
         }
-
         pcntl_async_signals(true);
-
         pcntl_signal(SIGTERM, fn() => $this->stop());
         pcntl_signal(SIGINT, fn() => $this->stop());
     }
@@ -236,7 +239,6 @@ final class Worker
     private function output(string $message): void
     {
         $formatted = sprintf("[%s] %s", date('Y-m-d H:i:s'), $message);
-
         if ($this->outputHandler !== null) {
             ($this->outputHandler)($formatted);
         } else {

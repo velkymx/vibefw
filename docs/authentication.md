@@ -22,7 +22,8 @@ class LoginController extends Controller
         ]);
 
         if ($validation->isErr()) {
-            return $this->view('auth.login', ['errors' => $validation->getError()]);
+            return $this->view('auth.login')
+                ->withErrors($validation->getError());
         }
 
         $data = $validation->getValue();
@@ -31,18 +32,16 @@ class LoginController extends Controller
         $userOption = User::where('email', $data['email'])->first();
 
         if ($userOption->isNone()) {
-            return $this->view('auth.login', [
-                'errors' => ['email' => 'Invalid credentials'],
-            ]);
+            return $this->view('auth.login')
+                ->withErrors(['email' => 'Invalid credentials']);
         }
 
         $user = $userOption->unwrap();
 
         // Verify password
         if (!password_verify($data['password'], $user->password)) {
-            return $this->view('auth.login', [
-                'errors' => ['email' => 'Invalid credentials'],
-            ]);
+            return $this->view('auth.login')
+                ->withErrors(['email' => 'Invalid credentials']);
         }
 
         // Start session and store user
@@ -69,7 +68,9 @@ public function logout(Request $request): Response
 {
     $this->app->initSession();
     session_destroy();
-    return $this->redirect('/');
+
+    return $this->redirect('/')
+        ->with('status', 'Logged out successfully');
 }
 ```
 
@@ -92,20 +93,16 @@ class RegisterController extends Controller
         ]);
 
         if ($validation->isErr()) {
-            return $this->view('auth.register', [
-                'errors' => $validation->getError(),
-                'old' => $this->except($request, ['password']),
-            ]);
+            return $this->view('auth.register')
+                ->withErrors($validation->getError());
         }
 
         $data = $validation->getValue();
 
         // Check if email exists
         if (User::where('email', $data['email'])->first()->isSome()) {
-            return $this->view('auth.register', [
-                'errors' => ['email' => 'Email already registered'],
-                'old' => $this->except($request, ['password']),
-            ]);
+            return $this->view('auth.register')
+                ->withErrors(['email' => 'Email already registered']);
         }
 
         // Create user
