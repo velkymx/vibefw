@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Fw\Auth;
 
-use App\Models\PersonalAccessToken;
-use App\Models\User;
+use DateTimeImmutable;
+use DateTimeInterface;
+use Fw\Model\Model;
+use InvalidArgumentException;
 
 /**
  * Value object representing a newly created access token.
@@ -16,7 +18,7 @@ use App\Models\User;
 final class NewAccessToken
 {
     public function __construct(
-        public readonly PersonalAccessToken $accessToken,
+        public readonly Model $accessToken,
         public readonly string $plainTextToken
     ) {}
 
@@ -62,26 +64,40 @@ final class ApiToken
     private static ?array $config = null;
 
     /**
-     * Load API configuration.
+     * The token model class. Defaults to App\Models\PersonalAccessToken.
+     * Must be a Model subclass with findToken(), forUser(), isExpired() methods.
+     *
+     * @var class-string<Model>
      */
-    private static function config(): array
-    {
-        if (self::$config === null) {
-            $configPath = dirname(__DIR__, 2) . '/config/api.php';
-            self::$config = file_exists($configPath) ? require $configPath : [];
-        }
+    private static string $tokenModel = 'App\\Models\\PersonalAccessToken';
 
-        return self::$config;
+    /**
+     * Set the token model class used for token storage.
+     *
+     * @param class-string<Model> $modelClass
+     */
+    public static function setTokenModel(string $modelClass): void
+    {
+        self::$tokenModel = $modelClass;
+    }
+
+    /**
+     * Reset the static config cache between requests in worker mode.
+     * Called by HttpKernel::resetState().
+     */
+    public static function resetConfig(): void
+    {
+        self::$config = null;
     }
 
     /**
      * Create a new personal access token for a user.
      */
     public static function create(
-        User $user,
+        Model $user,
         string $name,
         array $abilities = ['*'],
-        ?\DateTimeInterface $expiresAt = null
+        ?DateTimeInterface $expiresAt = null
     ): NewAccessToken {
         $config = self::config();
 
@@ -90,7 +106,7 @@ final class ApiToken
         if (!empty($allowedAbilities)) {
             foreach ($abilities as $ability) {
                 if (!in_array($ability, $allowedAbilities, true)) {
-                    throw new \InvalidArgumentException("Invalid ability: {$ability}");
+                    throw new InvalidArgumentException("Invalid ability: {$ability}");
                 }
             }
         }
@@ -99,24 +115,27 @@ final class ApiToken
         $randomBytes = random_bytes(self::TOKEN_BYTES);
         $randomHex = bin2hex($randomBytes);
 
-        // Format: {user_id}|{random_hex}
+        // Hash only the canonical (prefix-free) token body so the stored hash is
+        // independent of the prefix string. Changing the prefix in config does NOT
+        // invalidate all existing tokens — only their transport representation changes.
         $prefix = $config['token_prefix'] ?? '';
-        $plainTextToken = $prefix . $user->id . '|' . $randomHex;
+        $tokenBody = $user->id . '|' . $randomHex;
+        $plainTextToken = $prefix . $tokenBody;
 
         // Hash for storage
         $hashAlgo = $config['hash_algo'] ?? 'sha256';
-        $hashedToken = hash($hashAlgo, $plainTextToken);
+        $hashedToken = hash($hashAlgo, $tokenBody);
 
         // Set expiration
         if ($expiresAt === null && isset($config['token_expiration'])) {
             $expiration = $config['token_expiration'];
             if ($expiration !== null && $expiration > 0) {
-                $expiresAt = new \DateTimeImmutable("+{$expiration} seconds");
+                $expiresAt = new DateTimeImmutable("+{$expiration} seconds");
             }
         }
 
         // Create token record
-        $token = PersonalAccessToken::create([
+        $token = (self::$tokenModel)::create([
             'user_id' => $user->id,
             'name' => $name,
             'token' => $hashedToken,
@@ -140,16 +159,23 @@ final class ApiToken
      * - Token found but expired
      * - Token found and valid
      */
-    public static function find(string $plainTextToken): ?PersonalAccessToken
+    public static function find(string $plainTextToken): ?Model
     {
         $config = self::config();
 
-        // Hash the token
+        // Strip optional prefix before hashing so the stored hash is always
+        // derived from the canonical body, not the transport representation.
+        $prefix = $config['token_prefix'] ?? '';
+        if ($prefix !== '' && str_starts_with($plainTextToken, $prefix)) {
+            $plainTextToken = substr($plainTextToken, strlen($prefix));
+        }
+
+        // Hash the canonical token body
         $hashAlgo = $config['hash_algo'] ?? 'sha256';
         $hashedToken = hash($hashAlgo, $plainTextToken);
 
         // Find token
-        $token = PersonalAccessToken::findToken($hashedToken);
+        $token = (self::$tokenModel)::findToken($hashedToken);
 
         // TIMING ATTACK MITIGATION:
         // Execute identical operations regardless of token state to ensure
@@ -176,19 +202,6 @@ final class ApiToken
         }
 
         return $token;
-    }
-
-    /**
-     * Perform dummy expiration check to balance timing when token doesn't exist.
-     *
-     * This ensures the same amount of work is done regardless of token existence.
-     */
-    private static function dummyExpirationCheck(): bool
-    {
-        // Simulate the same work as isExpired() without actual data
-        // Compare current time against a dummy timestamp
-        $_ = time() > 0;
-        return true; // Treat as expired (will be rejected anyway since token is null)
     }
 
     /**
@@ -225,9 +238,9 @@ final class ApiToken
     /**
      * Revoke all tokens for a user.
      */
-    public static function revokeAll(User $user): int
+    public static function revokeAll(Model $user): int
     {
-        $tokens = PersonalAccessToken::forUser($user->id);
+        $tokens = (self::$tokenModel)::forUser($user->id);
         $count = 0;
 
         foreach ($tokens as $token) {
@@ -242,9 +255,9 @@ final class ApiToken
     /**
      * Revoke a specific token by ID for a user.
      */
-    public static function revoke(User $user, string $tokenId): bool
+    public static function revoke(Model $user, string $tokenId): bool
     {
-        $tokenOption = PersonalAccessToken::find($tokenId);
+        $tokenOption = (self::$tokenModel)::find($tokenId);
 
         if ($tokenOption->isNone()) {
             return false;
@@ -261,31 +274,46 @@ final class ApiToken
     /**
      * Get all tokens for a user.
      *
-     * @return \Fw\Model\Collection<PersonalAccessToken>
+     * @return \Fw\Model\Collection<Model>
      */
-    public static function tokens(User $user): \Fw\Model\Collection
+    public static function tokens(Model $user): \Fw\Model\Collection
     {
-        return PersonalAccessToken::forUser($user->id);
+        return (self::$tokenModel)::forUser($user->id);
     }
 
     /**
-     * Prune expired tokens from the database.
+     * Prune expired tokens from the database using a single bulk DELETE.
      */
     public static function pruneExpired(): int
     {
-        $expired = PersonalAccessToken::query()
+        return (self::$tokenModel)::query()
             ->where('expires_at', '<=', date('Y-m-d H:i:s'))
-            ->get();
+            ->delete();
+    }
 
-        $count = 0;
-
-        foreach ($expired as $row) {
-            $token = PersonalAccessToken::find($row['id']);
-            if ($token !== null && $token->delete()) {
-                $count++;
-            }
+    /**
+     * Load API configuration.
+     */
+    private static function config(): array
+    {
+        if (self::$config === null) {
+            $configPath = dirname(__DIR__, 2) . '/config/api.php';
+            self::$config = file_exists($configPath) ? require $configPath : [];
         }
 
-        return $count;
+        return self::$config;
+    }
+
+    /**
+     * Perform dummy expiration check to balance timing when token doesn't exist.
+     *
+     * This ensures the same amount of work is done regardless of token existence.
+     */
+    private static function dummyExpirationCheck(): bool
+    {
+        // Simulate the same work as isExpired() without actual data
+        // Compare current time against a dummy timestamp
+        $_ = time() > 0;
+        return true; // Treat as expired (will be rejected anyway since token is null)
     }
 }
