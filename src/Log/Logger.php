@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Log;
 
 use Fw\Core\Env;
+use Throwable;
 
 /**
  * Simple file-based logger with daily rotation.
@@ -17,9 +18,17 @@ final class Logger
     private static ?Logger $instance = null;
 
     private string $path;
+
     private LogLevel $minimumLevel;
+
     private string $dateFormat;
+
     private bool $enabled;
+
+    /**
+     * Whether write failures should be reported (set to false after first failure to prevent loops).
+     */
+    private bool $reportWriteFailures = true;
 
     public function __construct(?string $path = null, ?LogLevel $minimumLevel = null)
     {
@@ -67,39 +76,6 @@ final class Logger
         self::$instance = null;
     }
 
-    private function getDefaultPath(): string
-    {
-        $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
-        return Env::string('LOG_PATH', $basePath . '/storage/logs');
-    }
-
-    private function getDefaultLevel(): LogLevel
-    {
-        $level = Env::string('LOG_LEVEL', 'debug');
-        return LogLevel::fromString($level);
-    }
-
-    private function ensureDirectoryExists(): void
-    {
-        if (!is_dir($this->path)) {
-            mkdir($this->path, 0755, true);
-        }
-    }
-
-    /**
-     * Get the current log file path (daily rotation).
-     */
-    private function getLogFile(): string
-    {
-        $filename = Env::string('LOG_FILENAME', 'fw');
-        return $this->path . '/' . $filename . '-' . date('Y-m-d') . '.log';
-    }
-
-    /**
-     * Whether write failures should be reported (set to false after first failure to prevent loops).
-     */
-    private bool $reportWriteFailures = true;
-
     /**
      * Write a log entry.
      */
@@ -115,11 +91,18 @@ final class Logger
 
         $entry = $this->formatEntry($level, $message, $context);
 
+        $logFile = $this->getLogFile();
+        $isNew = !file_exists($logFile);
+
         $result = @file_put_contents(
-            $this->getLogFile(),
+            $logFile,
             $entry . PHP_EOL,
             FILE_APPEND | LOCK_EX
         );
+
+        if ($isNew && $result !== false) {
+            @chmod($logFile, 0o640);
+        }
 
         // Handle write failure - write to stderr as fallback
         if ($result === false && $this->reportWriteFailures) {
@@ -134,118 +117,6 @@ final class Logger
                 error_log($errorMessage);
             }
         }
-    }
-
-    /**
-     * Format a log entry.
-     */
-    private function formatEntry(LogLevel $level, string $message, array $context): string
-    {
-        $timestamp = date($this->dateFormat);
-        $levelName = strtoupper($level->value);
-        $interpolatedMessage = $this->interpolate($message, $context);
-
-        $entry = "[{$timestamp}] {$levelName}: {$interpolatedMessage}";
-
-        // Add exception details if present
-        if (isset($context['exception']) && $context['exception'] instanceof \Throwable) {
-            $exception = $context['exception'];
-            // Sanitize exception message to prevent log injection
-            $sanitizedMessage = $this->sanitizeLogMessage($exception->getMessage());
-            $sanitizedFile = $this->sanitizeLogMessage($exception->getFile());
-
-            $entry .= PHP_EOL . "  Exception: " . get_class($exception);
-            $entry .= PHP_EOL . "  Message: " . $sanitizedMessage;
-            $entry .= PHP_EOL . "  File: " . $sanitizedFile . ':' . $exception->getLine();
-            $entry .= PHP_EOL . "  Trace: " . PHP_EOL . $this->formatTrace($exception);
-        }
-
-        // Add extra context if present (excluding exception)
-        $extra = array_diff_key($context, ['exception' => true]);
-        if (!empty($extra)) {
-            $entry .= PHP_EOL . "  Context: " . json_encode($extra, JSON_UNESCAPED_SLASHES);
-        }
-
-        return $entry;
-    }
-
-    /**
-     * Format exception trace.
-     *
-     * Sanitizes the trace to prevent log injection attacks and removes
-     * potentially sensitive data like function arguments.
-     *
-     * WARNING: Log files should NEVER be served directly to browsers.
-     * If displaying logs in an admin panel, always HTML-escape the output.
-     */
-    private function formatTrace(\Throwable $exception): string
-    {
-        $trace = $exception->getTrace();
-        $lines = [];
-
-        foreach ($trace as $i => $frame) {
-            $file = $frame['file'] ?? '[internal function]';
-            $line = $frame['line'] ?? 0;
-            $class = $frame['class'] ?? '';
-            $type = $frame['type'] ?? '';
-            $function = $frame['function'] ?? '';
-
-            // Sanitize file paths - remove null bytes and control characters
-            $file = preg_replace('/[\x00-\x1f\x7f]/', '', $file) ?? $file;
-
-            // Count arguments but don't log their values (may contain sensitive data)
-            $argCount = isset($frame['args']) ? count($frame['args']) : 0;
-            $argsPlaceholder = $argCount > 0 ? "...{$argCount} args..." : '';
-
-            $call = $class . $type . $function . '(' . $argsPlaceholder . ')';
-
-            // Sanitize the call string - remove control characters
-            $call = preg_replace('/[\x00-\x1f\x7f]/', '', $call) ?? $call;
-
-            $lines[] = "    #{$i} {$file}({$line}): {$call}";
-        }
-
-        return implode(PHP_EOL, $lines);
-    }
-
-    /**
-     * Sanitize a message string for safe logging.
-     *
-     * Removes control characters and null bytes that could be used
-     * for log injection attacks.
-     */
-    private function sanitizeLogMessage(string $message): string
-    {
-        // Remove null bytes and control characters (except newline, tab)
-        return preg_replace('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/', '', $message) ?? $message;
-    }
-
-    /**
-     * Interpolate context values into message placeholders.
-     *
-     * Placeholders are in the format {key}.
-     */
-    private function interpolate(string $message, array $context): string
-    {
-        $replacements = [];
-
-        foreach ($context as $key => $value) {
-            if ($key === 'exception') {
-                continue;
-            }
-
-            if (is_string($value) || is_numeric($value) || (is_object($value) && method_exists($value, '__toString'))) {
-                $replacements['{' . $key . '}'] = (string) $value;
-            } elseif (is_bool($value)) {
-                $replacements['{' . $key . '}'] = $value ? 'true' : 'false';
-            } elseif (is_null($value)) {
-                $replacements['{' . $key . '}'] = 'null';
-            } elseif (is_array($value)) {
-                $replacements['{' . $key . '}'] = json_encode($value);
-            }
-        }
-
-        return strtr($message, $replacements);
     }
 
     /**
@@ -358,5 +229,145 @@ final class Logger
     public function isEnabled(): bool
     {
         return $this->enabled;
+    }
+
+    private function getDefaultPath(): string
+    {
+        $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+        return Env::string('LOG_PATH', $basePath . '/storage/logs');
+    }
+
+    private function getDefaultLevel(): LogLevel
+    {
+        $level = Env::string('LOG_LEVEL', 'debug');
+        return LogLevel::fromString($level);
+    }
+
+    private function ensureDirectoryExists(): void
+    {
+        if (!is_dir($this->path)) {
+            mkdir($this->path, 0o750, true);
+        }
+    }
+
+    /**
+     * Get the current log file path (daily rotation).
+     */
+    private function getLogFile(): string
+    {
+        $filename = Env::string('LOG_FILENAME', 'fw');
+        return $this->path . '/' . $filename . '-' . date('Y-m-d') . '.log';
+    }
+
+    /**
+     * Format a log entry.
+     */
+    private function formatEntry(LogLevel $level, string $message, array $context): string
+    {
+        $timestamp = date($this->dateFormat);
+        $levelName = strtoupper($level->value);
+        $interpolatedMessage = $this->interpolate($message, $context);
+
+        $entry = "[{$timestamp}] {$levelName}: {$interpolatedMessage}";
+
+        // Add exception details if present
+        if (isset($context['exception']) && $context['exception'] instanceof Throwable) {
+            $exception = $context['exception'];
+            // Sanitize exception message to prevent log injection
+            $sanitizedMessage = $this->sanitizeLogMessage($exception->getMessage());
+            $sanitizedFile = $this->sanitizeLogMessage($exception->getFile());
+
+            $entry .= PHP_EOL . "  Exception: " . get_class($exception);
+            $entry .= PHP_EOL . "  Message: " . $sanitizedMessage;
+            $entry .= PHP_EOL . "  File: " . $sanitizedFile . ':' . $exception->getLine();
+            $entry .= PHP_EOL . "  Trace: " . PHP_EOL . $this->formatTrace($exception);
+        }
+
+        // Add extra context if present (excluding exception)
+        $extra = array_diff_key($context, ['exception' => true]);
+        if (!empty($extra)) {
+            $entry .= PHP_EOL . "  Context: " . json_encode($extra, JSON_UNESCAPED_SLASHES);
+        }
+
+        return $entry;
+    }
+
+    /**
+     * Format exception trace.
+     *
+     * Sanitizes the trace to prevent log injection attacks and removes
+     * potentially sensitive data like function arguments.
+     *
+     * WARNING: Log files should NEVER be served directly to browsers.
+     * If displaying logs in an admin panel, always HTML-escape the output.
+     */
+    private function formatTrace(Throwable $exception): string
+    {
+        $trace = $exception->getTrace();
+        $lines = [];
+
+        foreach ($trace as $i => $frame) {
+            $file = $frame['file'] ?? '[internal function]';
+            $line = $frame['line'] ?? 0;
+            $class = $frame['class'] ?? '';
+            $type = $frame['type'] ?? '';
+            $function = $frame['function'] ?? '';
+
+            // Sanitize file paths - remove null bytes and control characters
+            $file = preg_replace('/[\x00-\x1f\x7f]/', '', $file) ?? $file;
+
+            // Count arguments but don't log their values (may contain sensitive data)
+            $argCount = isset($frame['args']) ? count($frame['args']) : 0;
+            $argsPlaceholder = $argCount > 0 ? "...{$argCount} args..." : '';
+
+            $call = $class . $type . $function . '(' . $argsPlaceholder . ')';
+
+            // Sanitize the call string - remove control characters
+            $call = preg_replace('/[\x00-\x1f\x7f]/', '', $call) ?? $call;
+
+            $lines[] = "    #{$i} {$file}({$line}): {$call}";
+        }
+
+        return implode(PHP_EOL, $lines);
+    }
+
+    /**
+     * Sanitize a message string for safe logging.
+     *
+     * Removes control characters and null bytes that could be used
+     * for log injection attacks.
+     */
+    private function sanitizeLogMessage(string $message): string
+    {
+        // Remove null bytes and control characters (except newline, tab)
+        return preg_replace('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/', '', $message) ?? $message;
+    }
+
+    /**
+     * Interpolate context values into message placeholders.
+     *
+     * Placeholders are in the format {key}.
+     */
+    private function interpolate(string $message, array $context): string
+    {
+        $replacements = [];
+
+        foreach ($context as $key => $value) {
+            if ($key === 'exception') {
+                continue;
+            }
+
+            if (is_string($value) || is_numeric($value) || (is_object($value) && method_exists($value, '__toString'))) {
+                $replacements['{' . $key . '}'] = (string) $value;
+            } elseif (is_bool($value)) {
+                $replacements['{' . $key . '}'] = $value ? 'true' : 'false';
+            } elseif (is_null($value)) {
+                $replacements['{' . $key . '}'] = 'null';
+            } elseif (is_array($value)) {
+                $replacements['{' . $key . '}'] = json_encode($value);
+            }
+        }
+
+        return strtr($message, $replacements);
     }
 }
