@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Auth;
 
-use App\Models\User;
 use Fw\Core\RequestContext;
+use Fw\Model\Model;
 use RuntimeException;
 
 /**
@@ -13,6 +13,9 @@ use RuntimeException;
  *
  * Uses RequestContext for request-scoped user state to prevent
  * authentication leaking between concurrent requests in worker mode.
+ *
+ * Configure the user model class via Auth::setUserModel() if not
+ * using the default App\Models\User.
  */
 final class Auth
 {
@@ -20,6 +23,13 @@ final class Auth
     private const string REMEMBER_COOKIE = 'remember_token';
     private const int REMEMBER_DURATION = 60 * 60 * 24 * 30; // 30 days
     private const string CONTEXT_USER_KEY = '_auth_user';
+
+    /**
+     * The user model class. Must have findByEmail() and verifyPassword() methods.
+     *
+     * @var class-string<Model>
+     */
+    private static string $userModel = 'App\\Models\\User';
 
     /**
      * Dummy hash for timing-safe comparison when user doesn't exist.
@@ -41,6 +51,16 @@ final class Auth
     private const int MIN_KEY_LENGTH = 32;
 
     /**
+     * Set the user model class used for authentication.
+     *
+     * @param class-string<Model> $modelClass
+     */
+    public static function setUserModel(string $modelClass): void
+    {
+        self::$userModel = $modelClass;
+    }
+
+    /**
      * Attempt to authenticate a user with credentials.
      *
      * Uses constant-time comparison even when user doesn't exist
@@ -48,7 +68,7 @@ final class Auth
      */
     public static function attempt(string $email, string $password, bool $remember = false): bool
     {
-        $userOption = User::findByEmail($email);
+        $userOption = (self::$userModel)::findByEmail($email);
 
         if ($userOption->isNone()) {
             // Timing attack mitigation: always perform password verification
@@ -75,7 +95,7 @@ final class Auth
      * Regenerates both session ID and CSRF token to prevent
      * session fixation and CSRF token fixation attacks.
      */
-    public static function login(User $user, bool $remember = false): void
+    public static function login(Model $user, bool $remember = false): void
     {
         session_regenerate_id(true);
 
@@ -130,7 +150,7 @@ final class Auth
      * Uses RequestContext for request-scoped storage to prevent
      * user state from leaking between concurrent requests.
      */
-    public static function user(): ?User
+    public static function user(): ?Model
     {
         // Check RequestContext first (request-scoped cache)
         $contextUser = self::getContextUser();
@@ -153,8 +173,8 @@ final class Auth
                 return null;
             }
 
-            $userFromSession = User::find($sessionUserId)->unwrapOr(null);
-            if ($userFromSession instanceof User) {
+            $userFromSession = (self::$userModel)::find($sessionUserId)->unwrapOr(null);
+            if ($userFromSession instanceof Model) {
                 self::setContextUser($userFromSession);
                 return $userFromSession;
             }
@@ -165,7 +185,7 @@ final class Auth
         if (isset($_COOKIE[self::REMEMBER_COOKIE])) {
             $userFromCookie = self::getUserFromRememberToken($_COOKIE[self::REMEMBER_COOKIE]);
 
-            if ($userFromCookie instanceof User) {
+            if ($userFromCookie instanceof Model) {
                 self::setContextUser($userFromCookie);
                 $_SESSION[self::SESSION_KEY] = $userFromCookie->id;
                 return $userFromCookie;
@@ -178,7 +198,7 @@ final class Auth
     /**
      * Get the authenticated user's ID.
      */
-    public static function id(): ?int
+    public static function id(): string|int|null
     {
         $user = self::user();
         return $user?->id;
@@ -208,7 +228,7 @@ final class Auth
     /**
      * Get user from RequestContext (request-scoped).
      */
-    private static function getContextUser(): ?User
+    private static function getContextUser(): ?Model
     {
         $context = RequestContext::current();
         if ($context === null) {
@@ -216,13 +236,13 @@ final class Auth
         }
 
         $user = $context->get(self::CONTEXT_USER_KEY)->unwrapOr(null);
-        return $user instanceof User ? $user : null;
+        return $user instanceof Model ? $user : null;
     }
 
     /**
      * Set user in RequestContext (request-scoped).
      */
-    private static function setContextUser(User $user): void
+    private static function setContextUser(Model $user): void
     {
         RequestContext::current()?->set(self::CONTEXT_USER_KEY, $user);
     }
@@ -284,7 +304,7 @@ final class Auth
         return $secret;
     }
 
-    private static function setRememberToken(User $user): void
+    private static function setRememberToken(Model $user): void
     {
         $token = bin2hex(random_bytes(32));
         $hashedToken = hash('sha256', $token);
@@ -308,7 +328,7 @@ final class Auth
         );
     }
 
-    private static function getUserFromRememberToken(string $cookie): ?User
+    private static function getUserFromRememberToken(string $cookie): ?Model
     {
         // Parse signed cookie: signature.userId|token
         $signatureParts = explode('.', $cookie, 2);
@@ -349,7 +369,7 @@ final class Auth
             return null;
         }
 
-        $userOption = User::find((int) $userId);
+        $userOption = (self::$userModel)::find((int) $userId);
 
         if ($userOption->isNone()) {
             // Timing attack mitigation: always perform hash comparison
