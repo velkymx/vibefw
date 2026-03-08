@@ -45,7 +45,7 @@ final class FileDriver implements DriverInterface
         $this->secretKey = $secretKey ?? $this->getOrCreateSecretKey();
 
         if (!is_dir($this->path)) {
-            mkdir($this->path, 0o755, true);
+            mkdir($this->path, 0o750, true);
         }
     }
 
@@ -293,7 +293,7 @@ final class FileDriver implements DriverInterface
     {
         // Ensure directory exists first
         if (!is_dir($this->path)) {
-            mkdir($this->path, 0o755, true);
+            mkdir($this->path, 0o750, true);
         }
 
         $keyFile = $this->path . '/.queue_key';
@@ -414,7 +414,7 @@ final class FileDriver implements DriverInterface
         $dir = $this->getQueuePath($queue);
 
         if (!is_dir($dir)) {
-            mkdir($dir, 0o755, true);
+            mkdir($dir, 0o750, true);
         }
     }
 
