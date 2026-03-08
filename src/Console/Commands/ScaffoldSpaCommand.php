@@ -335,6 +335,7 @@ final class ScaffoldSpaCommand extends Command
                     '@velkymx/vibeui' => '^0.7.0',
                     'bootstrap' => '^5.3.3',
                     'bootstrap-icons' => '^1.13.1',
+                    'quill' => '^2.0.3',
                     '@popperjs/core' => '^2.11.8',
                 ],
                 'devDependencies' => [
