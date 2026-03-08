@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.11] - 2026-03-08
+
+### Fixed (Security)
+
+- **`PasswordReset` / `EmailVerification` timing attack mitigation fragile** — Both `findByToken()` and `verify()` called `hash_equals()` for constant-time comparison but discarded the return value. Static analysis would flag this as dead code, and a future refactor could remove the "unused" call, silently breaking the timing protection. Return value now captured in `$_`.
+- **`Blueprint` foreign key action SQL injection** — `onDelete()` and `onUpdate()` accepted arbitrary strings interpolated directly into SQL (`ON DELETE {$action}`). Now validated against a whitelist: `CASCADE`, `SET NULL`, `RESTRICT`, `NO ACTION`, `SET DEFAULT`.
+- **`Migrator` migrations table uses hardcoded quoting** — `ensureMigrationsTable()` used hardcoded double quotes for SQLite/PostgreSQL and backticks for MySQL instead of `quoteIdentifier()`. Inconsistent with the rest of the Migrator and breaks if the quoting convention changes.
+- **`BelongsToMany::contains()` loose comparison** — Used `in_array($id, ..., false)` (loose), meaning `'1' == 1` would match. Could cause authorization issues if IDs distinguish resources. Changed to strict comparison.
+- **`AuthMiddleware` redirect URL allows `javascript:` scheme** — `isSafeRedirectUrl()` checked for host presence but didn't validate the URL scheme. `parse_url('javascript:alert(1)')` has no host, passing the safety check. Now whitelists only `http` and `https` schemes.
+- **`DatabaseDriver` raw SQL uses unquoted table name** — `pop()`, `size()`, and `clear()` interpolated `$this->table` directly into SQL. While the constructor regex validates the name, this was inconsistent with framework rules. Now uses a pre-computed `$this->quotedTable` via `quoteIdentifier()`.
+- **`QueryWatcher` regex DoS on large IN clauses** — `normalizeQueryPattern()` used `/IN\s*\([^)]+\)/i` which is slow on queries with 10K+ values. Changed to `[^)]*` and added 8KB input cap.
+
+### Fixed (Correctness)
+
+- **`Router::url()` parameter key not regex-escaped** — User-provided parameter keys were interpolated into a regex pattern without `preg_quote()`. Keys containing regex metacharacters (e.g. `a|b`) would create an alternation. Now escaped.
+- **`Pipeline` creating `CanMiddleware` twice** — The `can` middleware was first instantiated via generic `make()`, then immediately discarded and re-created with the correct `permissions` parameter. Now checks class before instantiation.
+- **`Worker` unbounded stack trace in failed job log** — `getTrace()` captured the full stack without limits. Deeply nested traces could cause excessive log growth. Capped at 30 frames.
+- **`Collection::first()` / `last()` returns wrong value for falsy items** — Used `reset() ?: fallback` which treats `0`, `""`, `false` as missing and falls through to the backup path. A collection of `[0, 1, 2]` would not return `0` correctly. Simplified to direct array indexing.
+- **`ScaffoldSpaTest` destroys app directory permanently** — The test backed up `app/` but had no `tearDown()` to restore it, causing `PersonalAccessToken.php` to disappear for subsequent test runs. Added tearDown that restores from backup.
+
 ## [2.1.10] - 2026-03-07
 
 ### Fixed (Security)
@@ -343,7 +363,8 @@ Upgrade guides will be provided for major version changes.
 
 ---
 
-[Unreleased]: https://github.com/fw-php/framework/compare/v2.1.10...HEAD
+[Unreleased]: https://github.com/fw-php/framework/compare/v2.1.11...HEAD
+[2.1.11]: https://github.com/fw-php/framework/compare/v2.1.10...v2.1.11
 [2.1.10]: https://github.com/fw-php/framework/compare/v2.1.9...v2.1.10
 [2.1.9]: https://github.com/fw-php/framework/compare/v2.1.8...v2.1.9
 [2.1.8]: https://github.com/fw-php/framework/compare/v2.1.7...v2.1.8
