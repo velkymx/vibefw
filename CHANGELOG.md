@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.14] - 2026-03-08
+
+### Fixed (make:spa)
+
+- **VibeUI version pinned to ^0.6.0** — Updated to `^0.7.0` to match current VibeUI best practices.
+- **Unused quill dependency** — `quill` rich text editor was included in `package.json` but never used in any stub. Removed.
+- **Raw HTML instead of VibeUI components** — Home.vue used `<div class="card">` and `<a class="btn">` instead of `<VibeCard>` and `<VibeButton>`. NotFound.vue used raw `<router-link class="btn">` instead of `<VibeButton :to="...">`. All replaced with proper VibeUI components.
+- **Hardcoded colors break dark mode** — Auth pages used `background-color: #f8f9fa`, sidebar used `background-color: #fff` and `color: #333`, hero gradient used literal hex values. All replaced with Bootstrap CSS variables (`var(--bs-body-bg)`, `var(--bs-body-color)`, `var(--bs-tertiary-bg)`, etc.) for full dark mode support.
+- **Emoji icons instead of Bootstrap Icons** — Home.vue feature cards used emoji (⚡🎨🔐). Replaced with `<i class="bi bi-...">` for consistent rendering across platforms.
+- **Inline styles on avatar element** — MainLayout.vue used `style="width: 38px; height: 38px"` directly on the element. Moved to a `.user-avatar` CSS class.
+- **App.vue CSS selector mismatch** — `#app` selector in `<style>` did not match the `#app-root` element in the template. Fixed to `#app-root`. Removed unused quill CSS import.
+- **Dashboard test assertion wrong** — Expected `"Vibe Stack Dashboard"` but actual heading is `"Welcome back"`. Fixed to match.
+- **`stubs/spa/` incorrectly gitignored** — The scaffold source templates were in `.gitignore`, meaning they would not be included in the framework package. Removed from ignore list (only generated output directories are ignored).
+- **`llms-ui.txt` contained incorrect API references** — Referenced nonexistent `useToast()` composable, used wrong component names (`Input`/`Button` instead of `VibeFormInput`/`VibeButton`), and omitted rules about global registration. Completely rewritten to match VibeUI 0.7+.
+
 ## [2.1.13] - 2026-03-08
 
 ### Fixed (Correctness)
