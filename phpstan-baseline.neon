@@ -1,0 +1,3451 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot access property \$password on Fw\\Model\\Model\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Controllers/Api/Auth/LoginController.php
+
+		-
+			message: '#^Cannot call method createToken\(\) on Fw\\Model\\Model\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Controllers/Api/Auth/LoginController.php
+
+		-
+			message: '#^Offset ''email'' might not exist on array\<string, mixed\>\|null\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Controllers/Api/Auth/LoginController.php
+
+		-
+			message: '#^Offset ''password'' might not exist on array\<string, mixed\>\|null\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: app/Controllers/Api/Auth/LoginController.php
+
+		-
+			message: '#^Offset ''email'' might not exist on array\<string, mixed\>\|null\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Controllers/Api/Auth/RegisterController.php
+
+		-
+			message: '#^Offset ''name'' might not exist on array\<string, mixed\>\|null\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Controllers/Api/Auth/RegisterController.php
+
+		-
+			message: '#^Offset ''password'' might not exist on array\<string, mixed\>\|null\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Controllers/Api/Auth/RegisterController.php
+
+		-
+			message: '#^Call to static method count\(\) on an unknown class App\\Models\\Post\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Controllers/Api/StatsController.php
+
+		-
+			message: '#^Method App\\Models\\PersonalAccessToken\:\:findToken\(\) should return App\\Models\\PersonalAccessToken\|null but returns Fw\\Model\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/PersonalAccessToken.php
+
+		-
+			message: '#^Method App\\Models\\PersonalAccessToken\:\:forUser\(\) return type with generic class Fw\\Model\\Collection does not specify its types\: T$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/PersonalAccessToken.php
+
+		-
+			message: '#^Method App\\Models\\PersonalAccessToken\:\:user\(\) return type with generic class Fw\\Model\\BelongsTo does not specify its types\: TParent, TRelated$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/PersonalAccessToken.php
+
+		-
+			message: '#^Property App\\Models\\PersonalAccessToken\:\:\$casts type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/PersonalAccessToken.php
+
+		-
+			message: '#^Property App\\Models\\PersonalAccessToken\:\:\$fillable type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/PersonalAccessToken.php
+
+		-
+			message: '#^Property App\\Models\\PersonalAccessToken\:\:\$hidden type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/PersonalAccessToken.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:createToken\(\) has parameter \$abilities with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:findByEmail\(\) return type with generic class Fw\\Support\\Option does not specify its types\: T$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$casts type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$fillable type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$hidden type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Method Fw\\Async\\AsyncHttp\:\:executeAsync\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Async/AsyncHttp.php
+
+		-
+			message: '#^Method Fw\\Async\\AsyncHttp\:\:get\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Async/AsyncHttp.php
+
+		-
+			message: '#^Method Fw\\Async\\AsyncHttp\:\:post\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Async/AsyncHttp.php
+
+		-
+			message: '#^Method Fw\\Async\\AsyncHttp\:\:request\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Async/AsyncHttp.php
+
+		-
+			message: '#^Method Fw\\Async\\AsyncHttp\:\:waitForResponse\(\) has parameter \$socket with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Async/AsyncHttp.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strlen expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Async/AsyncHttp.php
+
+		-
+			message: '#^Property Fw\\Async\\AsyncHttp\:\:\$defaultHeaders type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Async/AsyncHttp.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: src/Async/Deferred.php
+
+		-
+			message: '#^Parameter \#1 \$error of method Fw\\Async\\Deferred\:\:reject\(\) expects Throwable, Throwable\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Async/Deferred.php
+
+		-
+			message: '#^Property Fw\\Async\\Deferred\:\:\$waiting with generic class Fiber does not specify its types\: TStart, TResume, TReturn, TSuspend$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Async/Deferred.php
+
+		-
+			message: '#^Offset ''callback'' does not exist on array\{fiber\: Fiber, timeout\: float\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: src/Async/EventLoop.php
+
+		-
+			message: '#^Offset ''message'' on array\{type\: int, message\: string, file\: string, line\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Async/EventLoop.php
+
+		-
+			message: '#^Property Fw\\Async\\EventLoop\:\:\$timers \(array\<int, array\{fiber\: Fiber, timeout\: float\}\>\) does not accept non\-empty\-array\<int, array\{fiber\: Fiber, timeout\: float\}\|array\{timeout\: float, callback\: callable\(\)\: mixed\}\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Async/EventLoop.php
+
+		-
+			message: '#^Property Fw\\Async\\EventLoop\:\:\$timers with generic class Fiber does not specify its types\: TStart, TResume, TReturn, TSuspend$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Async/EventLoop.php
+
+		-
+			message: '#^Method Fw\\Async\\HttpResponse\:\:__construct\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Async/HttpResponse.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: src/Auth/ApiToken.php
+
+		-
+			message: '#^Method Fw\\Auth\\ApiToken\:\:config\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Auth/ApiToken.php
+
+		-
+			message: '#^Method Fw\\Auth\\ApiToken\:\:config\(\) should return array but returns array\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Auth/ApiToken.php
+
+		-
+			message: '#^Method Fw\\Auth\\ApiToken\:\:create\(\) has parameter \$abilities with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Auth/ApiToken.php
+
+		-
+			message: '#^Method Fw\\Auth\\ApiToken\:\:parseToken\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Auth/ApiToken.php
+
+		-
+			message: '#^Method Fw\\Auth\\NewAccessToken\:\:toArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Auth/ApiToken.php
+
+		-
+			message: '#^Property Fw\\Auth\\ApiToken\:\:\$config type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Auth/ApiToken.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Auth/ApiToken.php
+
+		-
+			message: '#^Property Fw\\Auth\\Gate\:\:\$policyCache type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Auth/Gate.php
+
+		-
+			message: '#^Method Fw\\Auth\\PasswordReset\:\:findByToken\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Auth/PasswordReset.php
+
+		-
+			message: '#^Method Fw\\Auth\\TokenGuard\:\:tokenAbilities\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Auth/TokenGuard.php
+
+		-
+			message: '#^Call to an undefined method Fw\\Bus\\Handler\:\:handle\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Bus/CommandBus.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Bus/CommandBus.php
+
+		-
+			message: '#^Property Fw\\Bus\\CommandBus\:\:\$handlers \(array\<class\-string\<Fw\\Bus\\Command\>, \(callable\(\)\: mixed\)\|class\-string\<Fw\\Bus\\Handler\>\|Fw\\Bus\\Handler\>\) does not accept non\-empty\-array\<class\-string\<Fw\\Bus\\Command\>, \(callable\(\)\: mixed\)\|\(class\-string&literal\-string\)\|class\-string\<Fw\\Bus\\Handler\>\|Fw\\Bus\\Handler\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Bus/CommandBus.php
+
+		-
+			message: '#^Template type T of method Fw\\Bus\\CommandBus\:\:dispatch\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Bus/CommandBus.php
+
+		-
+			message: '#^Template type T of method Fw\\Bus\\CommandBus\:\:dispatchSync\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Bus/CommandBus.php
+
+		-
+			message: '#^Call to an undefined method Fw\\Bus\\Handler\:\:handle\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Bus/QueryBus.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Bus/QueryBus.php
+
+		-
+			message: '#^Property Fw\\Bus\\QueryBus\:\:\$handlers \(array\<class\-string\<Fw\\Bus\\Query\>, \(callable\(\)\: mixed\)\|class\-string\<Fw\\Bus\\Handler\>\|Fw\\Bus\\Handler\>\) does not accept non\-empty\-array\<class\-string\<Fw\\Bus\\Query\>, \(callable\(\)\: mixed\)\|\(class\-string&literal\-string\)\|class\-string\<Fw\\Bus\\Handler\>\|Fw\\Bus\\Handler\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Bus/QueryBus.php
+
+		-
+			message: '#^Template type T of method Fw\\Bus\\QueryBus\:\:dispatch\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Bus/QueryBus.php
+
+		-
+			message: '#^Template type T of method Fw\\Bus\\QueryBus\:\:dispatchSync\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Bus/QueryBus.php
+
+		-
+			message: '#^Method Fw\\Cache\\ApcuCache\:\:decrement\(\) never returns false so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Cache/ApcuCache.php
+
+		-
+			message: '#^Method Fw\\Cache\\ApcuCache\:\:getStats\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Cache/ApcuCache.php
+
+		-
+			message: '#^Method Fw\\Cache\\ApcuCache\:\:increment\(\) never returns false so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Cache/ApcuCache.php
+
+		-
+			message: '#^Method Fw\\Cache\\Cache\:\:getStats\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Cache/Cache.php
+
+		-
+			message: '#^Method Fw\\Cache\\Cache\:\:tags\(\) has parameter \$tags with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Cache/Cache.php
+
+		-
+			message: '#^Property Fw\\Cache\\FileCache\:\:\$defaultTtl is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Cache/FileCache.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: src/Cache/FileCache.php
+
+		-
+			message: '#^Method Fw\\Cache\\MemoryCache\:\:increment\(\) never returns false so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Cache/MemoryCache.php
+
+		-
+			message: '#^Property Fw\\Cache\\OpcacheCache\:\:\$defaultTtl is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Cache/OpcacheCache.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Cache/OpcacheCache.php
+
+		-
+			message: '#^Method Fw\\Config\\ConfigValidator\:\:validate\(\) should return Fw\\Support\\Result\<true, array\<string\>\> but returns Fw\\Support\\Result\<bool, never\>\.$#'
+			identifier: return.type
+			count: 2
+			path: src/Config/ConfigValidator.php
+
+		-
+			message: '#^Method Fw\\Config\\ConfigValidator\:\:validate\(\) should return Fw\\Support\\Result\<true, array\<string\>\> but returns Fw\\Support\\Result\<never, non\-empty\-list\<string\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Config/ConfigValidator.php
+
+		-
+			message: '#^Method Fw\\Config\\ConfigValidator\:\:validateAll\(\) should return Fw\\Support\\Result\<true, array\<string\>\> but returns Fw\\Support\\Result\<bool, never\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Config/ConfigValidator.php
+
+		-
+			message: '#^Method Fw\\Config\\ConfigValidator\:\:validateAll\(\) should return Fw\\Support\\Result\<true, array\<string\>\> but returns Fw\\Support\\Result\<never, non\-empty\-array\<mixed\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Config/ConfigValidator.php
+
+		-
+			message: '#^Parameter \#1 \$error of static method Fw\\Support\\Result\<mixed,mixed\>\:\:err\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Config/ConfigValidator.php
+
+		-
+			message: '#^Parameter \#2 \.\.\.\$arrays of function array_merge expects array, array\<string\>\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Config/ConfigValidator.php
+
+		-
+			message: '#^Return type of call to static method Fw\\Support\\Result\<mixed,mixed\>\:\:err\(\) contains unresolvable type\.$#'
+			identifier: staticMethod.unresolvableReturnType
+			count: 1
+			path: src/Config/ConfigValidator.php
+
+		-
+			message: '#^Method Fw\\Console\\Command\:\:call\(\) has parameter \$args with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Console/Command.php
+
+		-
+			message: '#^Class Fw\\Core\\Router does not have a constructor and must be instantiated without any parameters\.$#'
+			identifier: new.noConstructor
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Constant BASE_PATH not found\.$#'
+			identifier: constant.notFound
+			count: 3
+			path: src/Core/Application.php
+
+		-
+			message: '#^Parameter \#2 \$cache of class Fw\\Core\\View constructor expects Fw\\Cache\\CacheInterface, object given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$commands in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$csrf in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$db \(Fw\\Database\\Connection\|null\) does not accept object\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$events in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$log in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$queries in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$request in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$response in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Property Fw\\Core\\Application\:\:\$router in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: src/Core/Application.php
+
+		-
+			message: '#^Instanceof between mixed and Closure will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Core/Config.php
+
+		-
+			message: '#^Parameter \#1 \$filename of function file_put_contents expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Config.php
+
+		-
+			message: '#^Parameter \#1 \$filename of function opcache_invalidate expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Config.php
+
+		-
+			message: '#^Parameter \#1 \$path of function dirname expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Config.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Method Fw\\Core\\Container\:\:call\(\) has parameter \$callback with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Method Fw\\Core\\Container\:\:call\(\) has parameter \$parameters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Method Fw\\Core\\Container\:\:getReflectionCache\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Method Fw\\Core\\Container\:\:getResettables\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Method Fw\\Core\\Container\:\:make\(\) has parameter \$parameters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Method Fw\\Core\\Container\:\:tryGet\(\) return type with generic class Fw\\Support\\Option does not specify its types\: T$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Parameter \#1 \$function of class ReflectionFunction constructor expects Closure\|string, callable\(\)\: mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Parameter \#1 \$objectOrClass of class ReflectionClass constructor expects class\-string\<T of object\>\|T of object, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$bindings \(array\<class\-string, class\-string\|Closure\>\) does not accept non\-empty\-array\<string, Closure\|string\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$fiberInstances \(WeakMap\<Fiber, array\<class\-string, object\>\>\|null\) does not accept WeakMap\<Fiber, array\<class\-string, object\>\>\|WeakMap\<object, mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$fiberInstances with generic class Fiber does not specify its types\: TStart, TResume, TReturn, TSuspend$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$globalInstances \(array\<class\-string, object\>\) does not accept array\<string, mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$globalInstances \(array\<class\-string, object\>\) does not accept array\<string, object\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$globals \(array\<class\-string, bool\>\) does not accept array\<string, bool\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$mainInstances \(array\<class\-string, object\>\) does not accept array\<string, object\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$reflectionCache \(array\<class\-string, array\<int, array\{name\: string, type\: string\|null, builtin\: bool, nullable\: bool, hasDefault\: bool, default\: mixed\}\>\|null\>\) does not accept non\-empty\-array\<string, array\<int, array\{name\: string, type\: string\|null, builtin\: bool, nullable\: bool, hasDefault\: bool, default\: mixed\}\>\|null\>\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$reflectionInitializing \(array\<class\-string, int\>\) does not accept array\<string, int\>\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$resolvedGlobalInstances \(array\<class\-string, object\>\) does not accept array\<string, mixed\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$resolvedGlobalInstances \(array\<class\-string, object\>\) does not accept array\<string, object\>\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: src/Core/Container.php
+
+		-
+			message: '#^Property Fw\\Core\\Container\:\:\$singletons \(array\<class\-string, bool\>\) does not accept array\<string, bool\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and null will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and null will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 2
+			path: src/Core/Container.php
+
+		-
+			message: '#^Trying to invoke array\{mixed, string\}\|\(callable\(\)\: mixed\) but it might not be a callable\.$#'
+			identifier: callable.nonCallable
+			count: 1
+			path: src/Core/Container.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:cachedView\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:dbQuery\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:dbQueryOne\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:dispatch\(\) should return Fw\\Support\\Result\<T, Throwable\> but returns Fw\\Support\\Result\<never, RuntimeException\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:query\(\) should return Fw\\Support\\Result\<T, Throwable\> but returns Fw\\Support\\Result\<never, RuntimeException\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:streamedView\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:validate\(\) should return Fw\\Support\\Result\<array\<string, mixed\>, array\<string, string\>\> but returns Fw\\Support\\Result\<array\<mixed\>, never\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:validate\(\) should return Fw\\Support\\Result\<array\<string, mixed\>, array\<string, string\>\> but returns Fw\\Support\\Result\<never, non\-empty\-array\<string, string\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Controller\:\:view\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$deferred contains generic type Fw\\Async\\Deferred\<mixed\> but class Fw\\Async\\Deferred is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Template type T of method Fw\\Core\\Controller\:\:dispatch\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Template type T of method Fw\\Core\\Controller\:\:query\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Unable to resolve the template type T in call to method Fw\\Core\\Controller\:\:await\(\)$#'
+			identifier: argument.templateType
+			count: 2
+			path: src/Core/Controller.php
+
+		-
+			message: '#^Method Fw\\Core\\Env\:\:array\(\) has parameter \$default with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Env.php
+
+		-
+			message: '#^Method Fw\\Core\\Env\:\:array\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Env.php
+
+		-
+			message: '#^Method Fw\\Core\\Env\:\:getArray\(\) has parameter \$default with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Env.php
+
+		-
+			message: '#^Method Fw\\Core\\Env\:\:getArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Env.php
+
+		-
+			message: '#^Property Fw\\Core\\Env\:\:\$variables type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Env.php
+
+		-
+			message: '#^Property Fw\\Core\\ErrorHandler\:\:\$response is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Core/ErrorHandler.php
+
+		-
+			message: '#^Call to an undefined method object\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Call to an undefined method object\:\:getDeferredCount\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Call to an undefined method object\:\:getReadStreamCount\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Call to an undefined method object\:\:getTimerCount\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Call to an undefined method object\:\:getWriteStreamCount\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Call to an undefined method object\:\:set\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Call to an undefined method object\:\:tick\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Constant BASE_PATH not found\.$#'
+			identifier: constant.notFound
+			count: 2
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Method Fw\\Core\\HttpKernel\:\:executeInFiber\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Method Fw\\Core\\HttpKernel\:\:flattenMiddleware\(\) has parameter \$middleware with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Method Fw\\Core\\HttpKernel\:\:flattenMiddleware\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Method Fw\\Core\\HttpKernel\:\:wrapControllerInLifecycle\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Negated boolean expression is always true\.$#'
+			identifier: booleanNot.alwaysTrue
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Parameter \#1 \$error of method Fw\\Core\\ErrorHandler\:\:createRoutingResponse\(\) expects Fw\\Core\\MethodNotAllowed\|Fw\\Core\\RouteNotFound, Fw\\Core\\MethodNotAllowed\|Fw\\Core\\RouteNotFound\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Parameter \#2 \$needle of function str_contains expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Parameter \#2 \$request of class Fw\\Lifecycle\\RequestFiber constructor expects Fw\\Core\\Request, object given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Property Fw\\Core\\HttpKernel\:\:\$globalMiddleware type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/HttpKernel.php
+
+		-
+			message: '#^Method Fw\\Core\\ProviderRegistry\:\:load\(\) should return list\<class\-string\<Fw\\Core\\ServiceProvider\>\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Core/ProviderRegistry.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:__construct\(\) has parameter \$files with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:__construct\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:__construct\(\) has parameter \$post with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:__construct\(\) has parameter \$query with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:__construct\(\) has parameter \$server with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:all\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:except\(\) has parameter \$keys with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:except\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:file\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:files\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:headers\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:json\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:only\(\) has parameter \$keys with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:only\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:parseHeadersFromGlobals\(\) has parameter \$server with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:parseHeadersFromGlobals\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:postData\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Request\:\:query\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_contains expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 4
+			path: src/Core/Request.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_starts_with expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Parameter \#1 \$string of function substr expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Property Fw\\Core\\Request\:\:\$files type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Property Fw\\Core\\Request\:\:\$headers type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Property Fw\\Core\\Request\:\:\$post type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Property Fw\\Core\\Request\:\:\$query type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Property Fw\\Core\\Request\:\:\$server type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Property Fw\\Core\\Request\:\:\$trustedProxies type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Request.php
+
+		-
+			message: '#^Method Fw\\Core\\Response\:\:getFlash\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Response.php
+
+		-
+			message: '#^Method Fw\\Core\\Response\:\:getHeaders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Response.php
+
+		-
+			message: '#^Method Fw\\Core\\Response\:\:headers\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Response.php
+
+		-
+			message: '#^Method Fw\\Core\\Response\:\:withErrors\(\) has parameter \$errors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Response.php
+
+		-
+			message: '#^Property Fw\\Core\\Response\:\:\$flash type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Response.php
+
+		-
+			message: '#^Property Fw\\Core\\Response\:\:\$headers type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Response.php
+
+		-
+			message: '#^Method Fw\\Core\\RouteMatch\:\:__construct\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/RouteMatch.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:addRoute\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:any\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:delete\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:dispatch\(\) should return Fw\\Support\\Result\<Fw\\Core\\RouteMatch, Fw\\Core\\MethodNotAllowed\|Fw\\Core\\RouteNotFound\> but returns Fw\\Support\\Result\<never, Fw\\Core\\MethodNotAllowed\>\.$#'
+			identifier: return.type
+			count: 2
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:dispatch\(\) should return Fw\\Support\\Result\<Fw\\Core\\RouteMatch, Fw\\Core\\MethodNotAllowed\|Fw\\Core\\RouteNotFound\> but returns Fw\\Support\\Result\<never, Fw\\Core\\RouteNotFound\>\.$#'
+			identifier: return.type
+			count: 2
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:dispatchLegacy\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:get\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:getGlobalMiddleware\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:getRoutes\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:group\(\) has parameter \$middleware with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:match\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:match\(\) has parameter \$methods with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:middleware\(\) has parameter \$middleware with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:options\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:patch\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:post\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:put\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:resolveMiddleware\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\Router\:\:url\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Core/Router.php
+
+		-
+			message: '#^Parameter \$params of class Fw\\Core\\RouteMatch constructor expects array\<string, mixed\>, list\<string\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Property Fw\\Core\\Router\:\:\$globalMiddleware type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Property Fw\\Core\\Router\:\:\$groupMiddleware type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Property Fw\\Core\\Router\:\:\$middlewareAliases type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Property Fw\\Core\\Router\:\:\$middlewareGroups type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Property Fw\\Core\\Router\:\:\$namedRoutes type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Property Fw\\Core\\Router\:\:\$pendingRoute type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Property Fw\\Core\\Router\:\:\$routes type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/Router.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:include\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:invalidate\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:render\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:renderCached\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:renderView\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:stream\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:streamed\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:url\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\View\:\:validateViewData\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Parameter \#3 \$options of static method Fw\\Support\\Str\:\:excerpt\(\) expects array, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Property Fw\\Core\\View\:\:\$cache is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Property Fw\\Core\\View\:\:\$sections type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Property Fw\\Core\\View\:\:\$shared type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/View.php
+
+		-
+			message: '#^Method Fw\\Core\\ViewCache\:\:makeKey\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Core/ViewCache.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:__construct\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:configure\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:createFresh\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:delete\(\) has parameter \$where with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:getInstance\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:getQueryLog\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:insert\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:query\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:select\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:select\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:selectOne\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:selectOne\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:update\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Connection\:\:update\(\) has parameter \$where with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Property Fw\\Database\\Connection\:\:\$config type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Property Fw\\Database\\Connection\:\:\$queryLog type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Connection.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Blueprint\:\:index\(\) has parameter \$columns with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Blueprint.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Blueprint\:\:unique\(\) has parameter \$columns with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Blueprint.php
+
+		-
+			message: '#^Property Fw\\Database\\Migration\\Blueprint\:\:\$columns type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Blueprint.php
+
+		-
+			message: '#^Property Fw\\Database\\Migration\\Blueprint\:\:\$foreignKeys type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Blueprint.php
+
+		-
+			message: '#^Property Fw\\Database\\Migration\\Blueprint\:\:\$indexes type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Blueprint.php
+
+		-
+			message: '#^Property Fw\\Database\\Migration\\Blueprint\:\:\$primaryKey is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Database/Migration/Blueprint.php
+
+		-
+			message: '#^Property Fw\\Database\\Migration\\ForeignKeyDefinition\:\:\$table is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Database/Migration/Blueprint.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:getMigrationFiles\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:getMigrationFiles\(\) should return array but returns list\<string\>\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:getMigrationsToRollback\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:getPendingMigrations\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:getRanMigrations\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:refresh\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:reset\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:resolveMigration\(\) should return Fw\\Database\\Migration\\Migration but returns object\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:rollback\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Migration\\Migrator\:\:status\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Parameter \#1 \$array of function sort expects TArray of array\<string\>, list\<string\>\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Database/Migration/Migrator.php
+
+		-
+			message: '#^Method Fw\\Database\\Model\:\:__construct\(\) has parameter \$attributes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Method Fw\\Database\\Model\:\:all\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Method Fw\\Database\\Model\:\:create\(\) has parameter \$attributes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Method Fw\\Database\\Model\:\:fill\(\) has parameter \$attributes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Method Fw\\Database\\Model\:\:getDirty\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Method Fw\\Database\\Model\:\:hydrate\(\) has parameter \$attributes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Method Fw\\Database\\Model\:\:toArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Property Fw\\Database\\Model\:\:\$attributes type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Property Fw\\Database\\Model\:\:\$original type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/Model.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 2
+			path: src/Database/Model.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:find\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:first\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:get\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:groupBy\(\) has parameter \$columns with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:insert\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:paginate\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:select\(\) has parameter \$columns with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:toSql\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:update\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryBuilder\:\:whereIn\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Property Fw\\Database\\QueryBuilder\:\:\$bindings type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Property Fw\\Database\\QueryBuilder\:\:\$columns type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Property Fw\\Database\\QueryBuilder\:\:\$groupBy type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Property Fw\\Database\\QueryBuilder\:\:\$joins type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Property Fw\\Database\\QueryBuilder\:\:\$orderBy type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Property Fw\\Database\\QueryBuilder\:\:\$wheres type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryWatcher\:\:getReport\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryWatcher.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryWatcher\:\:normalizeQueryPattern\(\) should return string but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Database/QueryWatcher.php
+
+		-
+			message: '#^Method Fw\\Database\\QueryWatcher\:\:recordQuery\(\) has parameter \$bindings with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryWatcher.php
+
+		-
+			message: '#^Offset ''function'' on array\{function\: string, line\?\: int, file\?\: string, class\?\: class\-string, type\?\: ''\-\>''\|''\:\:'', args\?\: list\<mixed\>, object\?\: object\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Database/QueryWatcher.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Database/QueryWatcher.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|null given\.$#'
+			identifier: argument.type
+			count: 3
+			path: src/Database/QueryWatcher.php
+
+		-
+			message: '#^Property Fw\\Database\\QueryWatcher\:\:\$queries type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Database/QueryWatcher.php
+
+		-
+			message: '#^Parameter \#1 \$id of static method Fw\\Domain\\Id\:\:fromTrusted\(\) expects string, Fw\\Domain\\Id\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Domain/Id.php
+
+		-
+			message: '#^Method Fw\\Domain\\Money\:\:jsonSerialize\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Domain/Money.php
+
+		-
+			message: '#^Call to function is_object\(\) with object will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Events/EventDispatcher.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(class\-string\)\: object expects class\-string, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Events/EventDispatcher.php
+
+		-
+			message: '#^Property Fw\\Events\\EventDispatcher\:\:\$listeners \(array\<class\-string\<Fw\\Events\\Event\>, list\<\(callable\(\)\: mixed\)\|class\-string\>\>\) does not accept non\-empty\-array\<string, list\<\(callable\(\)\: mixed\)\|class\-string\|object\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Events/EventDispatcher.php
+
+		-
+			message: '#^Property Fw\\Events\\EventDispatcher\:\:\$wildcardListeners \(array\<class\-string\<Fw\\Events\\Event\>, list\<\(callable\(\)\: mixed\)\|class\-string\>\>\) does not accept non\-empty\-array\<non\-falsy\-string, list\<\(callable\(\)\: mixed\)\|class\-string\|object\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Events/EventDispatcher.php
+
+		-
+			message: '#^Method Fw\\Http\\ApiResponse\:\:error\(\) has parameter \$extensions with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Method Fw\\Http\\ApiResponse\:\:getHeaders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Method Fw\\Http\\ApiResponse\:\:link\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Method Fw\\Http\\ApiResponse\:\:links\(\) has parameter \$links with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Method Fw\\Http\\ApiResponse\:\:links\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Method Fw\\Http\\ApiResponse\:\:paginated\(\) has parameter \$items with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Method Fw\\Http\\ApiResponse\:\:send\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Method Fw\\Http\\ApiResponse\:\:validationError\(\) has parameter \$errors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Property Fw\\Http\\ApiResponse\:\:\$headers type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Http/ApiResponse.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$response\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Lifecycle/Component.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$view\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Lifecycle/Component.php
+
+		-
+			message: '#^Method Fw\\Lifecycle\\Component\:\:view\(\) has parameter \$additionalData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Lifecycle/Component.php
+
+		-
+			message: '#^Access to an undefined property object\:\:\$log\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Lifecycle/RequestFiber.php
+
+		-
+			message: '#^Method Fw\\Lifecycle\\RequestFiber\:\:getFiber\(\) return type with generic class Fiber does not specify its types\: TStart, TResume, TReturn, TSuspend$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Lifecycle/RequestFiber.php
+
+		-
+			message: '#^Property Fw\\Lifecycle\\RequestFiber\:\:\$fiber with generic class Fiber does not specify its types\: TStart, TResume, TReturn, TSuspend$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Lifecycle/RequestFiber.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:alert\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:critical\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:debug\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:emergency\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:error\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:formatEntry\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:info\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:interpolate\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:log\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:notice\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Log\\Logger\:\:warning\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Log/Logger.php
+
+		-
+			message: '#^Method Fw\\Middleware\\ApiAuthMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/ApiAuthMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\AuthMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/AuthMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\CallableMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/CallableMiddleware.php
+
+		-
+			message: '#^Cannot call method unwrapOr\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Middleware/CanMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\CanMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/CanMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\CorsMiddleware\:\:addCorsHeaders\(\) has parameter \$response with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/CorsMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\CorsMiddleware\:\:addCorsHeaders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/CorsMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\CorsMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/CorsMiddleware.php
+
+		-
+			message: '#^Parameter \#1 \$origin of method Fw\\Middleware\\CorsMiddleware\:\:handlePreflight\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Middleware/CorsMiddleware.php
+
+		-
+			message: '#^Parameter \#2 \$origin of method Fw\\Middleware\\CorsMiddleware\:\:addCorsHeaders\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Middleware/CorsMiddleware.php
+
+		-
+			message: '#^Property Fw\\Middleware\\CorsMiddleware\:\:\$config type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/CorsMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\CsrfMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/CsrfMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\GuestMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/GuestMiddleware.php
+
+		-
+			message: '#^Property Fw\\Middleware\\GuestMiddleware\:\:\$app is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Middleware/GuestMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\GuestPageCacheMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/GuestPageCacheMiddleware.php
+
+		-
+			message: '#^Property Fw\\Middleware\\GuestPageCacheMiddleware\:\:\$cache \(Fw\\Cache\\CacheInterface\) does not accept object\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Middleware/GuestPageCacheMiddleware.php
+
+		-
+			message: '#^Constant BASE_PATH not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: src/Middleware/LogMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\LogMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/LogMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\LogMiddleware\:\:log\(\) has parameter \$response with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/LogMiddleware.php
+
+		-
+			message: '#^Property Fw\\Middleware\\LogMiddleware\:\:\$app is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Middleware/LogMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\MiddlewareInterface\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/MiddlewareInterface.php
+
+		-
+			message: '#^Method Fw\\Middleware\\PageCacheMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/PageCacheMiddleware.php
+
+		-
+			message: '#^Property Fw\\Middleware\\PageCacheMiddleware\:\:\$cache \(Fw\\Cache\\CacheInterface\) does not accept object\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Middleware/PageCacheMiddleware.php
+
+		-
+			message: '#^Constant BASE_PATH not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: src/Middleware/Pipeline.php
+
+		-
+			message: '#^Method Fw\\Middleware\\Pipeline\:\:parseMiddleware\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/Pipeline.php
+
+		-
+			message: '#^Method Fw\\Middleware\\Pipeline\:\:then\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/Pipeline.php
+
+		-
+			message: '#^Method Fw\\Middleware\\Pipeline\:\:through\(\) has parameter \$middleware with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/Pipeline.php
+
+		-
+			message: '#^Property Fw\\Middleware\\Pipeline\:\:\$aliases \(array\<string, class\-string\<Fw\\Middleware\\MiddlewareInterface\>\>\) does not accept array\<string, string\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Middleware/Pipeline.php
+
+		-
+			message: '#^Property Fw\\Middleware\\Pipeline\:\:\$middleware type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/Pipeline.php
+
+		-
+			message: '#^Method Fw\\Middleware\\RateLimitMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/RateLimitMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\SecurityHeadersMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/SecurityHeadersMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\SpaAuthMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/SpaAuthMiddleware.php
+
+		-
+			message: '#^Property Fw\\Middleware\\SpaAuthMiddleware\:\:\$config type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/SpaAuthMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\TokenAbilityMiddleware\:\:handle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/TokenAbilityMiddleware.php
+
+		-
+			message: '#^Method Fw\\Middleware\\TokenAbilityMiddleware\:\:parseAbilities\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Middleware/TokenAbilityMiddleware.php
+
+		-
+			message: '#^Method Fw\\Model\\BelongsTo\:\:get\(\) should return Fw\\Support\\Option\<TRelated of Fw\\Model\\Model\> but returns Fw\\Support\\Option\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/BelongsTo.php
+
+		-
+			message: '#^Return type \(Fw\\Support\\Option\<TRelated of Fw\\Model\\Model\>\) of method Fw\\Model\\BelongsTo\:\:get\(\) should be compatible with return type \(Fw\\Model\\Collection\<Fw\\Model\\Model\>\|Fw\\Model\\Model\|null\) of method Fw\\Model\\Relation\<TParent of Fw\\Model\\Model,TRelated of Fw\\Model\\Model\>\:\:get\(\)$#'
+			identifier: method.childReturnType
+			count: 1
+			path: src/Model/BelongsTo.php
+
+		-
+			message: '#^Method Fw\\Model\\BelongsToMany\:\:get\(\) should return Fw\\Model\\Collection\<TRelated of Fw\\Model\\Model\> but returns Fw\\Model\\Collection\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/BelongsToMany.php
+
+		-
+			message: '#^Method Fw\\Model\\BelongsToMany\:\:sync\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 2
+			path: src/Model/BelongsToMany.php
+
+		-
+			message: '#^Method Fw\\Model\\BelongsToMany\:\:toggle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 2
+			path: src/Model/BelongsToMany.php
+
+		-
+			message: '#^Default value of the parameter \#1 \$depth \(float\) of method Fw\\Model\\Collection\:\:flatten\(\) is incompatible with type int\.$#'
+			identifier: parameter.defaultValue
+			count: 1
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Method Fw\\Model\\Collection\:\:each\(\) return type with generic class Fw\\Model\\Collection does not specify its types\: T$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Method Fw\\Model\\Collection\:\:get\(\) should return Fw\\Support\\Option\<T\> but returns Fw\\Support\\Option\<T of mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Method Fw\\Model\\Collection\:\:jsonSerialize\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Offset string does not exist on array\<mixed, mixed\>&T of mixed\.$#'
+			identifier: offsetAccess.notFound
+			count: 3
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Parameter \#1 \$items of class Fw\\Model\\Collection constructor expects array\<int, T\>, array\<int\|string, T\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Parameter \#1 \.\.\.\$arg1 of function max expects non\-empty\-array, array\<int, T\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Parameter \#1 \.\.\.\$arg1 of function min expects non\-empty\-array, array\<int, T\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Parameter \#2 \$length of function array_chunk expects int\<1, max\>, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Model/Collection.php
+
+		-
+			message: '#^Method Fw\\Model\\HasMany\:\:get\(\) should return Fw\\Model\\Collection\<TRelated of Fw\\Model\\Model\> but returns Fw\\Model\\Collection\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/HasMany.php
+
+		-
+			message: '#^Method Fw\\Model\\HasMany\:\:saveMany\(\) should return Fw\\Model\\Collection\<TRelated of Fw\\Model\\Model\> but returns Fw\\Model\\Collection\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/HasMany.php
+
+		-
+			message: '#^Method Fw\\Model\\HasOne\:\:get\(\) should return Fw\\Support\\Option\<TRelated of Fw\\Model\\Model\> but returns Fw\\Support\\Option\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/HasOne.php
+
+		-
+			message: '#^Return type \(Fw\\Support\\Option\<TRelated of Fw\\Model\\Model\>\) of method Fw\\Model\\HasOne\:\:get\(\) should be compatible with return type \(Fw\\Model\\Collection\<Fw\\Model\\Model\>\|Fw\\Model\\Model\|null\) of method Fw\\Model\\Relation\<TParent of Fw\\Model\\Model,TRelated of Fw\\Model\\Model\>\:\:get\(\)$#'
+			identifier: method.childReturnType
+			count: 1
+			path: src/Model/HasOne.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:all\(\) should return Fw\\Model\\Collection\<static\(Fw\\Model\\Model\)\> but returns Fw\\Model\\Collection\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:belongsTo\(\) return type with generic class Fw\\Model\\BelongsTo does not specify its types\: TParent, TRelated$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:belongsToMany\(\) return type with generic class Fw\\Model\\BelongsToMany does not specify its types\: TParent, TRelated$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:find\(\) should return Fw\\Support\\Option\<static\(Fw\\Model\\Model\)\> but returns Fw\\Support\\Option\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:findMany\(\) should return Fw\\Model\\Collection\<static\(Fw\\Model\\Model\)\> but returns Fw\\Model\\Collection\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:first\(\) should return Fw\\Support\\Option\<static\(Fw\\Model\\Model\)\> but returns Fw\\Support\\Option\<Fw\\Model\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:firstOrCreate\(\) should return static\(Fw\\Model\\Model\) but returns Fw\\Model\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:hasMany\(\) return type with generic class Fw\\Model\\HasMany does not specify its types\: TParent, TRelated$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:hasOne\(\) return type with generic class Fw\\Model\\HasOne does not specify its types\: TParent, TRelated$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:resolveConnection\(\) should return Fw\\Database\\Connection but returns object\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:updateOrCreate\(\) should return static\(Fw\\Model\\Model\) but returns Fw\\Model\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:whereIn\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\Model\:\:with\(\) has parameter \$relations with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Parameter \#1 \$column of static method Fw\\Model\\Model\:\:where\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Possibly invalid array key type string\|null\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Property Fw\\Model\\Model\:\:\$casts type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Property Fw\\Model\\Model\:\:\$fillable type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Property Fw\\Model\\Model\:\:\$guarded type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Property Fw\\Model\\Model\:\:\$hidden type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: src/Model/Model.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 3
+			path: src/Model/Model.php
+
+		-
+			message: '#^Method Fw\\Model\\ModelQueryBuilder\:\:groupBy\(\) has parameter \$columns with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/ModelQueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Model\\ModelQueryBuilder\:\:paginate\(\) return type with generic class Fw\\Model\\Collection does not specify its types\: T$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Model/ModelQueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Model\\ModelQueryBuilder\:\:select\(\) has parameter \$columns with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/ModelQueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Model\\ModelQueryBuilder\:\:toSql\(\) should return array\{string, array\<mixed\>\} but returns array\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Model/ModelQueryBuilder.php
+
+		-
+			message: '#^Method Fw\\Model\\ModelQueryBuilder\:\:whereIn\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Model/ModelQueryBuilder.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$callback with type \(callable\)\|void is not subtype of native type callable\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: src/Model/ModelQueryBuilder.php
+
+		-
+			message: '#^Property Fw\\Model\\ModelQueryBuilder\:\:\$scopes is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Model/ModelQueryBuilder.php
+
+		-
+			message: '#^Call to an undefined method object\:\:middleware\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Providers/BusServiceProvider.php
+
+		-
+			message: '#^Call to an undefined method object\:\:register\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Providers/BusServiceProvider.php
+
+		-
+			message: '#^Constant BASE_PATH not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: src/Providers/CacheServiceProvider.php
+
+		-
+			message: '#^Call to an undefined method object\:\:listen\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Providers/EventServiceProvider.php
+
+		-
+			message: '#^Call to an undefined method object\:\:subscribe\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Providers/EventServiceProvider.php
+
+		-
+			message: '#^Call to an undefined method object\:\:aliasMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Providers/MiddlewareServiceProvider.php
+
+		-
+			message: '#^Call to an undefined method object\:\:middlewareGroup\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Providers/MiddlewareServiceProvider.php
+
+		-
+			message: '#^Call to an undefined method object\:\:pushMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Providers/MiddlewareServiceProvider.php
+
+		-
+			message: '#^Constant BASE_PATH not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: src/Providers/MiddlewareServiceProvider.php
+
+		-
+			message: '#^Property Fw\\Providers\\MiddlewareServiceProvider\:\:\$global \(list\<string\>\) does not accept array\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Providers/MiddlewareServiceProvider.php
+
+		-
+			message: '#^Constant BASE_PATH not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: src/Providers/QueueServiceProvider.php
+
+		-
+			message: '#^Call to an undefined method Fw\\Queue\\JobInterface\:\:getDelay\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Queue/DatabaseDriver.php
+
+		-
+			message: '#^Call to an undefined method Fw\\Queue\\JobInterface\:\:incrementAttempts\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Queue/DatabaseDriver.php
+
+		-
+			message: '#^Call to an undefined method Fw\\Queue\\JobInterface\:\:setJobId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Queue/DatabaseDriver.php
+
+		-
+			message: '#^Method Fw\\Queue\\DatabaseDriver\:\:pop\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Queue/DatabaseDriver.php
+
+		-
+			message: '#^Method Fw\\Queue\\DriverInterface\:\:pop\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Queue/DriverInterface.php
+
+		-
+			message: '#^Argument of an invalid type list\<string\>\|false supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Call to an undefined method Fw\\Queue\\JobInterface\:\:getDelay\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Call to an undefined method Fw\\Queue\\JobInterface\:\:incrementAttempts\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Call to an undefined method Fw\\Queue\\JobInterface\:\:setJobId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Method Fw\\Queue\\FileDriver\:\:getAllQueues\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Method Fw\\Queue\\FileDriver\:\:pop\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Parameter \#1 \$json of function json_decode expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 6
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function flock expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 6
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, list\<string\>\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Queue/FileDriver.php
+
+		-
+			message: '#^Method Fw\\Queue\\Queue\:\:pop\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Queue/Queue.php
+
+		-
+			message: '#^Method Fw\\Queue\\SyncDriver\:\:pop\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Queue/SyncDriver.php
+
+		-
+			message: '#^Constant BASE_PATH not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: src/Queue/Worker.php
+
+		-
+			message: '#^Method Fw\\Queue\\Worker\:\:processJob\(\) has parameter \$jobData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Queue/Worker.php
+
+		-
+			message: '#^Method Fw\\Queue\\Worker\:\:sanitizeStackTrace\(\) has parameter \$trace with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Queue/Worker.php
+
+		-
+			message: '#^Call to an undefined static method Fw\\Queue\\Queue\:\:getInstance\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: src/Queue/helpers.php
+
+		-
+			message: '#^Cannot call method toArray\(\) on \(class\-string&T of mixed\)\|\(object&T of mixed\)\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Repository/AsyncRepository.php
+
+		-
+			message: '#^Class Fw\\Repository\\AsyncRepository implements generic interface Fw\\Repository\\Repository but does not specify its types\: T, TId$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Repository/AsyncRepository.php
+
+		-
+			message: '#^Method Fw\\Repository\\AsyncRepository\:\:findOneByCriteria\(\) should return Fw\\Support\\Option\<T\> but returns Fw\\Support\\Option\<T of mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repository/AsyncRepository.php
+
+		-
+			message: '#^Method Fw\\Repository\\AsyncRepository\:\:hydrate\(\) should return T but returns object\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repository/AsyncRepository.php
+
+		-
+			message: '#^PHPDoc tag @return contains generic type Fw\\Async\\Deferred\<array\<mixed\>\> but class Fw\\Async\\Deferred is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Repository/AsyncRepository.php
+
+		-
+			message: '#^Parameter \#1 \$id of method Fw\\Repository\\AsyncRepository\<T,TId of Fw\\Domain\\Id\>\:\:find\(\) expects TId of Fw\\Domain\\Id, Fw\\Domain\\Id given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repository/AsyncRepository.php
+
+		-
+			message: '#^Method Fw\\Repository\\Criteria\:\:whereIn\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Repository/Criteria.php
+
+		-
+			message: '#^Method Fw\\Repository\\Criteria\:\:whereNotIn\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Repository/Criteria.php
+
+		-
+			message: '#^Method Fw\\Repository\\InMemoryRepository\:\:find\(\) should return Fw\\Support\\Option\<T\> but returns Fw\\Support\\Option\<T of mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repository/InMemoryRepository.php
+
+		-
+			message: '#^Method Fw\\Repository\\InMemoryRepository\:\:findOneByCriteria\(\) should return Fw\\Support\\Option\<T\> but returns Fw\\Support\\Option\<T of mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repository/InMemoryRepository.php
+
+		-
+			message: '#^Method Fw\\Security\\Sanitizer\:\:array\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Sanitizer.php
+
+		-
+			message: '#^Method Fw\\Security\\Sanitizer\:\:array\(\) has parameter \$rules with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Sanitizer.php
+
+		-
+			message: '#^Method Fw\\Security\\Sanitizer\:\:array\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Sanitizer.php
+
+		-
+			message: '#^Parameter \#3 \$depth of function json_decode expects int\<1, max\>, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Security/Sanitizer.php
+
+		-
+			message: '#^Parameter \#1 \$array is passed by reference so it does not accept readonly property Fw\\Security\\ValidationException\:\:\$errors\.$#'
+			identifier: argument.byRef
+			count: 1
+			path: src/Security/ValidationException.php
+
+		-
+			message: '#^Call to function filter_var\(\) on a separate line has no effect\.$#'
+			identifier: function.resultUnused
+			count: 3
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Constant FILTER_FLAG_THROW_ON_FAILURE not found\.$#'
+			identifier: constant.notFound
+			count: 3
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Dead catch \- ValueError is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 3
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:__construct\(\) has parameter \$rules with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:allErrors\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:errors\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:make\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:make\(\) has parameter \$rules with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:validateField\(\) has parameter \$rules with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:validateOrFail\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Security\\Validator\:\:validated\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Parameter \#1 \$string of function ucfirst expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Parameter \#2 \$rule of method Fw\\Security\\Validator\:\:addError\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Possibly invalid array key type string\|null\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 2
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Property Fw\\Security\\Validator\:\:\$data type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Property Fw\\Security\\Validator\:\:\$errors type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Property Fw\\Security\\Validator\:\:\$rules type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Property Fw\\Security\\Validator\:\:\$validated type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Security/Validator.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:dataGet\(\) has parameter \$key with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:explodePluckParameters\(\) has parameter \$key with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:explodePluckParameters\(\) has parameter \$value with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:forget\(\) has parameter \$keys with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:groupBy\(\) has parameter \$groupBy with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:has\(\) has parameter \$keys with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:keyBy\(\) has parameter \$keyBy with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:pluck\(\) has parameter \$key with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:pluck\(\) has parameter \$value with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:sortBy\(\) has parameter \$callback with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:sortByDesc\(\) has parameter \$callback with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Method Fw\\Support\\Arr\:\:valueRetriever\(\) has parameter \$value with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Parameter \#2 \$keys of static method Fw\\Support\\Arr\:\:forget\(\) expects array\|string, int\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Possibly invalid array key type int\|string\|null\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: src/Support/Arr.php
+
+		-
+			message: '#^Offset 1 might not exist on ''d''\|''h''\|''m''\|''mo''\|''s''\|''y''\|array\{''day'', ''days''\}\|array\{''hour'', ''hours''\}\|array\{''minute'', ''minutes''\}\|array\{''month'', ''months''\}\|array\{''second'', ''seconds''\}\|array\{''year'', ''years''\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: src/Support/DateTime.php
+
+		-
+			message: '#^Part \$label \(''d''\|''h''\|''m''\|''mo''\|''s''\|''y''\|array\{''day'', ''days''\}\|array\{''hour'', ''hours''\}\|array\{''minute'', ''minutes''\}\|array\{''month'', ''months''\}\|array\{''second'', ''seconds''\}\|array\{''year'', ''years''\}\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: src/Support/DateTime.php
+
+		-
+			message: '#^Method Fw\\Support\\Option\:\:fromNullable\(\) should return Fw\\Support\\Option\<U\> but returns Fw\\Support\\Option\<U of mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Method Fw\\Support\\Option\:\:none\(\) should return Fw\\Support\\Option\<never\> but returns Fw\\Support\\Option\<null\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Method Fw\\Support\\Option\:\:tap\(\) return type with generic class Fw\\Support\\Option does not specify its types\: T$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Method Fw\\Support\\Option\:\:toResult\(\) should return Fw\\Support\\Result\<T, E\> but returns Fw\\Support\\Result\<never, E\>\|Fw\\Support\\Result\<T\|null, never\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Method Fw\\Support\\Option\:\:unwrap\(\) should return T but returns T\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Method Fw\\Support\\Option\:\:unwrapOr\(\) should return D\|T but returns D\|T\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Method Fw\\Support\\Option\:\:unwrapOrElse\(\) should return D\|T but returns D\|T\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Method Fw\\Support\\Option\:\:zip\(\) should return Fw\\Support\\Option\<array\{T, U\}\> but returns Fw\\Support\\Option\<array\{T\|null, U\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(T\)\: Fw\\Support\\Option\<U\> expects T, T\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(T\)\: U expects T, T\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Support/Option.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(T\)\: bool expects T, T\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Support/Option.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(T\)\: void expects T, T\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Option.php
+
+		-
+			message: '#^Method Fw\\Support\\Pipe\:\:filterArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 2
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^Method Fw\\Support\\Pipe\:\:get\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^Method Fw\\Support\\Pipe\:\:pluck\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 2
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^Method Fw\\Support\\Pipe\:\:sort\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 2
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^Method Fw\\Support\\Pipe\:\:take\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 2
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^PHPDoc tag @return with type \(Closure\)\|U is not subtype of native type Closure\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^Template type T of method Fw\\Support\\Pipe\:\:collect\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^Template type T of method Fw\\Support\\Pipe\:\:toOk\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^Template type T of method Fw\\Support\\Pipe\:\:toOption\(\) is not referenced in a parameter\.$#'
+			identifier: method.templateTypeNotInParameter
+			count: 1
+			path: src/Support/Pipe.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:all\(\) should return Fw\\Support\\Result\<array\<U\>, E\> but returns Fw\\Support\\Result\<U, E\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:all\(\) should return Fw\\Support\\Result\<array\<U\>, E\> but returns Fw\\Support\\Result\<list\<U\|null\>, never\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:any\(\) should return Fw\\Support\\Result\<U, E\> but returns Fw\\Support\\Result\<never, string\>\|Fw\\Support\\Result\<U, E\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:err\(\) should return Fw\\Support\\Result\<never, F\> but returns Fw\\Support\\Result\<null, F\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:fromNullable\(\) should return Fw\\Support\\Result\<U, E\> but returns Fw\\Support\\Result\<never, E\>\|Fw\\Support\\Result\<U of mixed, never\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:ok\(\) should return Fw\\Support\\Result\<U, never\> but returns Fw\\Support\\Result\<U, null\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:orElseTry\(\) should return Fw\\Support\\Result\<T\|U, F\> but returns Fw\\Support\\Result\<U, F\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:tap\(\) return type with generic class Fw\\Support\\Result does not specify its types\: T, E$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:tapErr\(\) return type with generic class Fw\\Support\\Result does not specify its types\: T, E$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:toOption\(\) should return Fw\\Support\\Option\<T\> but returns Fw\\Support\\Option\<T\|null\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:unwrap\(\) should return T but returns T\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:unwrapErr\(\) should return E but returns E\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:unwrapOr\(\) should return D\|T but returns D\|T\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Method Fw\\Support\\Result\:\:unwrapOrElse\(\) should return D\|T but returns D\|T\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(E\)\: D expects E, E\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(E\)\: F expects E, E\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(E\)\: Fw\\Support\\Result\<U, F\> expects E, E\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(E\)\: U expects E, E\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(E\)\: void expects E, E\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(T\)\: Fw\\Support\\Result\<U, E\> expects T, T\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(T\)\: U expects T, T\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(T\)\: bool expects T, T\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Parameter \#1 of callable callable\(T\)\: void expects T, T\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Result.php
+
+		-
+			message: '#^Cannot assign offset string to string\.$#'
+			identifier: offsetAssign.dimType
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Method Fw\\Support\\Str\:\:excerpt\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Method Fw\\Support\\Str\:\:parseCallback\(\) should return array\{string, string\|null\} but returns non\-empty\-list\<string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Method Fw\\Support\\Str\:\:plural\(\) has parameter \$count with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Method Fw\\Support\\Str\:\:pluralize\(\) should return string but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Method Fw\\Support\\Str\:\:singularize\(\) should return string but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Method Fw\\Support\\Str\:\:slug\(\) has parameter \$dictionary with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Method Fw\\Support\\Str\:\:squish\(\) should return string but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Method Fw\\Support\\Str\:\:ucsplit\(\) should return array\<int, string\> but returns list\<string\>\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(string\)\: mixed\)\|null, ''count'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#1 \$length of function random_bytes expects int\<1, max\>, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#1 \$search of function str_ireplace expects array\<string\>\|string, iterable\<string\>\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#1 \$search of function str_replace expects array\<string\>\|string, iterable\<string\>\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#1 \$value of static method Fw\\Support\\Str\:\:lower\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#2 \$replace of function str_ireplace expects array\<string\>\|string, iterable\<string\>\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#2 \$replace of function str_replace expects array\<string\>\|string, iterable\<string\>\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|null given\.$#'
+			identifier: argument.type
+			count: 3
+			path: src/Support/Str.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function str_replace expects array\<string\>\|string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Str.php
+
+		-
+			message: '#^Class Fw\\Support\\Stringable implements generic interface ArrayAccess but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Method Fw\\Support\\Stringable\:\:count\(\) should return int\<0, max\> but returns int\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Method Fw\\Support\\Stringable\:\:excerpt\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Method Fw\\Support\\Stringable\:\:markdown\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Method Fw\\Support\\Stringable\:\:plural\(\) has parameter \$count with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Method Fw\\Support\\Stringable\:\:slug\(\) has parameter \$dictionary with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Parameter \#1 \$separator of function explode expects non\-empty\-string, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Parameter \#1 \$value of class Fw\\Support\\Stringable constructor expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|null given\.$#'
+			identifier: argument.type
+			count: 6
+			path: src/Support/Stringable.php
+
+		-
+			message: '#^Method Fw\\Testing\\Factory\:\:new\(\) should return static\(Fw\\Testing\\Factory\<TModel of Fw\\Model\\Model\>\) but returns static\(Fw\\Testing\\Factory\<Fw\\Model\\Model\>\)\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Testing/Factory.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Testing/Factory.php
+
+		-
+			message: '#^Method Fw\\Testing\\FakerGenerator\:\:unique\(\) should return \$this\(Fw\\Testing\\FakerGenerator\) but returns static\(Fw\\Testing\\FakerGenerator\)\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Testing/FakerGenerator.php
+
+		-
+			message: '#^Parameter \#1 \$min of function random_int expects int, int\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Testing/FakerGenerator.php
+
+		-
+			message: '#^Parameter \#2 \$max of function random_int expects int, int\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Testing/FakerGenerator.php
+
+		-
+			message: '#^Property Fw\\Testing\\FakerGenerator\:\:\$usedValues is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Testing/FakerGenerator.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Validation/FormRequest.php
+
+		-
+			message: '#^Method Fw\\Validation\\Rules\\In\:\:__construct\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Validation/Rules/In.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Validation/Validator.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Validation/Validator.php
