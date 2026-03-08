@@ -40,21 +40,21 @@
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^11.0"
     },
-                "autoload": {
-                    "psr-4": {
-                        "Fw\\": "src/"
-                    },
-                    "files": [
-                        "src/Queue/helpers.php"
-                    ]
-                },
-                "autoload-dev": {
-                    "psr-4": {
-                        "Fw\\Tests\\": "tests/",
-                        "App\\": "app/",
-                        "Database\\Seeders\\": "database/seeders/"
-                    }
-                },    "scripts": {
+    "autoload": {
+        "psr-4": {
+            "Fw\\": "src/",
+            "App\\": "app/",
+            "Database\\Seeders\\": "database/seeders/"
+        },
+        "files": [
+            "src/Queue/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fw\\Tests\\": "tests/"
+        }
+    },    "scripts": {
         "test": "phpunit",
         "test:unit": "phpunit --testsuite=unit",
         "test:feature": "phpunit --testsuite=feature",
