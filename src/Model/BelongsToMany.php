@@ -279,7 +279,7 @@ final class BelongsToMany extends Relation
      */
     public function contains(mixed $id): bool
     {
-        return in_array($id, $this->pluck(), false);
+        return in_array($id, $this->pluck(), true);
     }
 
     /**
