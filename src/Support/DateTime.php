@@ -113,7 +113,7 @@ final readonly class DateTime implements Stringable, JsonSerializable
     ): self {
         $datetime = new DateTimeImmutable('now', $timezone)
             ->setDate($year, $month, $day)
-            ->setTime($hour, $minute, $second);
+            ->setTime($hour, $minute, $second, 0);
 
         return new self($datetime);
     }
