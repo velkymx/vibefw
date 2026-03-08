@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.12] - 2026-03-08
+
+### Fixed (Security)
+
+- **`QueryBuilder::validateIdentifier()` SQL injection via alias expressions** — The alias regex `(.+?)` matched arbitrary SQL expressions as valid identifiers. An attacker could craft column names like `"1; DROP TABLE users -- AS x"` that would bypass validation. Now validates the expression part against safe identifier and aggregate function patterns only.
+
+### Fixed (Correctness)
+
+- **`Auth::user()` rejects UUID session user IDs** — The session user ID check was `is_int()` only, rejecting string-based UUIDs immediately. Applications using UUID primary keys could never restore sessions. Now accepts both positive integers and non-empty strings.
+- **`Deferred::race()` fundamentally broken** — Used `EventLoop::defer()` to poll deferreds, but this only ran once per tick. If no deferred resolved on the first tick, race() would never settle. Replaced with a new `onSettle()` listener mechanism that fires callbacks immediately when a deferred settles, regardless of event loop timing.
+- **`AsyncDatabase` documentation misleading** — Docblock implied true non-blocking I/O. Added explicit WARNING that PDO is synchronous and recommended amphp/mysql or reactphp/mysql for genuine async database access.
+- **`Auth::id()` return type too narrow for UUIDs** — Returned `?int`, which silently truncated string UUIDs. Widened to `string|int|null`.
+
+### Fixed (Architecture)
+
+- **`composer.json` autoload misconfiguration** — `App\\` and `Database\\Seeders\\` namespaces were in `autoload-dev`, meaning `composer install --no-dev` in production would not autoload application code. Moved to `autoload`.
+- **`Gate` hardcoded `App\Policies` namespace** — Policy classes were always resolved from `App\Policies\{Model}Policy`, making it impossible to use a different namespace. Added `Gate::setPolicyNamespace()` for configuration. `Gate::check()` and `Policy::before()` now accept `Fw\Model\Model` instead of `App\Models\User`.
+- **`TokenGuard` and `ApiToken` coupled to application models** — Both imported `App\Models\User` and `App\Models\PersonalAccessToken` directly, violating the framework/app layer boundary. Now use `Fw\Model\Model` as type constraints. `ApiToken::setTokenModel()` allows configuring the token model class.
+- **`Auth` coupled to `App\Models\User`** — Imported and type-hinted `App\Models\User` throughout. Added `Auth::setUserModel()` for configuration. The entire `src/` directory is now free of `App\` namespace imports.
+
 ## [2.1.11] - 2026-03-08
 
 ### Fixed (Security)
