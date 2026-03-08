@@ -70,7 +70,7 @@ final class EmailVerification
         // whether the token was found, so response timing doesn't reveal
         // whether a valid token exists in the database.
         $storedHash = $result['token'] ?? self::DUMMY_HASH;
-        hash_equals($storedHash, $hashedToken);
+        $_ = hash_equals($storedHash, $hashedToken);
 
         if ($result === null) {
             return null;
