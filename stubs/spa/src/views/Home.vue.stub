@@ -49,7 +49,9 @@
           <div class="col-md-4">
             <VibeCard class="h-100 border-0 shadow-sm text-center">
               <template #body>
-                <div class="fs-1 mb-3"><i class="bi bi-lightning-charge-fill text-warning"></i></div>
+                <div class="mb-3">
+                  <VibeIcon icon="lightning-charge-fill" size="3x" color="var(--bs-warning)" />
+                </div>
                 <h5 class="fw-bold">Fiber-Safe Backend</h5>
                 <p class="text-muted mb-0">Built on PHP 8.4 Fibers with a custom EventLoop. Handles 40k+ requests per second in worker mode.</p>
               </template>
@@ -58,7 +60,9 @@
           <div class="col-md-4">
             <VibeCard class="h-100 border-0 shadow-sm text-center">
               <template #body>
-                <div class="fs-1 mb-3"><i class="bi bi-palette-fill text-primary"></i></div>
+                <div class="mb-3">
+                  <VibeIcon icon="palette-fill" size="3x" color="var(--bs-primary)" />
+                </div>
                 <h5 class="fw-bold">VibeUI Components</h5>
                 <p class="text-muted mb-0">A Vue 3 component library built on Bootstrap 5. Globally registered &mdash; just use them.</p>
               </template>
@@ -67,7 +71,9 @@
           <div class="col-md-4">
             <VibeCard class="h-100 border-0 shadow-sm text-center">
               <template #body>
-                <div class="fs-1 mb-3"><i class="bi bi-shield-lock-fill text-success"></i></div>
+                <div class="mb-3">
+                  <VibeIcon icon="shield-lock-fill" size="3x" color="var(--bs-success)" />
+                </div>
                 <h5 class="fw-bold">Auth Ready</h5>
                 <p class="text-muted mb-0">API token authentication wired up out of the box. Login, register, and protected routes included.</p>
               </template>

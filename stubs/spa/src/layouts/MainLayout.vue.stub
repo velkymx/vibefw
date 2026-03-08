@@ -70,13 +70,13 @@ onMounted(() => {
       <div class="sidebar-header p-3 d-flex align-items-center justify-content-between">
         <span class="fw-bold fs-4">Vibe<span class="text-primary">FW</span></span>
         <button class="btn btn-sm d-lg-none" @click="toggleSidebar">
-          <i class="bi bi-x-lg"></i>
+          <VibeIcon icon="x-lg" />
         </button>
       </div>
 
       <nav class="sidebar-nav p-2 flex-grow-1">
         <router-link to="/dashboard" class="nav-link py-2 px-3 rounded mb-1" active-class="active">
-          <i class="bi bi-speedometer2 me-2"></i> Dashboard
+          <VibeIcon icon="speedometer2" custom-class="me-2" /> Dashboard
         </router-link>
 
         <div class="border-top my-2"></div>
@@ -85,7 +85,7 @@ onMounted(() => {
           @click="handleLogout"
           class="nav-link w-100 text-start py-2 px-3 rounded text-danger border-0 bg-transparent"
         >
-          <i class="bi bi-box-arrow-right me-2"></i> Logout
+          <VibeIcon icon="box-arrow-right" custom-class="me-2" /> Logout
         </button>
       </nav>
 
@@ -107,7 +107,7 @@ onMounted(() => {
       <!-- Top Navbar -->
       <header class="app-header shadow-sm p-3 d-flex align-items-center">
         <button class="btn btn-sm btn-light me-3" @click="toggleSidebar">
-          <i class="bi bi-list"></i>
+          <VibeIcon icon="list" />
         </button>
         <div class="text-muted d-none d-sm-block small">
           Home / {{ router.currentRoute.value.name }}
@@ -118,7 +118,7 @@ onMounted(() => {
             @click="toggleDarkMode"
             :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
           >
-            <i class="bi" :class="isDarkMode ? 'bi-sun-fill' : 'bi-moon-fill'"></i>
+            <VibeIcon :icon="isDarkMode ? 'sun-fill' : 'moon-fill'" />
           </button>
           <span v-if="user" class="small text-muted d-none d-lg-inline">{{ user.name ?? user.email }}</span>
         </div>
