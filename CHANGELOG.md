@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.13] - 2026-03-08
+
+### Fixed (Correctness)
+
+- **`DateTime::equals()` compares object identity instead of value** — Used `===` on `DateTimeImmutable` objects, which compares identity not value. Two `DateTime::create()` calls with identical parameters would be unequal due to inherited microseconds from `'now'`. Now compares timestamp + microseconds explicitly. `create()` also zeroes microseconds.
+- **`ScaffoldSpaTest` risky test warning and PHP 8.5 deprecation** — Test printed output without capturing it (risky) and used deprecated `setAccessible()` (unnecessary since PHP 8.1). Fixed with `ob_start()`/`ob_end_clean()` and removed the call.
+
+### Improved
+
+- **PHPStan level 8 now passes cleanly** — Added baseline for 641 pre-existing type annotation warnings. New code is still checked at level 8; only grandfathered patterns are exempted.
+- **Code style fully passing** — All 216 files now pass php-cs-fixer checks.
+
 ## [2.1.12] - 2026-03-08
 
 ### Fixed (Security)
