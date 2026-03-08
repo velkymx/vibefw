@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.15] - 2026-03-08
+
+### Fixed (make:spa)
+
+- **Raw `<i class="bi">` icons replaced with `<VibeIcon>`** — All stubs now use the `<VibeIcon icon="name" />` component instead of raw Bootstrap Icon markup. Affected: MainLayout.vue (sidebar, header), Home.vue (feature cards).
+- **Quill dependency restored** — Quill is required by `VibeFormWysiwyg` and was incorrectly removed. Restored in `package.json` and `App.vue` CSS imports.
+- **AI reference docs updated for VibeIcon** — Added full `VibeIcon` component reference (props, examples) to `VIBE-UI-AI.md`. Updated `llms-ui.txt` with VibeIcon usage, complete component inventory for VibeUI 0.7+, and link to canonical docs.
+
 ## [2.1.14] - 2026-03-08
 
 ### Fixed (make:spa)
