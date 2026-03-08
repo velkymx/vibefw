@@ -25,9 +25,11 @@ final class Migrator
 
     public function ensureMigrationsTable(): void
     {
+        $quoted = $this->quoteTable();
+
         $sql = match ($this->db->driver) {
             'sqlite' => <<<SQL
-                CREATE TABLE IF NOT EXISTS "{$this->table}" (
+                CREATE TABLE IF NOT EXISTS {$quoted} (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     migration VARCHAR(255) NOT NULL,
                     batch INTEGER NOT NULL,
@@ -35,7 +37,7 @@ final class Migrator
                 )
                 SQL,
             'mysql' => <<<SQL
-                CREATE TABLE IF NOT EXISTS `{$this->table}` (
+                CREATE TABLE IF NOT EXISTS {$quoted} (
                     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                     migration VARCHAR(255) NOT NULL,
                     batch INT NOT NULL,
@@ -43,7 +45,7 @@ final class Migrator
                 )
                 SQL,
             'pgsql' => <<<SQL
-                CREATE TABLE IF NOT EXISTS "{$this->table}" (
+                CREATE TABLE IF NOT EXISTS {$quoted} (
                     id BIGSERIAL PRIMARY KEY,
                     migration VARCHAR(255) NOT NULL,
                     batch INT NOT NULL,
