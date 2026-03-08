@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Core;
 
+use RuntimeException;
+
 /**
  * Environment variable loader and accessor.
  */
@@ -12,6 +14,7 @@ final class Env
     private static ?Env $instance = null;
 
     private bool $loaded = false;
+
     private array $variables = [];
 
     public static function getInstance(): self
@@ -22,6 +25,56 @@ final class Env
     public static function setInstance(self $env): void
     {
         self::$instance = $env;
+    }
+
+    public static function load(string $path): void
+    {
+        self::getInstance()->loadVars($path);
+    }
+
+    public static function get(string $key, mixed $default = null): mixed
+    {
+        return self::getInstance()->getVar($key, $default);
+    }
+
+    public static function string(string $key, string $default = ''): string
+    {
+        return self::getInstance()->getString($key, $default);
+    }
+
+    public static function int(string $key, int $default = 0): int
+    {
+        return self::getInstance()->getInt($key, $default);
+    }
+
+    public static function bool(string $key, bool $default = false): bool
+    {
+        return self::getInstance()->getBool($key, $default);
+    }
+
+    public static function array(string $key, array $default = []): array
+    {
+        return self::getInstance()->getArray($key, $default);
+    }
+
+    public static function has(string $key): bool
+    {
+        return self::getInstance()->hasVar($key);
+    }
+
+    public static function require(string $key): mixed
+    {
+        return self::getInstance()->requireVar($key);
+    }
+
+    public static function isLoaded(): bool
+    {
+        return self::getInstance()->isLoadedVar();
+    }
+
+    public static function clear(): void
+    {
+        self::getInstance()->resetVars();
     }
 
     public function loadVars(string $path): void
@@ -49,11 +102,15 @@ final class Env
             $key = trim(substr($line, 0, $pos));
             $value = trim(substr($line, $pos + 1));
 
-            if (
-                (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
-                (str_starts_with($value, "'") && str_ends_with($value, "'"))
-            ) {
+            if (str_starts_with($value, '"') && str_ends_with($value, '"')) {
                 $value = substr($value, 1, -1);
+                // Process standard escape sequences used in double-quoted .env values.
+                // Must process \\ before \" to avoid double-unescaping.
+                $value = str_replace(['\\\\', '\\"', '\\n', '\\r', '\\t'], ['\\', '"', "\n", "\r", "\t"], $value);
+            } elseif (str_starts_with($value, "'") && str_ends_with($value, "'")) {
+                $value = substr($value, 1, -1);
+                // Single-quoted values: only \' is an escape sequence (POSIX-style).
+                $value = str_replace("\\'", "'", $value);
             }
 
             $this->variables[$key] = $value;
@@ -61,11 +118,6 @@ final class Env
         }
 
         $this->loaded = true;
-    }
-
-    public static function load(string $path): void
-    {
-        self::getInstance()->loadVars($path);
     }
 
     public function getVar(string $key, mixed $default = null): mixed
@@ -83,31 +135,16 @@ final class Env
         return $default;
     }
 
-    public static function get(string $key, mixed $default = null): mixed
-    {
-        return self::getInstance()->getVar($key, $default);
-    }
-
     public function getString(string $key, string $default = ''): string
     {
         $value = $this->getVar($key);
         return $value !== null ? (string) $value : $default;
     }
 
-    public static function string(string $key, string $default = ''): string
-    {
-        return self::getInstance()->getString($key, $default);
-    }
-
     public function getInt(string $key, int $default = 0): int
     {
         $value = $this->getVar($key);
         return $value !== null ? (int) $value : $default;
-    }
-
-    public static function int(string $key, int $default = 0): int
-    {
-        return self::getInstance()->getInt($key, $default);
     }
 
     public function getBool(string $key, bool $default = false): bool
@@ -123,11 +160,6 @@ final class Env
         return in_array($value, ['true', '1', 'yes', 'on'], true);
     }
 
-    public static function bool(string $key, bool $default = false): bool
-    {
-        return self::getInstance()->getBool($key, $default);
-    }
-
     public function getArray(string $key, array $default = []): array
     {
         $value = $this->getVar($key);
@@ -137,43 +169,16 @@ final class Env
         return array_map('trim', explode(',', (string) $value));
     }
 
-    public static function array(string $key, array $default = []): array
-    {
-        return self::getInstance()->getArray($key, $default);
-    }
-
     public function hasVar(string $key): bool
     {
         return $this->getVar($key) !== null;
-    }
-
-    public static function has(string $key): bool
-    {
-        return self::getInstance()->hasVar($key);
     }
 
     public function requireVar(string $key): mixed
     {
         $value = $this->getVar($key);
         if ($value === null) {
-            throw new \RuntimeException("Required environment variable '{$key}' is not set");
-        }
-        return $value;
-    }
-
-    public static function require(string $key): mixed
-    {
-        return self::getInstance()->requireVar($key);
-    }
-
-    private function castValue(string $value): mixed
-    {
-        $lower = strtolower($value);
-        if ($lower === 'true') return true;
-        if ($lower === 'false') return false;
-        if ($lower === 'null' || $lower === '') return null;
-        if (is_numeric($value)) {
-            return str_contains($value, '.') ? (float) $value : (int) $value;
+            throw new RuntimeException("Required environment variable '{$key}' is not set");
         }
         return $value;
     }
@@ -183,20 +188,39 @@ final class Env
         return $this->loaded;
     }
 
-    public static function isLoaded(): bool
-    {
-        return self::getInstance()->isLoadedVar();
-    }
-
     public function resetVars(): void
     {
         $this->variables = [];
         $this->loaded = false;
     }
 
-    public static function clear(): void
+    private function castValue(string $value): mixed
     {
-        self::getInstance()->resetVars();
+        $lower = strtolower($value);
+        if ($lower === 'true') {
+            return true;
+        }
+        if ($lower === 'false') {
+            return false;
+        }
+        if ($lower === 'null' || $lower === '') {
+            return null;
+        }
+        // Use strict patterns instead of is_numeric(), which also accepts scientific
+        // notation (1e5), hex (0x1A), and signed values (+5) that .env authors never intend.
+        if (preg_match('/^-?[0-9]+$/', $value)) {
+            $intVal = (int) $value;
+            // Guard against integer overflow: if casting to int changes the value,
+            // keep as string to avoid silent data loss.
+            if ((string) $intVal !== $value) {
+                return $value;
+            }
+            return $intVal;
+        }
+        if (preg_match('/^-?[0-9]+\.[0-9]+$/', $value)) {
+            return (float) $value;
+        }
+        return $value;
     }
 }
 

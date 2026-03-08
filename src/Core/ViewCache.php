@@ -16,6 +16,7 @@ namespace Fw\Core;
 final class ViewCache
 {
     private string $cachePath;
+
     private bool $enabled;
 
     public function __construct(string $cachePath, bool $enabled = true)
@@ -24,8 +25,29 @@ final class ViewCache
         $this->enabled = $enabled;
 
         if ($enabled && !is_dir($this->cachePath)) {
-            mkdir($this->cachePath, 0755, true);
+            mkdir($this->cachePath, 0o755, true);
         }
+    }
+
+    /**
+     * Generate a cache key from view name, data, and optional template file path.
+     *
+     * Including the template file's mtime ensures the cache is automatically
+     * busted when the template file changes after a deployment.
+     *
+     * @param string      $view     View name (e.g. 'posts.index')
+     * @param array       $data     View data
+     * @param string|null $filePath Absolute path to the template file for mtime invalidation
+     */
+    public static function makeKey(string $view, array $data = [], ?string $filePath = null): string
+    {
+        // Only include serializable, cacheable data
+        $cacheableData = array_filter($data, fn ($v) => is_scalar($v) || is_array($v) || is_null($v));
+
+        // Include mtime so cache is automatically invalidated on file change
+        $mtime = ($filePath !== null && file_exists($filePath)) ? (string) filemtime($filePath) : '0';
+
+        return md5($view . '|' . $mtime . '|' . json_encode($cacheableData, JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -82,8 +104,11 @@ final class ViewCache
             'content' => $content,
         ], true) . ';';
 
-        // Atomic write
-        $tmp = $file . '.tmp.' . uniqid();
+        // Atomic write using tempnam() for process-safe unique filenames
+        $tmp = tempnam(dirname($file), 'view_');
+        if ($tmp === false) {
+            return;
+        }
         file_put_contents($tmp, $php, LOCK_EX);
         rename($tmp, $file);
 
@@ -130,16 +155,6 @@ final class ViewCache
                 opcache_invalidate($file, true);
             }
         }
-    }
-
-    /**
-     * Generate a cache key from view name and data.
-     */
-    public static function makeKey(string $view, array $data = []): string
-    {
-        // Only include serializable, cacheable data
-        $cacheableData = array_filter($data, fn($v) => is_scalar($v) || is_array($v) || is_null($v));
-        return md5($view . '|' . serialize($cacheableData));
     }
 
     private function getCacheFile(string $key): string

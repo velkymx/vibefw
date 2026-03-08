@@ -7,24 +7,21 @@ namespace Fw\Database\Migration;
 final class Blueprint
 {
     private string $table;
+
     private string $driver;
+
     private array $columns = [];
+
     private array $indexes = [];
+
     private ?string $primaryKey = null;
+
     private array $foreignKeys = [];
 
     public function __construct(string $table, string $driver = 'sqlite')
     {
         $this->table = $table;
         $this->driver = $driver;
-    }
-
-    private function quote(string $identifier): string
-    {
-        return match ($this->driver) {
-            'mysql' => '`' . str_replace('`', '``', $identifier) . '`',
-            default => '"' . str_replace('"', '""', $identifier) . '"',
-        };
     }
 
     public function id(string $name = 'id'): self
@@ -129,7 +126,7 @@ final class Blueprint
         $lastIndex = count($this->columns) - 1;
         if ($lastIndex >= 0) {
             if (is_string($value)) {
-                $value = "'$value'";
+                $value = "'" . str_replace("'", "''", $value) . "'";
             } elseif (is_bool($value)) {
                 $value = $value ? '1' : '0';
             } elseif ($value === null) {
@@ -149,7 +146,7 @@ final class Blueprint
             }
         } else {
             $cols = is_array($columns) ? $columns : [$columns];
-            $colList = implode(', ', array_map(fn($c) => $this->quote($c), $cols));
+            $colList = implode(', ', array_map(fn ($c) => $this->quote($c), $cols));
             $name = 'idx_' . $this->table . '_' . implode('_', $cols);
             $this->indexes[] = 'CREATE UNIQUE INDEX ' . $this->quote($name) . ' ON ' . $this->quote($this->table) . " ($colList)";
         }
@@ -159,7 +156,7 @@ final class Blueprint
     public function index(string|array $columns, ?string $name = null): self
     {
         $cols = is_array($columns) ? $columns : [$columns];
-        $colList = implode(', ', array_map(fn($c) => $this->quote($c), $cols));
+        $colList = implode(', ', array_map(fn ($c) => $this->quote($c), $cols));
         $name ??= 'idx_' . $this->table . '_' . implode('_', $cols);
         $this->indexes[] = 'CREATE INDEX ' . $this->quote($name) . ' ON ' . $this->quote($this->table) . " ($colList)";
         return $this;
@@ -174,6 +171,9 @@ final class Blueprint
             default => 'INTEGER',
         };
         $this->columns[] = $this->quote($name) . " $type NOT NULL";
+        // Automatically create index for foreign key columns — required for
+        // efficient JOIN performance in belongsTo/hasMany relationships.
+        $this->index($name);
         return $this;
     }
 
@@ -201,15 +201,28 @@ final class Blueprint
 
         return $sql;
     }
+
+    private function quote(string $identifier): string
+    {
+        return match ($this->driver) {
+            'mysql' => '`' . str_replace('`', '``', $identifier) . '`',
+            default => '"' . str_replace('"', '""', $identifier) . '"',
+        };
+    }
 }
 
 final class ForeignKeyDefinition
 {
     private string $table;
+
     private string $column;
+
     private string $referencesTable = '';
+
     private string $referencesColumn = 'id';
+
     private string $onDelete = 'CASCADE';
+
     private string $onUpdate = 'CASCADE';
 
     public function __construct(string $table, string $column)
@@ -252,14 +265,6 @@ final class ForeignKeyDefinition
         return $this->onDelete('SET NULL');
     }
 
-    private function quote(string $identifier, string $driver): string
-    {
-        return match ($driver) {
-            'mysql' => '`' . str_replace('`', '``', $identifier) . '`',
-            default => '"' . str_replace('"', '""', $identifier) . '"',
-        };
-    }
-
     public function toSql(string $driver = 'sqlite'): string
     {
         return sprintf(
@@ -270,5 +275,13 @@ final class ForeignKeyDefinition
             $this->onDelete,
             $this->onUpdate
         );
+    }
+
+    private function quote(string $identifier, string $driver): string
+    {
+        return match ($driver) {
+            'mysql' => '`' . str_replace('`', '``', $identifier) . '`',
+            default => '"' . str_replace('"', '""', $identifier) . '"',
+        };
     }
 }

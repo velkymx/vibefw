@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Auth;
 
 use App\Models\User;
+use RuntimeException;
 
 /**
  * Authorization Gate.
@@ -58,6 +59,9 @@ final class Gate
     public static function authorize(string $action, object|string $target): void
     {
         if (self::denies($action, $target)) {
+            $targetClass = is_object($target) ? get_class($target) : $target;
+            $userId = Auth::id() ?? 'guest';
+            error_log("Authorization denied: user={$userId} action={$action} target={$targetClass}");
             throw new ForbiddenException();
         }
     }
@@ -90,6 +94,14 @@ final class Gate
     }
 
     /**
+     * Clear the policy cache (for testing).
+     */
+    public static function flushCache(): void
+    {
+        self::$policyCache = [];
+    }
+
+    /**
      * Resolve the policy class for a given target.
      */
     private static function resolvePolicy(object|string $target): ?Policy
@@ -110,7 +122,7 @@ final class Gate
         $policy = new $policyClass();
 
         if (!$policy instanceof Policy) {
-            throw new \RuntimeException("$policyClass must extend " . Policy::class);
+            throw new RuntimeException("$policyClass must extend " . Policy::class);
         }
 
         return self::$policyCache[$class] = $policy;
@@ -119,13 +131,5 @@ final class Gate
     private static function classBasename(string $class): string
     {
         return basename(str_replace('\\', '/', $class));
-    }
-
-    /**
-     * Clear the policy cache (for testing).
-     */
-    public static function flushCache(): void
-    {
-        self::$policyCache = [];
     }
 }

@@ -22,6 +22,9 @@ final class RequestTest extends TestCase
             'REQUEST_URI' => '/',
             'HTTP_HOST' => 'localhost',
         ];
+
+        // Trust all proxies for tests to verify header detection
+        Request::setTrustedProxies(['*']);
     }
 
     public function testMethodIsDetected(): void
@@ -459,6 +462,7 @@ final class RequestTest extends TestCase
     public function testWantsJsonReturnsTrueForApiPaths(): void
     {
         $_SERVER['REQUEST_URI'] = '/api/users';
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
 
         $request = new Request();
 
@@ -468,6 +472,7 @@ final class RequestTest extends TestCase
     public function testWantsJsonReturnsTrueForNestedApiPaths(): void
     {
         $_SERVER['REQUEST_URI'] = '/api/v1/users/123';
+        $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
 
         $request = new Request();
 

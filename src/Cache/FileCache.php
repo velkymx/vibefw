@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Fw\Cache;
 
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use RuntimeException;
+
 /**
  * File-based cache driver.
  *
@@ -13,6 +18,7 @@ namespace Fw\Cache;
 final class FileCache implements CacheInterface
 {
     private string $path;
+
     private int $defaultTtl;
 
     public function __construct(string $path, int $defaultTtl = 3600)
@@ -21,8 +27,8 @@ final class FileCache implements CacheInterface
         $this->defaultTtl = $defaultTtl;
 
         // Handle race condition: another process might create the directory
-        if (!is_dir($this->path) && !@mkdir($this->path, 0755, true) && !is_dir($this->path)) {
-            throw new \RuntimeException("Failed to create cache directory: {$this->path}");
+        if (!is_dir($this->path) && !@mkdir($this->path, 0o755, true) && !is_dir($this->path)) {
+            throw new RuntimeException("Failed to create cache directory: {$this->path}");
         }
     }
 
@@ -62,13 +68,15 @@ final class FileCache implements CacheInterface
         // Create directory if needed - handle race condition properly
         // mkdir with recursive=true returns false if dir already exists,
         // so we check is_dir after to handle concurrent creation
-        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        if (!is_dir($dir) && !@mkdir($dir, 0o755, true) && !is_dir($dir)) {
             return false;
         }
 
         $data = [
             'value' => $value,
-            'expires' => $ttl !== null ? time() + $ttl : time() + $this->defaultTtl,
+            // null TTL means "store forever" (PSR-16 compliance).
+            // Pass an explicit integer to use a specific TTL; omit/null to persist indefinitely.
+            'expires' => $ttl !== null ? time() + $ttl : null,
         ];
 
         $json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -94,7 +102,7 @@ final class FileCache implements CacheInterface
     public function clear(): bool
     {
         $this->deleteDirectory($this->path);
-        mkdir($this->path, 0755, true);
+        mkdir($this->path, 0o755, true);
         return true;
     }
 
@@ -129,14 +137,80 @@ final class FileCache implements CacheInterface
     }
 
     /**
+     * Atomically increment a numeric value.
+     *
+     * Uses a dedicated *.lock sidecar file so the exclusive lock is held on a
+     * stable inode. Locking the data file directly suffers from a TOCTOU: if the
+     * data file is deleted between fopen() and flock(), the lock is on a deleted
+     * inode and subsequent writes go to a ghost file that is never accessible by
+     * name again.
+     */
+    public function increment(string $key, int $step = 1, ?int $ttl = null): int|false
+    {
+        $file = $this->getFilePath($key);
+        $lockFile = $file . '.lock';
+        $dir = dirname($file);
+
+        if (!is_dir($dir) && !@mkdir($dir, 0o755, true) && !is_dir($dir)) {
+            return false;
+        }
+
+        // Acquire an exclusive lock on the sidecar lock file.
+        // The lock file is never deleted, so its inode is always stable.
+        $lockFh = fopen($lockFile, 'c');
+        if ($lockFh === false) {
+            return false;
+        }
+
+        if (!flock($lockFh, LOCK_EX)) {
+            fclose($lockFh);
+            return false;
+        }
+
+        try {
+            // Read the data file while holding the lock
+            $content = file_exists($file) ? file_get_contents($file) : false;
+            $data = ($content !== false && $content !== '') ? json_decode($content, true) : null;
+
+            $expires = null;
+            if (is_array($data) && isset($data['expires'], $data['value'])) {
+                if ($data['expires'] !== null && $data['expires'] < time()) {
+                    $data = null; // Expired — start fresh
+                } else {
+                    $expires = $data['expires'];
+                }
+            }
+
+            $current = is_array($data) ? (int) ($data['value'] ?? 0) : 0;
+            $newValue = $current + $step;
+
+            if ($expires === null) {
+                $expires = $ttl !== null ? time() + $ttl : null;
+            }
+
+            $newData = json_encode(
+                ['value' => $newValue, 'expires' => $expires],
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES
+            );
+
+            file_put_contents($file, $newData, LOCK_EX);
+        } finally {
+            flock($lockFh, LOCK_UN);
+            fclose($lockFh);
+        }
+
+        return $newValue;
+    }
+
+    /**
      * Remove expired cache files.
      */
     public function gc(): int
     {
         $count = 0;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($this->path, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::LEAVES_ONLY
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($this->path, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
         );
 
         foreach ($iterator as $file) {
@@ -144,8 +218,16 @@ final class FileCache implements CacheInterface
                 $content = file_get_contents($file->getPathname());
                 if ($content !== false) {
                     $data = json_decode($content, true);
-                    if (is_array($data) && isset($data['expires']) && $data['expires'] < time()) {
-                        unlink($file->getPathname());
+                    // Only GC entries with a non-null expiry that is in the past.
+                    // Entries with null expires are stored forever and must not be collected.
+                    if (is_array($data) && array_key_exists('expires', $data)
+                        && $data['expires'] !== null && $data['expires'] < time()) {
+                        @unlink($file->getPathname());
+                        // Also clean up sidecar lock file if present
+                        $lockFile = $file->getPathname() . '.lock';
+                        if (file_exists($lockFile)) {
+                            @unlink($lockFile);
+                        }
                         $count++;
                     }
                 }
@@ -169,9 +251,9 @@ final class FileCache implements CacheInterface
             return;
         }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
         );
 
         foreach ($iterator as $file) {

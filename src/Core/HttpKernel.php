@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace Fw\Core;
 
 use Fw\Async\EventLoop;
+use Fw\Auth\ApiToken;
+use Fw\Auth\EmailVerification;
+use Fw\Auth\Gate;
+use Fw\Auth\PasswordReset;
 use Fw\Cache\CacheInterface;
+use Fw\Model\Model;
 use Fw\Events\EventDispatcher;
 use Fw\Lifecycle\Component;
 use Fw\Lifecycle\RequestFiber;
 use Fw\Middleware\Pipeline;
-use Fw\Support\ResettableInterface;
-use Fw\Core\RouteMatch;
+use RuntimeException;
+use Throwable;
 
 final class HttpKernel
 {
     private bool $debug;
+
     private array $globalMiddleware;
 
     public function __construct(
@@ -38,7 +44,7 @@ final class HttpKernel
     {
         // State Integrity Check: Ensure no context leaked from previous request
         if (RequestContext::current() !== null) {
-            throw new \RuntimeException('State Leak Detected');
+            throw new RuntimeException('State Leak Detected');
         }
 
         // Early cache check
@@ -59,33 +65,40 @@ final class HttpKernel
             $routeResult = $this->router->dispatch($request->method, $request->uri);
 
             if ($routeResult->isErr()) {
-                return $this->errorHandler->createRoutingResponse($routeResult->getError(), $request);
+                $response = $this->errorHandler->createRoutingResponse($routeResult->getError(), $request);
+            } else {
+                /** @var RouteMatch $match */
+                $match = $routeResult->getValue();
+                $context->setRouteMatch($match);
+
+                // Execute pipeline
+                $response = $this->executePipeline($request, $match);
+
+                // Cache for guests
+                if ($cacheKey !== null) {
+                    $this->cacheGuestResponse($cacheKey, $response->getBody());
+                }
             }
 
-            /** @var RouteMatch $match */
-            $match = $routeResult->getValue();
-            $context->setRouteMatch($match);
-
-            // Execute pipeline
-            $response = $this->executePipeline($request, $match);
-
-            if ($this->debug) {
-                $this->events->dispatch(new ResponseSending($response));
-            }
-
-            // Cache for guests
-            if ($cacheKey !== null) {
-                $this->cacheGuestResponse($cacheKey, $response->getBody());
-            }
-
-            return $response;
-
-        } catch (\Throwable $e) {
-            return $this->errorHandler->createExceptionResponse($e, $request);
+        } catch (Throwable $e) {
+            $response = $this->errorHandler->createExceptionResponse($e, $request);
         } finally {
             $this->resetState();
             RequestContext::clear();
         }
+
+        // Handle flash data from response (satisfies pure response object requirement)
+        $flash = $response->getFlash();
+        if ($flash !== []) {
+            $this->app->initSession();
+            $_SESSION['_flash'] = array_merge($_SESSION['_flash'] ?? [], $flash);
+        }
+
+        if ($this->debug) {
+            $this->events->dispatch(new ResponseSending($response));
+        }
+
+        return $response;
     }
 
     /**
@@ -96,6 +109,15 @@ final class HttpKernel
         foreach ($this->container->getResettables() as $resettable) {
             $resettable->reset();
         }
+
+        // Flush static caches that are not safe to persist between requests in
+        // worker mode (FrankenPHP). Both use static properties intentionally
+        // scoped to the config lifetime, but the config itself may change.
+        Gate::flushCache();
+        ApiToken::resetConfig();
+        EmailVerification::resetConnection();
+        PasswordReset::resetConnection();
+        Model::resetStrictMode();
 
         // Also flush the fiber-local container instances to prevent memory accumulation
         $this->container->flush();
@@ -157,16 +179,16 @@ final class HttpKernel
 
         $path = strtolower($parsed['path'] ?? '/');
 
-        // Normalize and sort query string
+        // Hash the raw query string after sorting its key=value pairs alphabetically.
+        // Using the raw string (not parse_str + rebuild) preserves array params like
+        // ?ids[]=1&ids[]=2 which parse_str collapses and http_build_query re-orders,
+        // causing different URLs to share the same cache key.
         $query = '';
         if (isset($parsed['query']) && $parsed['query'] !== '') {
-            parse_str($parsed['query'], $params);
-            $params = array_filter($params, fn($v) => $v !== '' && $v !== null && !is_array($v));
-            ksort($params);
-
-            if ($params !== []) {
-                $query = '?' . http_build_query($params);
-            }
+            $pairs = explode('&', $parsed['query']);
+            $pairs = array_filter($pairs, fn ($p) => $p !== '');
+            sort($pairs); // stable sort; normalises key ordering across browsers
+            $query = '?' . implode('&', $pairs);
         }
 
         return $path . $query;
@@ -214,7 +236,7 @@ final class HttpKernel
         };
 
         // Run through middleware pipeline
-        $output = (new Pipeline($this->app))
+        $output = new Pipeline($this->app)
             ->through($middleware)
             ->then($destination, $request);
 
@@ -262,7 +284,7 @@ final class HttpKernel
 
         while (!$fiber->isCompleted()) {
             $loop->tick();
-            if (!$fiber->isCompleted() && $loop->getDeferredCount() === 0 && 
+            if (!$fiber->isCompleted() && $loop->getDeferredCount() === 0 &&
                 $loop->getReadStreamCount() === 0 && $loop->getWriteStreamCount() === 0 &&
                 $loop->getTimerCount() === 0) {
                 break;
@@ -296,7 +318,7 @@ final class HttpKernel
             return $handler;
         }
 
-        throw new \RuntimeException('Invalid route handler');
+        throw new RuntimeException('Invalid route handler');
     }
 
     /**

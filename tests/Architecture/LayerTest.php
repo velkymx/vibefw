@@ -199,6 +199,8 @@ final class LayerTest extends TestCase
         // Allowed circular dependencies (by design)
         $allowedCircular = [
             ['Database', 'Model'], // ORM pattern requires this
+            ['Core', 'Model'],     // HttpKernel resets Model static state; Model uses Core\Config, Core\Container
+            ['Core', 'Auth'],      // HttpKernel resets Auth static state; Auth uses Core\RequestContext
         ];
 
         $srcPath = self::BASE_PATH . 'src';

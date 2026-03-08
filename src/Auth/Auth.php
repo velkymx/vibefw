@@ -6,6 +6,7 @@ namespace Fw\Auth;
 
 use App\Models\User;
 use Fw\Core\RequestContext;
+use RuntimeException;
 
 /**
  * Authentication manager.
@@ -33,6 +34,11 @@ final class Auth
      * 64 hex characters (256 bits) matching SHA256 output.
      */
     private const string DUMMY_SHA256_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
+
+    /**
+     * Minimum required length for APP_KEY (32 bytes = 64 hex chars or 44 base64 chars).
+     */
+    private const int MIN_KEY_LENGTH = 32;
 
     /**
      * Attempt to authenticate a user with credentials.
@@ -86,30 +92,19 @@ final class Auth
     }
 
     /**
-     * Regenerate the CSRF token.
-     *
-     * Called on login to prevent CSRF token fixation attacks.
-     */
-    private static function regenerateCsrfToken(): void
-    {
-        // Generate new CSRF token - this invalidates any pre-auth CSRF tokens
-        $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
-    }
-
-    /**
      * Log out the current user.
      */
     public static function logout(): void
     {
-        self::clearContextUser();
-
-        unset($_SESSION[self::SESSION_KEY]);
-
+        // Clear remember token BEFORE clearing the context user — clearRememberToken()
+        // calls self::user() internally and will return null if context is gone first.
         if (isset($_COOKIE[self::REMEMBER_COOKIE])) {
             self::clearRememberToken();
-            setcookie(self::REMEMBER_COOKIE, '', time() - 3600, '/', '', false, true);
+            setcookie(self::REMEMBER_COOKIE, '', time() - 3600, '/', '', self::isHttps(), true);
         }
 
+        self::clearContextUser();
+        unset($_SESSION[self::SESSION_KEY]);
         session_regenerate_id(true);
     }
 
@@ -195,6 +190,17 @@ final class Auth
     }
 
     /**
+     * Regenerate the CSRF token.
+     *
+     * Called on login to prevent CSRF token fixation attacks.
+     */
+    private static function regenerateCsrfToken(): void
+    {
+        // Generate new CSRF token - this invalidates any pre-auth CSRF tokens
+        $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    /**
      * Get user from RequestContext (request-scoped).
      */
     private static function getContextUser(): ?User
@@ -225,28 +231,23 @@ final class Auth
     }
 
     /**
-     * Minimum required length for APP_KEY (32 bytes = 64 hex chars or 44 base64 chars).
-     */
-    private const int MIN_KEY_LENGTH = 32;
-
-    /**
      * Get the secret key for cookie signing.
      *
-     * @throws \RuntimeException If APP_KEY is missing or has insufficient entropy
+     * @throws RuntimeException If APP_KEY is missing or has insufficient entropy
      */
     private static function getCookieSecret(): string
     {
         $secret = $_ENV['APP_KEY'] ?? getenv('APP_KEY');
 
         if ($secret === false || $secret === '') {
-            throw new \RuntimeException('APP_KEY environment variable must be set for cookie signing');
+            throw new RuntimeException('APP_KEY environment variable must be set for cookie signing');
         }
 
         // Validate key has sufficient entropy
         // A proper key should be at least 32 bytes (64 hex chars or 44 base64 chars)
         $keyLength = strlen($secret);
         if ($keyLength < self::MIN_KEY_LENGTH) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "APP_KEY is too short ({$keyLength} chars). " .
                 "Must be at least " . self::MIN_KEY_LENGTH . " characters. " .
                 "Generate with: php -r \"echo bin2hex(random_bytes(32));\""
@@ -297,7 +298,7 @@ final class Auth
             time() + self::REMEMBER_DURATION,
             '/',
             '',
-            false,
+            self::isHttps(),
             true
         );
     }
@@ -316,7 +317,7 @@ final class Auth
         // Verify HMAC signature
         try {
             $expectedSignature = hash_hmac('sha256', $cookieValue, self::getCookieSecret());
-        } catch (\RuntimeException) {
+        } catch (RuntimeException) {
             return null;
         }
 
@@ -333,6 +334,16 @@ final class Auth
 
         [$userId, $token] = $parts;
         $hashedToken = hash('sha256', $token);
+
+        // Reject non-numeric or non-positive user IDs before casting to prevent
+        // integer overflow tricks on 32-bit environments and reject garbage cookies.
+        if (!ctype_digit($userId) || $userId === '0') {
+            // Still do the dummy comparison so timing is constant
+            // @phpstan-ignore function.resultUnused
+            $_ = hash_equals(self::DUMMY_SHA256_HASH, $hashedToken);
+            return null;
+        }
+
         $userOption = User::find((int) $userId);
 
         if ($userOption->isNone()) {
@@ -352,7 +363,25 @@ final class Auth
             return null;
         }
 
+        // Rotate the remember token after successful use to prevent replay attacks.
+        // The old token is invalidated and a fresh one is issued.
+        self::setRememberToken($user);
+
         return $user;
+    }
+
+    private static function isHttps(): bool
+    {
+        // Prefer the Request object when available — it honours trusted-proxy
+        // config and checks HTTP_X_FORWARDED_PROTO for SSL-terminating load balancers.
+        $ctx = RequestContext::current();
+        if ($ctx !== null) {
+            return $ctx->getRequest()->isSecure();
+        }
+
+        // Fallback for CLI / non-HTTP contexts (e.g. queue workers running Auth).
+        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
     }
 
     private static function clearRememberToken(): void

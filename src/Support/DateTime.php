@@ -8,6 +8,7 @@ use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
+use Exception;
 use InvalidArgumentException;
 use JsonSerializable;
 use Stringable;
@@ -53,6 +54,11 @@ final readonly class DateTime implements Stringable, JsonSerializable
         public DateTimeImmutable $value
     ) {}
 
+    public function __toString(): string
+    {
+        return $this->toDateTimeString();
+    }
+
     // ========================================
     // FACTORY METHODS
     // ========================================
@@ -74,7 +80,7 @@ final readonly class DateTime implements Stringable, JsonSerializable
     {
         try {
             return new self(new DateTimeImmutable($datetime, $timezone));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw new InvalidArgumentException("Cannot parse datetime: {$datetime}", 0, $e);
         }
     }
@@ -105,7 +111,7 @@ final readonly class DateTime implements Stringable, JsonSerializable
         int $second = 0,
         ?DateTimeZone $timezone = null
     ): self {
-        $datetime = (new DateTimeImmutable('now', $timezone))
+        $datetime = new DateTimeImmutable('now', $timezone)
             ->setDate($year, $month, $day)
             ->setTime($hour, $minute, $second);
 
@@ -771,11 +777,6 @@ final readonly class DateTime implements Stringable, JsonSerializable
     public function jsonSerialize(): string
     {
         return $this->toIso8601();
-    }
-
-    public function __toString(): string
-    {
-        return $this->toDateTimeString();
     }
 
     // ========================================

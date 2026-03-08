@@ -4,20 +4,29 @@ declare(strict_types=1);
 
 namespace Fw\Database;
 
+use InvalidArgumentException;
+use LogicException;
 use PDO;
 use PDOStatement;
+use Throwable;
 
 final class Connection
 {
     private static ?Connection $instance = null;
+
     private static array $config = [];
 
-    private PDO $pdo;
-    private int $transactionLevel = 0;
-    private array $queryLog = [];
-    private bool $logging = false;
     public private(set) string $driver;
+
     public private(set) string $connectionId;
+
+    private PDO $pdo;
+
+    private int $transactionLevel = 0;
+
+    private array $queryLog = [];
+
+    private bool $logging = false;
 
     /**
      * Optional callback for recording queries (breaks circular dependency with Core).
@@ -39,7 +48,7 @@ final class Connection
             'mysql' => "mysql:host=$host;port=$port;dbname=$database;charset=$charset",
             'pgsql' => "pgsql:host=$host;port=$port;dbname=$database",
             'sqlite' => "sqlite:$database",
-            default => throw new \InvalidArgumentException("Unsupported driver: {$this->driver}"),
+            default => throw new InvalidArgumentException("Unsupported driver: {$this->driver}"),
         };
 
         $options = [
@@ -78,12 +87,12 @@ final class Connection
     {
         if ($config !== null) {
             if (self::$instance !== null && self::$config !== $config) {
-                throw new \LogicException('Connection config mismatch');
+                throw new LogicException('Connection config mismatch');
             }
             self::$config = $config;
         }
         if (self::$instance === null && self::$config === []) {
-            throw new \LogicException('Connection not configured');
+            throw new LogicException('Connection not configured');
         }
         return self::$instance ??= new self(self::$config);
     }
@@ -157,7 +166,7 @@ final class Connection
         $sql = sprintf(
             'INSERT INTO %s (%s) VALUES (%s)',
             $this->quoteIdentifier($table),
-            implode(', ', array_map(fn($c) => $this->quoteIdentifier($c), $columns)),
+            implode(', ', array_map(fn ($c) => $this->quoteIdentifier($c), $columns)),
             implode(', ', $placeholders)
         );
         $this->query($sql, array_values($data));
@@ -166,7 +175,8 @@ final class Connection
 
     public function update(string $table, array $data, array $where): int
     {
-        $set = []; $params = [];
+        $set = [];
+        $params = [];
         foreach ($data as $column => $value) {
             $set[] = $this->quoteIdentifier($column) . ' = ?';
             $params[] = $value;
@@ -187,7 +197,8 @@ final class Connection
 
     public function delete(string $table, array $where): int
     {
-        $whereParts = []; $params = [];
+        $whereParts = [];
+        $params = [];
         foreach ($where as $column => $value) {
             $whereParts[] = $this->quoteIdentifier($column) . ' = ?';
             $params[] = $value;
@@ -207,8 +218,14 @@ final class Connection
             $result = $callback($this);
             $this->commit();
             return $result;
-        } catch (\Throwable $e) {
-            $this->rollBack();
+        } catch (Throwable $e) {
+            try {
+                $this->rollBack();
+            } catch (Throwable $rollbackException) {
+                // Log the rollback failure but always re-throw the original exception
+                // so the caller knows what actually went wrong.
+                error_log('Transaction rollback failed: ' . $rollbackException->getMessage());
+            }
             throw $e;
         }
     }
@@ -226,6 +243,10 @@ final class Connection
 
     public function commit(): void
     {
+        if ($this->transactionLevel <= 0) {
+            throw new \LogicException('Cannot commit: no transaction is active.');
+        }
+
         $this->transactionLevel--;
         if ($this->transactionLevel === 0) {
             $this->pdo->commit();
@@ -237,6 +258,10 @@ final class Connection
 
     public function rollBack(): void
     {
+        if ($this->transactionLevel <= 0) {
+            throw new \LogicException('Cannot rollback: no transaction is active.');
+        }
+
         $this->transactionLevel--;
         if ($this->transactionLevel === 0) {
             $this->pdo->rollBack();
@@ -244,13 +269,6 @@ final class Connection
             $savepointName = $this->getSavepointName($this->transactionLevel);
             $this->pdo->exec("ROLLBACK TO SAVEPOINT {$savepointName}");
         }
-    }
-
-    private function getSavepointName(int $level): string
-    {
-        $safeConnectionId = preg_replace('/[^a-f0-9]/i', '', $this->connectionId);
-        $safeLevel = max(0, $level);
-        return "sp_{$safeConnectionId}_{$safeLevel}";
     }
 
     public function inTransaction(): bool
@@ -268,13 +286,17 @@ final class Connection
         return match ($this->driver) {
             'mysql' => '`' . str_replace('`', '``', $identifier) . '`',
             'sqlite', 'pgsql' => '"' . str_replace('"', '""', $identifier) . '"',
-            default => $identifier,
+            // Fail loudly for unknown drivers rather than returning a bare identifier,
+            // which would silently produce injection-vulnerable SQL.
+            default => throw new \RuntimeException(
+                "Cannot safely quote identifier for unsupported database driver '{$this->driver}'."
+            ),
         };
     }
 
     public function table(string $name): QueryBuilder
     {
-        return (new QueryBuilder($this))->table($name);
+        return new QueryBuilder($this)->table($name);
     }
 
     public function getPdo(): PDO
@@ -285,5 +307,12 @@ final class Connection
     public function getQueryLog(): array
     {
         return $this->queryLog;
+    }
+
+    private function getSavepointName(int $level): string
+    {
+        $safeConnectionId = preg_replace('/[^a-f0-9]/i', '', $this->connectionId);
+        $safeLevel = max(0, $level);
+        return "sp_{$safeConnectionId}_{$safeLevel}";
     }
 }

@@ -7,19 +7,13 @@ namespace Fw\Auth;
 use Fw\Database\Connection;
 use RuntimeException;
 
-final class PasswordReset
+final class EmailVerification
 {
-    private const string TABLE = 'password_resets';
-    private const int TOKEN_EXPIRY = 3600; // 1 hour
+    private const string TABLE = 'email_verifications';
+    private const int TOKEN_EXPIRY = 86400; // 24 hours
 
-    /**
-     * The database connection (set during bootstrap via setConnection()).
-     */
     private static ?Connection $connection = null;
 
-    /**
-     * Set the database connection for password resets.
-     */
     public static function setConnection(Connection $connection): void
     {
         self::$connection = $connection;
@@ -41,13 +35,13 @@ final class PasswordReset
 
         $db = self::db();
 
-        // Delete any existing tokens for this email
+        // Invalidate any existing token for this email before creating a new one.
+        // Unquoted table name works across MySQL, SQLite, and PostgreSQL.
         $db->query(
             'DELETE FROM ' . self::TABLE . ' WHERE email = ?',
             [$email]
         );
 
-        // Insert new token
         $db->insert(self::TABLE, [
             'email' => $email,
             'token' => $hashedToken,
@@ -63,7 +57,7 @@ final class PasswordReset
      */
     private const string DUMMY_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
-    public static function findByToken(string $token): ?array
+    public static function verify(string $token): ?string
     {
         $hashedToken = hash('sha256', $token);
 
@@ -72,7 +66,7 @@ final class PasswordReset
             [$hashedToken]
         );
 
-        // TIMING ATTACK MITIGATION: perform the same work regardless of
+        // TIMING ATTACK MITIGATION: perform hash comparison regardless of
         // whether the token was found, so response timing doesn't reveal
         // whether a valid token exists in the database.
         $storedHash = $result['token'] ?? self::DUMMY_HASH;
@@ -82,42 +76,35 @@ final class PasswordReset
             return null;
         }
 
-        // Check if token is expired
         $createdAt = strtotime($result['created_at']);
-
         if (time() - $createdAt > self::TOKEN_EXPIRY) {
-            self::deleteToken($token);
+            self::deleteByHash($hashedToken);
             return null;
         }
 
-        return $result;
+        // Consume the token immediately — verification links are single-use.
+        $email = $result['email'];
+        self::deleteByHash($hashedToken);
+
+        return $email;
     }
 
     public static function deleteToken(string $token): void
     {
-        $hashedToken = hash('sha256', $token);
+        self::deleteByHash(hash('sha256', $token));
+    }
 
+    private static function deleteByHash(string $hashedToken): void
+    {
         self::db()->query(
             'DELETE FROM ' . self::TABLE . ' WHERE token = ?',
             [$hashedToken]
         );
     }
 
-    public static function deleteExpired(): int
-    {
-        $expiry = date('Y-m-d H:i:s', time() - self::TOKEN_EXPIRY);
-
-        return self::db()->query(
-            'DELETE FROM ' . self::TABLE . ' WHERE created_at < ?',
-            [$expiry]
-        )->rowCount();
-    }
-
     private static function db(): Connection
     {
         return self::$connection
-            ?? throw new RuntimeException(
-                'No database connection set. Call PasswordReset::setConnection() during application bootstrap.'
-            );
+            ?? throw new RuntimeException('No database connection set for EmailVerification.');
     }
 }

@@ -5,11 +5,17 @@ declare(strict_types=1);
 namespace Fw\Core;
 
 use Closure;
-use InvalidArgumentException;
+use Fiber;
 use Fw\Support\Option;
 use Fw\Support\ResettableInterface;
+use InvalidArgumentException;
 use ReflectionClass;
+use ReflectionFunction;
+use ReflectionMethod;
 use ReflectionNamedType;
+use stdClass;
+use Throwable;
+use WeakMap;
 
 /**
  * Simple dependency injection container.
@@ -27,11 +33,19 @@ final class Container
     private array $bindings = [];
 
     /**
-     * Singleton instances.
-     * In concurrent mode, these are scoped to the current Fiber.
-     * @var array<int|string, array<class-string, object>>
+     * Singleton instances scoped to the current Fiber.
+     * Uses WeakMap<Fiber, array> so instances are automatically GC'd when the
+     * Fiber is collected, preventing spl_object_id reuse from leaking state
+     * between fibers and avoiding memory accumulation in worker mode.
+     * @var WeakMap<Fiber, array<class-string, object>>|null
      */
-    private array $instances = [];
+    private ?WeakMap $fiberInstances = null;
+
+    /**
+     * Singleton instances for the global (non-Fiber) context.
+     * @var array<class-string, object>
+     */
+    private array $mainInstances = [];
 
     /**
      * Global instances (shared across all Fibers).
@@ -75,8 +89,8 @@ final class Container
         if (self::$initializing) {
             $spins = 0;
             while (self::$initializing && self::$instance === null && $spins < 1000) {
-                if (\Fiber::getCurrent() !== null) {
-                    \Fiber::suspend();
+                if (Fiber::getCurrent() !== null) {
+                    Fiber::suspend();
                 } else {
                     usleep(100);
                 }
@@ -85,6 +99,14 @@ final class Container
             if (self::$instance !== null) {
                 return self::$instance;
             }
+            // If we exhausted the spin budget and still have no instance, the
+            // initialising fiber likely crashed. Throw rather than silently
+            // creating a second, partially-configured container.
+            throw new \RuntimeException(
+                'Container initialisation deadlock: another context started initialising ' .
+                'the container but did not complete within the spin budget. ' .
+                'This usually means the bootstrapping Fiber threw an uncaught exception.'
+            );
         }
 
         self::$initializing = true;
@@ -145,8 +167,7 @@ final class Container
             $this->globalInstances[$abstract] = $instance;
             $this->resolvedGlobalInstances[$abstract] = $instance;
         } else {
-            $contextKey = $this->getContextKey();
-            $this->instances[$contextKey][$abstract] = $instance;
+            $this->setFiberInstance($abstract, $instance);
         }
         return $this;
     }
@@ -158,7 +179,7 @@ final class Container
     {
         return isset($this->resolvedGlobalInstances[$abstract]) ||
                isset($this->globalInstances[$abstract]) ||
-               isset($this->instances[$this->getContextKey()][$abstract]) ||
+               $this->hasFiberInstance($abstract) ||
                isset($this->bindings[$abstract]);
     }
 
@@ -181,9 +202,9 @@ final class Container
         }
 
         // 3. Check Fiber-local instances
-        $contextKey = $this->getContextKey();
-        if (isset($this->instances[$contextKey][$abstract])) {
-            return $this->instances[$contextKey][$abstract];
+        $fiberInstance = $this->getFiberInstance($abstract);
+        if ($fiberInstance !== null) {
+            return $fiberInstance;
         }
 
         // Resolve the concrete binding
@@ -204,135 +225,36 @@ final class Container
                 $this->globalInstances[$abstract] = $object;
                 $this->resolvedGlobalInstances[$abstract] = $object;
             } else {
-                $this->instances[$contextKey][$abstract] = $object;
+                $this->setFiberInstance($abstract, $object);
             }
         }
 
         return $object;
     }
 
-    private function getContextKey(): int|string
-    {
-        $fiber = \Fiber::getCurrent();
-        return $fiber ? spl_object_id($fiber) : 'global';
-    }
-
     public function tryGet(string $abstract): Option
     {
         try {
             return Option::some($this->get($abstract));
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return Option::none();
-        }
-    }
-
-    private function buildClass(string $concrete): object
-    {
-        $params = $this->getReflectionCache($concrete);
-        if ($params === null) {
-            return new $concrete();
-        }
-
-        $dependencies = [];
-        foreach ($params as $param) {
-            if ($param['type'] === null || $param['builtin']) {
-                if ($param['hasDefault']) {
-                    $dependencies[] = $param['default'];
-                    continue;
-                }
-                throw new InvalidArgumentException("Cannot resolve parameter \${$param['name']} in {$concrete}");
-            }
-
-            try {
-                $dependencies[] = $this->get($param['type']);
-            } catch (\Throwable $e) {
-                if ($param['hasDefault']) {
-                    $dependencies[] = $param['default'];
-                } elseif ($param['nullable']) {
-                    $dependencies[] = null;
-                } else {
-                    throw $e;
-                }
-            }
-        }
-
-        return new $concrete(...$dependencies);
-    }
-
-    private function getReflectionCache(string $concrete): ?array
-    {
-        if (array_key_exists($concrete, $this->reflectionCache)) {
-            return $this->reflectionCache[$concrete];
-        }
-
-        $initToken = spl_object_id(new \stdClass());
-        while (true) {
-            if (array_key_exists($concrete, $this->reflectionCache)) {
-                return $this->reflectionCache[$concrete];
-            }
-            if (!isset($this->reflectionInitializing[$concrete])) {
-                $this->reflectionInitializing[$concrete] = $initToken;
-                break;
-            }
-            if (\Fiber::getCurrent() !== null) {
-                \Fiber::suspend();
-            } else {
-                usleep(100);
-            }
-        }
-
-        try {
-            $reflector = new ReflectionClass($concrete);
-            if (!$reflector->isInstantiable()) {
-                throw new InvalidArgumentException("Class {$concrete} is not instantiable");
-            }
-
-            $constructor = $reflector->getConstructor();
-            if ($constructor === null) {
-                $this->reflectionCache[$concrete] = null;
-                return null;
-            }
-
-            $params = [];
-            foreach ($constructor->getParameters() as $parameter) {
-                $type = $parameter->getType();
-                $paramInfo = [
-                    'name' => $parameter->getName(),
-                    'type' => null,
-                    'builtin' => false,
-                    'nullable' => false,
-                    'hasDefault' => $parameter->isDefaultValueAvailable(),
-                    'default' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
-                ];
-
-                if ($type instanceof ReflectionNamedType) {
-                    $paramInfo['type'] = $type->getName();
-                    $paramInfo['builtin'] = $type->isBuiltin();
-                    $paramInfo['nullable'] = $type->allowsNull();
-                }
-                $params[] = $paramInfo;
-            }
-
-            $this->reflectionCache[$concrete] = $params;
-            return $params;
-        } finally {
-            if (($this->reflectionInitializing[$concrete] ?? null) === $initToken) {
-                unset($this->reflectionInitializing[$concrete]);
-            }
         }
     }
 
     public function call(callable|array $callback, array $parameters = []): mixed
     {
         if (is_array($callback)) {
+            if (count($callback) !== 2 || !is_string($callback[1])) {
+                throw new InvalidArgumentException('Array callback must be [class-or-object, method-name]');
+            }
             [$class, $method] = $callback;
             if (is_string($class)) {
                 $class = $this->get($class);
             }
-            $reflector = new \ReflectionMethod($class, $method);
+            $reflector = new ReflectionMethod($class, $method);
             $callback = [$class, $method];
         } else {
-            $reflector = new \ReflectionFunction($callback);
+            $reflector = new ReflectionFunction($callback);
         }
 
         $dependencies = [];
@@ -396,8 +318,12 @@ final class Container
 
     public function flush(int|string|null $contextKey = null): void
     {
-        $contextKey ??= $this->getContextKey();
-        unset($this->instances[$contextKey]);
+        $fiber = Fiber::getCurrent();
+        if ($fiber !== null && $this->fiberInstances !== null) {
+            unset($this->fiberInstances[$fiber]);
+        } else {
+            $this->mainInstances = [];
+        }
     }
 
     public function flushGlobal(): void
@@ -408,7 +334,8 @@ final class Container
 
     public function flushAll(): void
     {
-        $this->instances = [];
+        $this->fiberInstances = null;
+        $this->mainInstances = [];
     }
 
     public function clearReflectionCache(): void
@@ -426,11 +353,18 @@ final class Container
 
     public function getResettables(): array
     {
-        $contextKey = $this->getContextKey();
         $resettables = [];
 
-        if (isset($this->instances[$contextKey])) {
-            foreach ($this->instances[$contextKey] as $instance) {
+        $fiber = Fiber::getCurrent();
+        $fiberData = null;
+        if ($fiber !== null && $this->fiberInstances !== null && isset($this->fiberInstances[$fiber])) {
+            $fiberData = $this->fiberInstances[$fiber];
+        } elseif ($fiber === null) {
+            $fiberData = $this->mainInstances;
+        }
+
+        if ($fiberData !== null) {
+            foreach ($fiberData as $instance) {
                 if ($instance instanceof ResettableInterface) {
                     $resettables[] = $instance;
                 }
@@ -448,6 +382,142 @@ final class Container
 
     public function resolver(): Closure
     {
-        return fn(string $class) => $this->get($class);
+        return fn (string $class) => $this->get($class);
+    }
+
+    private function getFiberInstance(string $abstract): ?object
+    {
+        $fiber = Fiber::getCurrent();
+        if ($fiber !== null) {
+            if ($this->fiberInstances !== null && isset($this->fiberInstances[$fiber][$abstract])) {
+                return $this->fiberInstances[$fiber][$abstract];
+            }
+            return null;
+        }
+        return $this->mainInstances[$abstract] ?? null;
+    }
+
+    private function setFiberInstance(string $abstract, object $instance): void
+    {
+        $fiber = Fiber::getCurrent();
+        if ($fiber !== null) {
+            $this->fiberInstances ??= new WeakMap();
+            if (!isset($this->fiberInstances[$fiber])) {
+                $this->fiberInstances[$fiber] = [];
+            }
+            $data = $this->fiberInstances[$fiber];
+            $data[$abstract] = $instance;
+            $this->fiberInstances[$fiber] = $data;
+        } else {
+            $this->mainInstances[$abstract] = $instance;
+        }
+    }
+
+    private function hasFiberInstance(string $abstract): bool
+    {
+        return $this->getFiberInstance($abstract) !== null;
+    }
+
+    private function buildClass(string $concrete): object
+    {
+        $params = $this->getReflectionCache($concrete);
+        if ($params === null) {
+            return new $concrete();
+        }
+
+        $dependencies = [];
+        foreach ($params as $param) {
+            if ($param['type'] === null || $param['builtin']) {
+                if ($param['hasDefault']) {
+                    $dependencies[] = $param['default'];
+                    continue;
+                }
+                throw new InvalidArgumentException("Cannot resolve parameter \${$param['name']} in {$concrete}");
+            }
+
+            try {
+                $dependencies[] = $this->get($param['type']);
+            } catch (Throwable $e) {
+                if ($param['hasDefault']) {
+                    $dependencies[] = $param['default'];
+                } elseif ($param['nullable']) {
+                    $dependencies[] = null;
+                } else {
+                    throw $e;
+                }
+            }
+        }
+
+        return new $concrete(...$dependencies);
+    }
+
+    private function getReflectionCache(string $concrete): ?array
+    {
+        if (array_key_exists($concrete, $this->reflectionCache)) {
+            return $this->reflectionCache[$concrete];
+        }
+
+        $initToken = spl_object_id(new stdClass());
+        $spins = 0;
+        while (true) {
+            if (array_key_exists($concrete, $this->reflectionCache)) {
+                return $this->reflectionCache[$concrete];
+            }
+            if (!isset($this->reflectionInitializing[$concrete])) {
+                $this->reflectionInitializing[$concrete] = $initToken;
+                break;
+            }
+            if (++$spins > 1000) {
+                throw new \RuntimeException(
+                    "Container reflection deadlock: another context started reflecting {$concrete} but did not complete. " .
+                    'This usually means the initialising Fiber threw an uncaught exception.'
+                );
+            }
+            if (Fiber::getCurrent() !== null) {
+                Fiber::suspend();
+            } else {
+                usleep(100);
+            }
+        }
+
+        try {
+            $reflector = new ReflectionClass($concrete);
+            if (!$reflector->isInstantiable()) {
+                throw new InvalidArgumentException("Class {$concrete} is not instantiable");
+            }
+
+            $constructor = $reflector->getConstructor();
+            if ($constructor === null) {
+                $this->reflectionCache[$concrete] = null;
+                return null;
+            }
+
+            $params = [];
+            foreach ($constructor->getParameters() as $parameter) {
+                $type = $parameter->getType();
+                $paramInfo = [
+                    'name' => $parameter->getName(),
+                    'type' => null,
+                    'builtin' => false,
+                    'nullable' => false,
+                    'hasDefault' => $parameter->isDefaultValueAvailable(),
+                    'default' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
+                ];
+
+                if ($type instanceof ReflectionNamedType) {
+                    $paramInfo['type'] = $type->getName();
+                    $paramInfo['builtin'] = $type->isBuiltin();
+                    $paramInfo['nullable'] = $type->allowsNull();
+                }
+                $params[] = $paramInfo;
+            }
+
+            $this->reflectionCache[$concrete] = $params;
+            return $params;
+        } finally {
+            if (($this->reflectionInitializing[$concrete] ?? null) === $initToken) {
+                unset($this->reflectionInitializing[$concrete]);
+            }
+        }
     }
 }

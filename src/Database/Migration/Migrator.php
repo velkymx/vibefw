@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Fw\Database\Migration;
 
 use Fw\Database\Connection;
+use RuntimeException;
+use Throwable;
 
 final class Migrator
 {
     private Connection $db;
+
     private string $migrationsPath;
+
     private string $table = 'migrations';
 
     public function __construct(Connection $db, string $migrationsPath)
@@ -17,11 +21,6 @@ final class Migrator
         $this->db = $db;
         $this->migrationsPath = rtrim($migrationsPath, '/');
         $this->ensureMigrationsTable();
-    }
-
-    private function quoteTable(): string
-    {
-        return $this->db->quoteIdentifier($this->table);
     }
 
     public function ensureMigrationsTable(): void
@@ -51,7 +50,7 @@ final class Migrator
                     executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 SQL,
-            default => throw new \RuntimeException("Unsupported driver: {$this->db->driver}"),
+            default => throw new RuntimeException("Unsupported driver: {$this->db->driver}"),
         };
 
         $this->db->getPdo()->exec($sql);
@@ -126,7 +125,7 @@ final class Migrator
             $name = pathinfo($file, PATHINFO_FILENAME);
             $status[] = [
                 'migration' => $name,
-                'status' => in_array($name, $ran) ? 'Ran' : 'Pending',
+                'status' => in_array($name, $ran, true) ? 'Ran' : 'Pending',
             ];
         }
 
@@ -156,7 +155,7 @@ final class Migrator
 
         foreach ($files as $file) {
             $name = pathinfo($file, PATHINFO_FILENAME);
-            if (!in_array($name, $ran)) {
+            if (!in_array($name, $ran, true)) {
                 $pending[] = $name;
             }
         }
@@ -174,6 +173,11 @@ final class Migrator
         return $this->run();
     }
 
+    private function quoteTable(): string
+    {
+        return $this->db->quoteIdentifier($this->table);
+    }
+
     private function getPendingMigrations(): array
     {
         $ran = $this->getRanMigrations();
@@ -182,7 +186,7 @@ final class Migrator
 
         foreach ($files as $file) {
             $name = pathinfo($file, PATHINFO_FILENAME);
-            if (!in_array($name, $ran)) {
+            if (!in_array($name, $ran, true)) {
                 $pending[] = $file;
             }
         }
@@ -258,7 +262,7 @@ final class Migrator
                 'migration' => $name,
                 'batch' => $batch,
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Migration failed - for MySQL, DDL changes can't be rolled back
             // The error will be thrown and the migration won't be recorded
             throw $e;
@@ -270,7 +274,7 @@ final class Migrator
         $file = $this->migrationsPath . '/' . $name . '.php';
 
         if (!file_exists($file)) {
-            throw new \RuntimeException("Migration file not found: $file");
+            throw new RuntimeException("Migration file not found: $file");
         }
 
         $migration = $this->resolveMigration($file);
@@ -283,20 +287,36 @@ final class Migrator
                 'DELETE FROM ' . $this->quoteTable() . ' WHERE migration = ?',
                 [$name]
             );
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             throw $e;
         }
     }
 
     private function resolveMigration(string $file): Migration
     {
-        require_once $file;
+        // Validate the file is within the migrations directory to prevent LFI
+        $realFile = realpath($file);
+        $realBase = realpath($this->migrationsPath);
+
+        if ($realFile === false || $realBase === false) {
+            throw new RuntimeException("Migration file not found: $file");
+        }
+
+        if (!str_starts_with($realFile, $realBase . DIRECTORY_SEPARATOR) && $realFile !== $realBase) {
+            throw new RuntimeException("Migration file outside migrations directory: $file");
+        }
+
+        if (!str_ends_with($realFile, '.php')) {
+            throw new RuntimeException("Migration must be a PHP file: $file");
+        }
+
+        require_once $realFile;
 
         $name = pathinfo($file, PATHINFO_FILENAME);
         $className = $this->getClassName($name);
 
         if (!class_exists($className)) {
-            throw new \RuntimeException("Migration class not found: $className in $file");
+            throw new RuntimeException("Migration class not found: $className in $file");
         }
 
         return new $className($this->db);

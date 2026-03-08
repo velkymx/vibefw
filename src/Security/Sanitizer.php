@@ -6,19 +6,55 @@ namespace Fw\Security;
 
 final class Sanitizer
 {
+    /**
+     * Unicode characters used for text direction/formatting attacks.
+     * These can be used to visually hide malicious content.
+     */
+    private const array UNICODE_CONTROL_CHARS = [
+        "\u{200B}", // Zero Width Space
+        "\u{200C}", // Zero Width Non-Joiner
+        "\u{200D}", // Zero Width Joiner
+        "\u{200E}", // Left-to-Right Mark
+        "\u{200F}", // Right-to-Left Mark
+        "\u{202A}", // Left-to-Right Embedding
+        "\u{202B}", // Right-to-Left Embedding
+        "\u{202C}", // Pop Directional Formatting
+        "\u{202D}", // Left-to-Right Override
+        "\u{202E}", // Right-to-Left Override (used in URL obfuscation)
+        "\u{2060}", // Word Joiner
+        "\u{2061}", // Function Application
+        "\u{2062}", // Invisible Times
+        "\u{2063}", // Invisible Separator
+        "\u{2064}", // Invisible Plus
+        "\u{FEFF}", // Zero Width No-Break Space (BOM)
+    ];
+
+    /**
+     * Dangerous URL schemes that must never be allowed.
+     * @var list<string>
+     */
+    private const array DANGEROUS_SCHEMES = [
+        'javascript',
+        'vbscript',
+        'data',
+        'file',
+        'blob',
+    ];
+
     public static function html(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
-    public static function stripTags(string $value, array $allowedTags = []): string
+    /**
+     * Strip all HTML tags. No allowlist — strip_tags with allowed tags
+     * is insecure because it passes through tag attributes unchanged
+     * (e.g. <a href="javascript:..."> survives with <a> allowed).
+     * If you need safe HTML, use an HTML purifier library.
+     */
+    public static function stripTags(string $value): string
     {
-        if (empty($allowedTags)) {
-            return strip_tags($value);
-        }
-
-        $allowed = implode('', array_map(fn($tag) => "<$tag>", $allowedTags));
-        return strip_tags($value, $allowed);
+        return strip_tags($value);
     }
 
     public static function alphanumeric(string $value): string
@@ -54,37 +90,25 @@ final class Sanitizer
      * Sanitize and validate a filesystem path.
      *
      * Returns the resolved real path if it exists, null otherwise.
-     * This is secure because it only returns paths that can be
-     * verified to exist on the filesystem.
      *
-     * @param string $value The path to sanitize
      * @param string|null $basePath Optional base directory to restrict paths to
-     * @return string|null The resolved real path, or null if invalid/not found
      */
     public static function path(string $value, ?string $basePath = null): ?string
     {
-        // Reject paths with obvious traversal attempts
         if (preg_match('/\.\.|[<>:"|?*\x00]/', $value)) {
             return null;
         }
 
-        // Attempt to resolve to real path - this is the only safe approach
         $realPath = realpath($value);
-
         if ($realPath === false) {
-            // Path doesn't exist or can't be resolved - reject it
-            // Never return unverified paths as they could bypass security
             return null;
         }
 
-        // If base path restriction is specified, verify the path is within it
         if ($basePath !== null) {
             $realBasePath = realpath($basePath);
             if ($realBasePath === false) {
                 return null;
             }
-
-            // Ensure the resolved path starts with the base path
             if (!str_starts_with($realPath, $realBasePath . DIRECTORY_SEPARATOR)
                 && $realPath !== $realBasePath) {
                 return null;
@@ -96,136 +120,68 @@ final class Sanitizer
 
     /**
      * Sanitize email address.
-     *
-     * Removes invalid characters and validates format.
-     * Returns empty string if invalid.
      */
     public static function email(string $value): string
     {
         $value = trim(strtolower($value));
-
-        // Remove characters not allowed in email addresses
         $value = preg_replace('/[^a-z0-9.!#$%&\'*+\/=?^_`{|}~@-]/i', '', $value) ?? '';
-
-        // Validate the result is a proper email
-        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            return '';
-        }
-
-        return $value;
+        return filter_var($value, FILTER_VALIDATE_EMAIL) ? $value : '';
     }
 
     /**
-     * Dangerous URL schemes that must never be allowed.
-     * @var list<string>
-     */
-    private const DANGEROUS_SCHEMES = [
-        'javascript',
-        'vbscript',
-        'data',
-        'file',
-        'blob',
-    ];
-
-    /**
-     * Unicode characters used for text direction/formatting attacks.
-     * These can be used to visually hide malicious content.
-     */
-    private const array UNICODE_CONTROL_CHARS = [
-        "\u{200B}", // Zero Width Space
-        "\u{200C}", // Zero Width Non-Joiner
-        "\u{200D}", // Zero Width Joiner
-        "\u{200E}", // Left-to-Right Mark
-        "\u{200F}", // Right-to-Left Mark
-        "\u{202A}", // Left-to-Right Embedding
-        "\u{202B}", // Right-to-Left Embedding
-        "\u{202C}", // Pop Directional Formatting
-        "\u{202D}", // Left-to-Right Override
-        "\u{202E}", // Right-to-Left Override (used in URL obfuscation)
-        "\u{2060}", // Word Joiner
-        "\u{2061}", // Function Application
-        "\u{2062}", // Invisible Times
-        "\u{2063}", // Invisible Separator
-        "\u{2064}", // Invisible Plus
-        "\u{FEFF}", // Zero Width No-Break Space (BOM)
-    ];
-
-    /**
-     * Sanitize URL.
-     *
-     * Only allows http/https URLs. Returns empty string if invalid.
-     * Explicitly rejects dangerous schemes like javascript:, data:, etc.
+     * Sanitize URL. Only allows http/https.
      */
     public static function url(string $value): string
     {
-        $value = trim($value);
-
-        // Remove ASCII control characters, null bytes, and whitespace
-        $value = preg_replace('/[\x00-\x1F\x7F\s]/', '', $value) ?? '';
-
-        // Remove Unicode control characters used for text direction attacks
-        // These can visually hide malicious schemes like javascript:
+        $value = preg_replace('/[\x00-\x1F\x7F\s]/', '', trim($value)) ?? '';
         $value = str_replace(self::UNICODE_CONTROL_CHARS, '', $value);
 
-        // Normalize to lowercase for scheme checking (URLs are case-insensitive in scheme)
-        $lowercaseValue = mb_strtolower($value);
-
-        // Explicitly reject dangerous schemes (defense-in-depth)
+        $lower = mb_strtolower($value);
         foreach (self::DANGEROUS_SCHEMES as $scheme) {
-            if (str_starts_with($lowercaseValue, $scheme . ':')) {
+            if (str_starts_with($lower, $scheme . ':')) {
                 return '';
             }
         }
 
-        // Must start with http:// or https:// (case-insensitive via the 'i' flag)
+        // Block protocol-relative URLs (//attacker.com/evil)
+        if (str_starts_with($value, '//')) {
+            return '';
+        }
+
         if (!preg_match('/^https?:\/\//i', $value)) {
             return '';
         }
 
-        // Validate as URL using PHP's filter
         if (!filter_var($value, FILTER_VALIDATE_URL)) {
             return '';
         }
 
-        // Final check: parse the URL and verify scheme is http or https
         $parsed = parse_url($value);
         if ($parsed === false || !isset($parsed['scheme'])) {
             return '';
         }
 
         $scheme = mb_strtolower($parsed['scheme']);
-        if ($scheme !== 'http' && $scheme !== 'https') {
-            return '';
-        }
-
-        return $value;
+        return ($scheme === 'http' || $scheme === 'https') ? $value : '';
     }
 
     /**
      * Sanitize to integer.
      *
-     * Extracts numeric characters (and leading minus) and converts to int.
+     * Strips non-numeric characters (preserving a leading minus) and casts.
      */
     public static function int(mixed $value): int
     {
         if (is_int($value)) {
             return $value;
         }
-
-        $value = (string) $value;
-
-        // Extract optional minus sign and digits
-        if (preg_match('/^-?\d+/', preg_replace('/[^\d-]/', '', $value) ?? '', $matches)) {
-            return (int) $matches[0];
-        }
-
-        return 0;
+        return (int) preg_replace('/[^\d-]/', '', (string) $value);
     }
 
     /**
      * Sanitize to float.
      *
-     * Extracts numeric characters, decimal point, and leading minus.
+     * Strips non-numeric characters, preserving a leading minus and one decimal point.
      */
     public static function float(mixed $value): float
     {
@@ -233,18 +189,21 @@ final class Sanitizer
             return (float) $value;
         }
 
-        $value = (string) $value;
+        $str = (string) $value;
 
-        // Keep only digits, decimal point, and minus sign
-        $cleaned = preg_replace('/[^\d.\-]/', '', $value) ?? '';
-
-        // Handle multiple decimal points (keep only first)
-        $parts = explode('.', $cleaned, 3);
-        if (count($parts) > 2) {
-            $cleaned = $parts[0] . '.' . $parts[1];
+        // Use filter_var for proper validation first
+        $filtered = filter_var($str, FILTER_VALIDATE_FLOAT);
+        if ($filtered !== false) {
+            return $filtered;
         }
 
-        return (float) $cleaned;
+        // Fallback: strip non-numeric chars and try to extract a valid float
+        $cleaned = preg_replace('/[^\d.\-]/', '', $str) ?? '';
+        if ($cleaned !== '' && preg_match('/^-?\d+(?:\.\d+)?$/', $cleaned)) {
+            return (float) $cleaned;
+        }
+
+        return 0.0;
     }
 
     public static function bool(mixed $value): bool
@@ -252,27 +211,24 @@ final class Sanitizer
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
-    public static function trim(string $value): string
+    /**
+     * Collapse runs of whitespace into a single space and trim the result.
+     */
+    public static function collapseSpaces(string $value): string
     {
         return trim(preg_replace('/\s+/', ' ', $value) ?? '');
     }
 
     /**
-     * Safely decode JSON string.
+     * Decode a JSON string, returning null on any error.
      *
-     * Uses a reasonable depth limit to prevent billion laughs attacks.
-     *
-     * @param string $value JSON string
-     * @param int $maxDepth Maximum nesting depth (default 32)
+     * @param int $maxDepth  Nesting depth limit (guards against billion-laughs payloads)
+     * @param int $flags     Any json_decode flags (e.g. JSON_BIGINT_AS_STRING)
      */
-    public static function json(string $value, int $maxDepth = 32): ?array
+    public static function json(string $value, int $maxDepth = 32, int $flags = 0): mixed
     {
-        try {
-            $decoded = json_decode($value, true, $maxDepth, JSON_THROW_ON_ERROR);
-            return is_array($decoded) ? $decoded : null;
-        } catch (\JsonException) {
-            return null;
-        }
+        $decoded = json_decode($value, true, $maxDepth, $flags);
+        return json_last_error() === JSON_ERROR_NONE ? $decoded : null;
     }
 
     public static function array(array $data, array $rules): array

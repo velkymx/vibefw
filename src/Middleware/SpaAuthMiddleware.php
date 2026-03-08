@@ -20,18 +20,13 @@ use Fw\Http\ApiResponse;
 final class SpaAuthMiddleware implements MiddlewareInterface
 {
     private Application $app;
+
     private array $config;
 
     public function __construct(Application $app)
     {
         $this->app = $app;
         $this->loadConfig();
-    }
-
-    private function loadConfig(): void
-    {
-        $configPath = dirname(__DIR__, 2) . '/config/api.php';
-        $this->config = file_exists($configPath) ? require $configPath : [];
     }
 
     public function handle(Request $request, callable $next): Response|string|array
@@ -56,6 +51,12 @@ final class SpaAuthMiddleware implements MiddlewareInterface
         return $next($request);
     }
 
+    private function loadConfig(): void
+    {
+        $configPath = dirname(__DIR__, 2) . '/config/api.php';
+        $this->config = file_exists($configPath) ? require $configPath : [];
+    }
+
     /**
      * Validate the request origin against the whitelist.
      */
@@ -63,26 +64,30 @@ final class SpaAuthMiddleware implements MiddlewareInterface
     {
         $allowedDomains = $this->config['spa_domains'] ?? [];
 
-        // If no domains configured, only allow in development mode
+        // If no domains configured, reject cross-origin requests.
+        // Even in development mode, open-origin with credentials is dangerous
+        // because it allows any page to make authenticated requests.
         if (empty($allowedDomains)) {
             $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
-            $debug = filter_var(
-                $_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?: false,
-                FILTER_VALIDATE_BOOLEAN
-            );
 
-            // Only allow open access in development
-            if ($env === 'local' || $env === 'development' || $debug === true) {
-                error_log(
-                    'SpaAuthMiddleware: No spa_domains configured, allowing all origins (development mode). ' .
-                    'Configure spa_domains in production.'
-                );
-                return true;
+            if ($env === 'local' || $env === 'development') {
+                // In development, allow same-origin requests (no Origin header)
+                // but reject explicit cross-origin requests.
+                $origin = $request->header('origin');
+                if ($origin === null) {
+                    return true; // Same-origin or direct request
+                }
+
+                // Allow localhost origins in development
+                $parsed = parse_url($origin);
+                $host = $parsed['host'] ?? '';
+                if ($host === 'localhost' || $host === '127.0.0.1' || $host === '::1') {
+                    return true;
+                }
             }
 
-            // In production without config, reject all cross-origin requests
             error_log(
-                'SpaAuthMiddleware: No spa_domains configured in production. ' .
+                'SpaAuthMiddleware: No spa_domains configured. ' .
                 'Set API_SPA_DOMAINS environment variable or configure spa_domains in config/api.php'
             );
             return false;
@@ -95,8 +100,16 @@ final class SpaAuthMiddleware implements MiddlewareInterface
         $checkUrl = $origin ?? $referer;
 
         if ($checkUrl === null) {
-            // No origin info - could be same-origin or direct request
-            // Allow for now, CSRF check will catch issues
+            // Modern browsers always send Origin for cross-origin requests.
+            // A missing Origin/Referer means either a same-origin request
+            // (safe) or a non-browser client. Reject in production to be safe;
+            // the CSRF check alone is insufficient for SPA protection.
+            $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
+            if ($env === 'production') {
+                return false;
+            }
+            // In development, allow requests without origin headers
+            // (e.g. curl, Postman) for convenience.
             return true;
         }
 
@@ -129,36 +142,18 @@ final class SpaAuthMiddleware implements MiddlewareInterface
     /**
      * Return a 401 Unauthorized JSON response.
      */
-    private function unauthorized(string $detail): array
+    private function unauthorized(string $detail): Response
     {
         $api = new ApiResponse($this->app->response);
-
-        $response = $api->unauthorized($detail, $this->app->request->uri);
-
-        $this->app->response->setStatus($api->getStatus());
-
-        foreach ($api->getHeaders() as $name => $value) {
-            $this->app->response->header($name, $value);
-        }
-
-        return $response;
+        return $api->unauthorized($detail, $this->app->request->uri);
     }
 
     /**
      * Return a 403 Forbidden JSON response.
      */
-    private function forbidden(string $detail): array
+    private function forbidden(string $detail): Response
     {
         $api = new ApiResponse($this->app->response);
-
-        $response = $api->forbidden($detail, $this->app->request->uri);
-
-        $this->app->response->setStatus($api->getStatus());
-
-        foreach ($api->getHeaders() as $name => $value) {
-            $this->app->response->header($name, $value);
-        }
-
-        return $response;
+        return $api->forbidden($detail, $this->app->request->uri);
     }
 }
