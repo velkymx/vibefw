@@ -7,9 +7,9 @@ namespace Fw\Model;
 use ArrayAccess;
 use ArrayIterator;
 use Countable;
+use Fw\Support\Option;
 use IteratorAggregate;
 use JsonSerializable;
-use Fw\Support\Option;
 use Traversable;
 
 /**
@@ -27,6 +27,54 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
     public function __construct(
         private array $items = []
     ) {}
+
+    // ========================================
+    // STATIC CONSTRUCTORS
+    // ========================================
+
+    /**
+     * Create collection from items.
+     *
+     * @template U
+     * @param array<U> $items
+     * @return Collection<U>
+     */
+    public static function make(array $items = []): self
+    {
+        return new self($items);
+    }
+
+    /**
+     * Create empty collection.
+     *
+     * @return Collection<mixed>
+     */
+    public static function empty(): self
+    {
+        return new self([]);
+    }
+
+    /**
+     * Create collection with a range.
+     *
+     * @return Collection<int>
+     */
+    public static function range(int $start, int $end, int $step = 1): self
+    {
+        return new self(range($start, $end, $step));
+    }
+
+    /**
+     * Create collection by repeating a value.
+     *
+     * @template U
+     * @param U $value
+     * @return Collection<U>
+     */
+    public static function repeat(mixed $value, int $times): self
+    {
+        return new self(array_fill(0, $times, $value));
+    }
 
     // ========================================
     // BASIC ACCESSORS
@@ -58,7 +106,8 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
             return Option::fromNullable(array_first($this->items));
         }
 
-        return Option::some(reset($this->items) ?: array_values($this->items)[0] ?? null);
+        $items = array_values($this->items);
+        return Option::some($items[0]);
     }
 
     /**
@@ -77,7 +126,8 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
             return Option::fromNullable(array_last($this->items));
         }
 
-        return Option::some(end($this->items) ?: array_values($this->items)[count($this->items) - 1] ?? null);
+        $items = array_values($this->items);
+        return Option::some($items[count($items) - 1]);
     }
 
     /**
@@ -149,7 +199,7 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
      */
     public function reject(callable $callback): self
     {
-        return $this->filter(fn($item, $key) => !$callback($item, $key));
+        return $this->filter(fn ($item, $key) => !$callback($item, $key));
     }
 
     /**
@@ -307,7 +357,7 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
         if ($callback === null) {
             sort($items);
         } elseif (is_string($callback)) {
-            usort($items, fn($a, $b) => ($a->$callback ?? 0) <=> ($b->$callback ?? 0));
+            usort($items, fn ($a, $b) => ($a->$callback ?? 0) <=> ($b->$callback ?? 0));
         } else {
             usort($items, $callback);
         }
@@ -323,7 +373,7 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
     public function sortByDesc(string $key): self
     {
         $items = $this->items;
-        usort($items, fn($a, $b) => ($b->$key ?? 0) <=> ($a->$key ?? 0));
+        usort($items, fn ($a, $b) => ($b->$key ?? 0) <=> ($a->$key ?? 0));
         return new self($items);
     }
 
@@ -365,7 +415,7 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
     public function chunk(int $size): self
     {
         return new self(array_map(
-            fn($chunk) => new self($chunk),
+            fn ($chunk) => new self($chunk),
             array_chunk($this->items, $size)
         ));
     }
@@ -388,7 +438,7 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
             } elseif (is_array($item)) {
                 $result = array_merge(
                     $result,
-                    $depth > 1 ? (new self($item))->flatten($depth - 1)->all() : $item
+                    $depth > 1 ? new self($item)->flatten($depth - 1)->all() : $item
                 );
             } else {
                 $result[] = $item;
@@ -412,7 +462,7 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
             $groups[$groupKey][] = $item;
         }
 
-        return new self(array_map(fn($group) => new self($group), $groups));
+        return new self(array_map(fn ($group) => new self($group), $groups));
     }
 
     /**
@@ -647,53 +697,5 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
     public function jsonSerialize(): array
     {
         return $this->toArray();
-    }
-
-    // ========================================
-    // STATIC CONSTRUCTORS
-    // ========================================
-
-    /**
-     * Create collection from items.
-     *
-     * @template U
-     * @param array<U> $items
-     * @return Collection<U>
-     */
-    public static function make(array $items = []): self
-    {
-        return new self($items);
-    }
-
-    /**
-     * Create empty collection.
-     *
-     * @return Collection<mixed>
-     */
-    public static function empty(): self
-    {
-        return new self([]);
-    }
-
-    /**
-     * Create collection with a range.
-     *
-     * @return Collection<int>
-     */
-    public static function range(int $start, int $end, int $step = 1): self
-    {
-        return new self(range($start, $end, $step));
-    }
-
-    /**
-     * Create collection by repeating a value.
-     *
-     * @template U
-     * @param U $value
-     * @return Collection<U>
-     */
-    public static function repeat(mixed $value, int $times): self
-    {
-        return new self(array_fill(0, $times, $value));
     }
 }
