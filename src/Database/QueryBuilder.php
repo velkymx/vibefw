@@ -393,8 +393,17 @@ final class QueryBuilder
         if (preg_match('/^(COUNT|SUM|AVG|MIN|MAX|COALESCE|IFNULL|NULLIF)\s*\(\s*(\*|[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)\s*\)$/i', $identifier)) {
             return;
         }
+        // Allow "expression AS alias" where expression is a safe identifier or function call
         if (preg_match('/^(.+?)\s+(?:AS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)$/i', $identifier, $matches)) {
-            return;
+            $expr = trim($matches[1]);
+            // The expression part must itself be a safe identifier or aggregate function
+            if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?$/', $expr)) {
+                return;
+            }
+            if (preg_match('/^(COUNT|SUM|AVG|MIN|MAX|COALESCE|IFNULL|NULLIF)\s*\(\s*(\*|[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)\s*\)$/i', $expr)) {
+                return;
+            }
+            throw new InvalidArgumentException("Invalid {$type}: unsafe expression in alias");
         }
         if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?$/', $identifier)) {
             throw new InvalidArgumentException("Invalid {$type} name: '{$identifier}'");
