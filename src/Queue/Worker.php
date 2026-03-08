@@ -184,7 +184,7 @@ final class Worker
         $logFile = BASE_PATH . '/storage/logs/failed_jobs.log';
         $dir = dirname($logFile);
         if (!is_dir($dir)) {
-            mkdir($dir, 0o755, true);
+            mkdir($dir, 0o750, true);
         }
 
         // Rotate log file if it exceeds 10MB to prevent unbounded growth

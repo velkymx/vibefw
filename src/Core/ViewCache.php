@@ -25,7 +25,7 @@ final class ViewCache
         $this->enabled = $enabled;
 
         if ($enabled && !is_dir($this->cachePath)) {
-            mkdir($this->cachePath, 0o755, true);
+            mkdir($this->cachePath, 0o750, true);
         }
     }
 

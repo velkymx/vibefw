@@ -28,7 +28,7 @@ final class OpcacheCache implements CacheInterface
         $this->defaultTtl = $defaultTtl;
 
         if (!is_dir($this->path)) {
-            mkdir($this->path, 0o755, true);
+            mkdir($this->path, 0o750, true);
         }
     }
 
@@ -63,7 +63,7 @@ final class OpcacheCache implements CacheInterface
         $dir = dirname($file);
 
         if (!is_dir($dir)) {
-            mkdir($dir, 0o755, true);
+            mkdir($dir, 0o750, true);
         }
 
         // PSR-16: null TTL means "store indefinitely". A non-null TTL of 0 expires immediately.
@@ -134,7 +134,7 @@ final class OpcacheCache implements CacheInterface
     public function clear(): bool
     {
         $this->deleteDirectory($this->path);
-        mkdir($this->path, 0o755, true);
+        mkdir($this->path, 0o750, true);
         return true;
     }
 
@@ -180,7 +180,7 @@ final class OpcacheCache implements CacheInterface
         $lockFile = $file . '.lock';
         $dir = dirname($file);
 
-        if (!is_dir($dir) && !@mkdir($dir, 0o755, true) && !is_dir($dir)) {
+        if (!is_dir($dir) && !@mkdir($dir, 0o750, true) && !is_dir($dir)) {
             return false;
         }
 

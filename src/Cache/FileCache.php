@@ -27,7 +27,7 @@ final class FileCache implements CacheInterface
         $this->defaultTtl = $defaultTtl;
 
         // Handle race condition: another process might create the directory
-        if (!is_dir($this->path) && !@mkdir($this->path, 0o755, true) && !is_dir($this->path)) {
+        if (!is_dir($this->path) && !@mkdir($this->path, 0o750, true) && !is_dir($this->path)) {
             throw new RuntimeException("Failed to create cache directory: {$this->path}");
         }
     }
@@ -68,7 +68,7 @@ final class FileCache implements CacheInterface
         // Create directory if needed - handle race condition properly
         // mkdir with recursive=true returns false if dir already exists,
         // so we check is_dir after to handle concurrent creation
-        if (!is_dir($dir) && !@mkdir($dir, 0o755, true) && !is_dir($dir)) {
+        if (!is_dir($dir) && !@mkdir($dir, 0o750, true) && !is_dir($dir)) {
             return false;
         }
 
@@ -102,7 +102,7 @@ final class FileCache implements CacheInterface
     public function clear(): bool
     {
         $this->deleteDirectory($this->path);
-        mkdir($this->path, 0o755, true);
+        mkdir($this->path, 0o750, true);
         return true;
     }
 
@@ -151,7 +151,7 @@ final class FileCache implements CacheInterface
         $lockFile = $file . '.lock';
         $dir = dirname($file);
 
-        if (!is_dir($dir) && !@mkdir($dir, 0o755, true) && !is_dir($dir)) {
+        if (!is_dir($dir) && !@mkdir($dir, 0o750, true) && !is_dir($dir)) {
             return false;
         }
 
