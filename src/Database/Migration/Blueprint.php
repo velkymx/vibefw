@@ -243,15 +243,29 @@ final class ForeignKeyDefinition
         return $this;
     }
 
+    private const array ALLOWED_FK_ACTIONS = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION', 'SET DEFAULT'];
+
     public function onDelete(string $action): self
     {
-        $this->onDelete = strtoupper($action);
+        $action = strtoupper($action);
+        if (!in_array($action, self::ALLOWED_FK_ACTIONS, true)) {
+            throw new \InvalidArgumentException(
+                "Invalid foreign key action: {$action}. Allowed: " . implode(', ', self::ALLOWED_FK_ACTIONS)
+            );
+        }
+        $this->onDelete = $action;
         return $this;
     }
 
     public function onUpdate(string $action): self
     {
-        $this->onUpdate = strtoupper($action);
+        $action = strtoupper($action);
+        if (!in_array($action, self::ALLOWED_FK_ACTIONS, true)) {
+            throw new \InvalidArgumentException(
+                "Invalid foreign key action: {$action}. Allowed: " . implode(', ', self::ALLOWED_FK_ACTIONS)
+            );
+        }
+        $this->onUpdate = $action;
         return $this;
     }
 
