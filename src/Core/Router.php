@@ -378,7 +378,7 @@ final class Router
 
         $dir = dirname($this->cacheFile);
 
-        if (!is_dir($dir) && !mkdir($dir, 0o755, true)) {
+        if (!is_dir($dir) && !mkdir($dir, 0o750, true)) {
             return false;
         }
 
