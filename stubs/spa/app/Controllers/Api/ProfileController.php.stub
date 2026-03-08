@@ -1,0 +1,99 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers\Api;
+
+use Fw\Core\Controller;
+use Fw\Core\Request;
+use Fw\Core\Response;
+use Fw\Auth\Auth;
+use Fw\Support\Hash;
+
+/**
+ * ProfileController handles user profile updates and security settings.
+ */
+final class ProfileController extends Controller
+{
+    /**
+     * Update the user's profile information.
+     */
+    public function update(Request $request): Response
+    {
+        $user = Auth::user();
+
+        $validation = $this->validate($request, [
+            'name' => 'required|min:2',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+        ]);
+
+        if ($validation->isErr()) {
+            return $this->json(['errors' => $validation->getError()], 422);
+        }
+
+        $user->fill($validation->getValue())->save();
+
+        return $this->json([
+            'user' => $user,
+            'message' => 'Profile updated successfully.'
+        ]);
+    }
+
+    /**
+     * Update the user's password.
+     */
+    public function updatePassword(Request $request): Response
+    {
+        $user = Auth::user();
+
+        $validation = $this->validate($request, [
+            'current_password' => 'required',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        if ($validation->isErr()) {
+            return $this->json(['errors' => $validation->getError()], 422);
+        }
+
+        $data = $validation->getValue();
+
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return $this->json([
+                'errors' => ['current_password' => 'The provided password does not match your current password.']
+            ], 422);
+        }
+
+        $user->fill([
+            'password' => Hash::make($data['password']),
+        ])->save();
+
+        return $this->json(['message' => 'Password updated successfully.']);
+    }
+
+    /**
+     * Delete the user's account.
+     */
+    public function destroy(Request $request): Response
+    {
+        $user = Auth::user();
+
+        $validation = $this->validate($request, [
+            'password' => 'required',
+        ]);
+
+        if ($validation->isErr()) {
+            return $this->json(['errors' => $validation->getError()], 422);
+        }
+
+        if (!Hash::check($validation->getValue()['password'], $user->password)) {
+            return $this->json([
+                'errors' => ['password' => 'The provided password does not match our records.']
+            ], 422);
+        }
+
+        $user->delete();
+        Auth::logout();
+
+        return $this->json(['message' => 'Account deleted successfully.']);
+    }
+}

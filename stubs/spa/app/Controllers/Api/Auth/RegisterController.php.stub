@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers\Api\Auth;
+
+use Fw\Core\Controller;
+use Fw\Core\Request;
+use Fw\Core\Response;
+use App\Models\User;
+use Fw\Auth\Auth;
+use Fw\Support\Hash;
+
+/**
+ * RegisterController handles the user registration lifecycle.
+ * 
+ * VibeFW v2.0 Pattern:
+ * 1. Validates inputs using the Controller base class.
+ * 2. Hashes passwords securely.
+ * 3. Logs the user in immediately after successful registration.
+ */
+final class RegisterController extends Controller
+{
+    /**
+     * Handle a registration request for the application.
+     * 
+     * @param Request $request
+     * @return Response (201 Created with token or 422 on failure)
+     */
+    public function register(Request $request): Response
+    {
+        // VibeFW Validation
+        $validation = $this->validate($request, [
+            'name' => 'required|min:2',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        if ($validation->isErr()) {
+            return $this->json([
+                'message' => 'Registration failed', 
+                'errors' => $validation->getError()
+            ], 422);
+        }
+
+        $data = $validation->getValue();
+
+        // Create the user
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+        ]);
+
+        // Log the user in
+        Auth::login($user);
+        
+        // Generate a token for the SPA
+        $token = $user->createToken('spa-register')->plainTextToken;
+
+        return $this->json([
+            'user' => $user,
+            'token' => $token,
+        ], 201);
+    }
+}

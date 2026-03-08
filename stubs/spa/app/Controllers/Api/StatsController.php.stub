@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers\Api;
+
+use Fw\Core\Controller;
+use Fw\Core\Request;
+use Fw\Core\Response;
+use App\Models\User;
+use App\Models\Post;
+
+final class StatsController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        return $this->json([
+            'users' => User::count(),
+            'posts' => Post::count(),
+            'requestsPerSecond' => '40,058', // Proudly showing our benchmark
+        ]);
+    }
+}

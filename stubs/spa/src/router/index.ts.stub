@@ -1,0 +1,34 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from '../views/Home.vue'
+import Login from '../views/auth/Login.vue'
+import Register from '../views/auth/Register.vue'
+import Dashboard from '../views/Dashboard.vue'
+import MainLayout from '../layouts/MainLayout.vue'
+import NotFound from '../views/errors/NotFound.vue'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/', name: 'home', component: Home },
+    { path: '/login', name: 'login', component: Login, meta: { guest: true } },
+    { path: '/register', name: 'register', component: Register, meta: { guest: true } },
+    {
+      path: '/',
+      component: MainLayout,
+      meta: { auth: true },
+      children: [
+        { path: 'dashboard', name: 'dashboard', component: Dashboard },
+        { path: '', redirect: '/dashboard' }
+      ]
+    },
+    { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFound }
+  ]
+})
+
+router.beforeEach((to) => {
+  const token = localStorage.getItem('token')
+  if (to.meta.auth && !token) return '/login'
+  if (to.meta.guest && token) return '/dashboard'
+})
+
+export default router

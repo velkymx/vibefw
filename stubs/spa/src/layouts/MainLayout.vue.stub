@@ -1,0 +1,193 @@
+<script setup lang="ts">
+import { ref, computed, onMounted, provide } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+
+const router = useRouter()
+const user = ref<any>(null)
+const isSidebarOpen = ref(true)
+const isDarkMode = ref(localStorage.getItem('theme') === 'dark')
+
+// provide() must be called synchronously during setup — calling it inside an
+// async function (after an await) silently does nothing in Vue 3.
+const userName = computed(() => user.value?.name ?? user.value?.email ?? '')
+provide('userName', userName)
+
+const authHeaders = () => ({
+  Authorization: `Bearer ${localStorage.getItem('token')}`
+})
+
+const updateTheme = () => {
+  if (isDarkMode.value) {
+    document.documentElement.setAttribute('data-bs-theme', 'dark')
+    localStorage.setItem('theme', 'dark')
+  } else {
+    document.documentElement.removeAttribute('data-bs-theme')
+    localStorage.setItem('theme', 'light')
+  }
+}
+
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value
+  updateTheme()
+}
+
+const fetchUser = async () => {
+  try {
+    const response = await axios.get('/api/user', { headers: authHeaders() })
+    user.value = response.data.user ?? response.data
+  } catch {
+    localStorage.removeItem('token')
+    router.push('/login')
+  }
+}
+
+const handleLogout = async () => {
+  try {
+    await axios.post('/api/auth/logout', {}, { headers: authHeaders() })
+  } catch {
+    // proceed with logout even if request fails
+  } finally {
+    localStorage.removeItem('token')
+    router.push('/login')
+  }
+}
+
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value
+}
+
+onMounted(() => {
+  fetchUser()
+  updateTheme()
+})
+</script>
+
+<template>
+  <div class="app-wrapper" :class="{ 'sidebar-closed': !isSidebarOpen }">
+    <!-- Sidebar -->
+    <aside class="app-sidebar shadow-sm">
+      <div class="sidebar-header p-3 d-flex align-items-center justify-content-between">
+        <span class="fw-bold fs-4">Vibe<span class="text-primary">FW</span></span>
+        <button class="btn btn-sm d-lg-none" @click="toggleSidebar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav p-2 flex-grow-1">
+        <router-link to="/dashboard" class="nav-link py-2 px-3 rounded mb-1" active-class="active">
+          <i class="bi bi-speedometer2 me-2"></i> Dashboard
+        </router-link>
+
+        <div class="border-top my-2"></div>
+
+        <button
+          @click="handleLogout"
+          class="nav-link w-100 text-start py-2 px-3 rounded text-danger border-0 bg-transparent"
+        >
+          <i class="bi bi-box-arrow-right me-2"></i> Logout
+        </button>
+      </nav>
+
+      <div class="sidebar-footer p-3 border-top" v-if="user">
+        <div class="d-flex align-items-center">
+          <div class="user-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0">
+            {{ user.name?.charAt(0)?.toUpperCase() ?? '?' }}
+          </div>
+          <div class="overflow-hidden">
+            <div class="fw-semibold text-truncate">{{ user.name ?? user.email }}</div>
+            <div class="small text-muted text-truncate">{{ user.email }}</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="app-main d-flex flex-column">
+      <!-- Top Navbar -->
+      <header class="app-header shadow-sm p-3 d-flex align-items-center">
+        <button class="btn btn-sm btn-light me-3" @click="toggleSidebar">
+          <i class="bi bi-list"></i>
+        </button>
+        <div class="text-muted d-none d-sm-block small">
+          Home / {{ router.currentRoute.value.name }}
+        </div>
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <button
+            class="btn btn-sm btn-light"
+            @click="toggleDarkMode"
+            :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+          >
+            <i class="bi" :class="isDarkMode ? 'bi-sun-fill' : 'bi-moon-fill'"></i>
+          </button>
+          <span v-if="user" class="small text-muted d-none d-lg-inline">{{ user.name ?? user.email }}</span>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <section class="app-content flex-grow-1 overflow-auto bg-body-secondary">
+        <router-view />
+      </section>
+    </main>
+  </div>
+</template>
+
+<style scoped>
+.app-wrapper {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.app-sidebar {
+  width: 260px;
+  background-color: var(--bs-body-bg);
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s ease;
+  z-index: 1000;
+}
+
+.app-sidebar .nav-link {
+  color: var(--bs-body-color);
+  text-decoration: none;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.app-sidebar .nav-link:hover {
+  background-color: var(--bs-tertiary-bg);
+}
+
+.app-sidebar .nav-link.active {
+  background-color: var(--bs-primary);
+  color: #fff;
+}
+
+.app-header {
+  background-color: var(--bs-body-bg);
+}
+
+.app-main {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.user-avatar {
+  width: 38px;
+  height: 38px;
+  font-size: 1rem;
+}
+
+.sidebar-closed .app-sidebar {
+  margin-left: -260px;
+}
+
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    position: fixed;
+    height: 100%;
+  }
+}
+</style>

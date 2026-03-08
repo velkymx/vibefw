@@ -1,0 +1,77 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers\Api;
+
+use Fw\Core\Controller;
+use Fw\Core\Request;
+use Fw\Core\Response;
+use Fw\Auth\Auth;
+use Fw\Auth\ApiToken;
+
+/**
+ * ApiTokenController handles personal access token management.
+ */
+final class ApiTokenController extends Controller
+{
+    /**
+     * List all tokens for the authenticated user.
+     */
+    public function index(Request $request): Response
+    {
+        $user = Auth::user();
+        
+        // personal_access_tokens table is used by Fw\Auth\ApiToken
+        $tokens = ApiToken::where('tokenable_id', $user->id)
+            ->where('tokenable_type', 'App\Models\User')
+            ->get();
+
+        return $this->json($tokens);
+    }
+
+    /**
+     * Create a new personal access token.
+     */
+    public function store(Request $request): Response
+    {
+        $validation = $this->validate($request, [
+            'name' => 'required',
+            'abilities' => 'array',
+        ]);
+
+        if ($validation->isErr()) {
+            return $this->json(['errors' => $validation->getError()], 422);
+        }
+
+        $user = Auth::user();
+        $data = $validation->getValue();
+        
+        $token = $user->createToken($data['name'], $data['abilities'] ?? ['*']);
+
+        return $this->json([
+            'token' => $token->plainTextToken,
+            'message' => 'Token created successfully.'
+        ], 201);
+    }
+
+    /**
+     * Revoke a specific token.
+     */
+    public function destroy(Request $request, string $id): Response
+    {
+        $user = Auth::user();
+        
+        $token = ApiToken::where('id', (int) $id)
+            ->where('tokenable_id', $user->id)
+            ->first()
+            ->unwrapOr(null);
+
+        if ($token) {
+            $token->delete();
+            return $this->json(['message' => 'Token revoked.']);
+        }
+
+        return $this->json(['message' => 'Token not found.'], 404);
+    }
+}

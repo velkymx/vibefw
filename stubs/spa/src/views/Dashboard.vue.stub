@@ -1,0 +1,86 @@
+<script setup lang="ts">
+import { ref, onMounted, inject } from 'vue'
+import axios from 'axios'
+
+const stats = ref({ users: 0, posts: 0, requestsPerSecond: '0' })
+const loading = ref(true)
+const loadError = ref(false)
+const alertMessage = ref('')
+const showAlert = ref(false)
+const userName = inject<string>('userName', '')
+
+onMounted(async () => {
+  try {
+    const response = await axios.get('/api/dashboard/stats', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+    stats.value = response.data
+  } catch (error: any) {
+    loadError.value = true
+    alertMessage.value = error.response?.data?.message ?? 'Could not load dashboard stats.'
+    showAlert.value = true
+  } finally {
+    loading.value = false
+  }
+})
+</script>
+
+<template>
+  <div class="p-4">
+    <header class="mb-5">
+      <h1 class="display-6 fw-bold">
+        Welcome back<span v-if="userName">, {{ userName }}</span>!
+      </h1>
+      <p class="text-muted">Here's a quick overview of your application.</p>
+    </header>
+
+    <VibeAlert v-model="showAlert" variant="danger" :message="alertMessage" dismissable />
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <VibeCard>
+          <template #body>
+            <div class="text-center">
+              <VibeSpinner v-if="loading" />
+              <p v-else-if="loadError" class="text-danger mb-0">Unavailable</p>
+              <template v-else>
+                <h2 class="display-5 fw-bold text-primary">{{ stats.users }}</h2>
+                <p class="text-muted mb-0">Total Users</p>
+              </template>
+            </div>
+          </template>
+        </VibeCard>
+      </div>
+      <div class="col-md-4">
+        <VibeCard>
+          <template #body>
+            <div class="text-center">
+              <VibeSpinner v-if="loading" />
+              <p v-else-if="loadError" class="text-danger mb-0">Unavailable</p>
+              <template v-else>
+                <h2 class="display-5 fw-bold text-success">{{ stats.posts }}</h2>
+                <p class="text-muted mb-0">Total Posts</p>
+              </template>
+            </div>
+          </template>
+        </VibeCard>
+      </div>
+      <div class="col-md-4">
+        <VibeCard>
+          <template #body>
+            <div class="text-center">
+              <VibeSpinner v-if="loading" />
+              <p v-else-if="loadError" class="text-danger mb-0">Unavailable</p>
+              <template v-else>
+                <h2 class="display-5 fw-bold text-warning">
+                  {{ stats.requestsPerSecond }} <small class="fs-5">req/s</small>
+                </h2>
+                <p class="text-muted mb-0">Performance</p>
+              </template>
+            </div>
+          </template>
+        </VibeCard>
+      </div>
+    </div>
+  </div>
+</template>

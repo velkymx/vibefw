@@ -1,0 +1,105 @@
+<template>
+  <div class="home-page">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg shadow-sm">
+      <div class="container">
+        <a class="navbar-brand fw-bold fs-4" href="/">
+          Vibe<span class="text-primary">FW</span>
+        </a>
+        <div class="ms-auto d-flex gap-2">
+          <VibeButton variant="primary" outline size="sm" to="/login">Sign In</VibeButton>
+          <VibeButton variant="primary" size="sm" to="/register">Get Started</VibeButton>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero-section d-flex align-items-center">
+      <div class="container text-center">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <span class="badge bg-primary-subtle text-primary mb-3 px-3 py-2 rounded-pill fs-6">
+              PHP 8.4 + Vue 3 + VibeUI
+            </span>
+            <h1 class="display-3 fw-bold mb-4">
+              Build fast apps<br />
+              <span class="text-primary">with good vibes.</span>
+            </h1>
+            <p class="lead text-muted mb-5">
+              VibeFW is a Fiber-safe PHP framework paired with a Vue 3 SPA starter.
+              From zero to production in minutes.
+            </p>
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+              <VibeButton variant="primary" size="lg" to="/register" class="px-5">
+                Get Started
+              </VibeButton>
+              <VibeButton variant="secondary" outline size="lg" to="/login" class="px-5">
+                Sign In
+              </VibeButton>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features-section py-5 bg-body-secondary">
+      <div class="container">
+        <div class="row g-4 justify-content-center">
+          <div class="col-md-4">
+            <VibeCard class="h-100 border-0 shadow-sm text-center">
+              <template #body>
+                <div class="fs-1 mb-3"><i class="bi bi-lightning-charge-fill text-warning"></i></div>
+                <h5 class="fw-bold">Fiber-Safe Backend</h5>
+                <p class="text-muted mb-0">Built on PHP 8.4 Fibers with a custom EventLoop. Handles 40k+ requests per second in worker mode.</p>
+              </template>
+            </VibeCard>
+          </div>
+          <div class="col-md-4">
+            <VibeCard class="h-100 border-0 shadow-sm text-center">
+              <template #body>
+                <div class="fs-1 mb-3"><i class="bi bi-palette-fill text-primary"></i></div>
+                <h5 class="fw-bold">VibeUI Components</h5>
+                <p class="text-muted mb-0">A Vue 3 component library built on Bootstrap 5. Globally registered &mdash; just use them.</p>
+              </template>
+            </VibeCard>
+          </div>
+          <div class="col-md-4">
+            <VibeCard class="h-100 border-0 shadow-sm text-center">
+              <template #body>
+                <div class="fs-1 mb-3"><i class="bi bi-shield-lock-fill text-success"></i></div>
+                <h5 class="fw-bold">Auth Ready</h5>
+                <p class="text-muted mb-0">API token authentication wired up out of the box. Login, register, and protected routes included.</p>
+              </template>
+            </VibeCard>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-4 text-center text-muted small border-top">
+      <div class="container">
+        &copy; {{ new Date().getFullYear() }} VibeFW &mdash; Built with good vibes.
+      </div>
+    </footer>
+  </div>
+</template>
+
+<style scoped>
+.home-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-section {
+  flex: 1;
+  padding: 6rem 0;
+  background: linear-gradient(135deg, var(--bs-body-bg) 0%, var(--bs-primary-bg-subtle) 100%);
+}
+
+.features-section {
+  padding: 5rem 0;
+}
+</style>

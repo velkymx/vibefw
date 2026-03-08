@@ -1,0 +1,18 @@
+<script setup lang="ts">
+</script>
+
+<template>
+  <div id="app-root">
+    <router-view />
+  </div>
+</template>
+
+<style lang="scss">
+@import "bootstrap/scss/bootstrap";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+@import "@velkymx/vibeui/dist/style.css";
+
+#app-root {
+  min-height: 100vh;
+}
+</style>

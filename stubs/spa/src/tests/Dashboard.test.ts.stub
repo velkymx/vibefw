@@ -1,0 +1,10 @@
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import Dashboard from '../views/Dashboard.vue'
+
+describe('Dashboard.vue', () => {
+  it('renders dashboard heading', () => {
+    const wrapper = mount(Dashboard)
+    expect(wrapper.find('h1').text()).toContain('Welcome back')
+  })
+})
