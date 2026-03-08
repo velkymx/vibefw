@@ -5,73 +5,80 @@ declare(strict_types=1);
 namespace Fw\Queue;
 
 use Fw\Database\Connection;
+use RuntimeException;
 
 final class DatabaseDriver implements DriverInterface
 {
     private Connection $db;
+
     private string $table;
+
+    private string $quotedTable;
+
     private string $secretKey;
+
+    /**
+     * Allowed classes for unserialize. Defaults to true (all classes) because
+     * HMAC signature verification ensures only your own signed payloads are
+     * deserialized. Narrow this to a list of concrete job class names for
+     * defense-in-depth in high-security environments.
+     *
+     * @var list<class-string>|true
+     */
+    private array|true $allowedClasses = true;
 
     public function __construct(Connection $db, string $table = 'jobs', ?string $secretKey = null)
     {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/', $table)) {
+            throw new \InvalidArgumentException(
+                "Invalid queue table name '{$table}'. Only alphanumerics and underscores are allowed."
+            );
+        }
+
         $this->db = $db;
         $this->table = $table;
+        $this->quotedTable = $db->quoteIdentifier($table);
         $this->secretKey = $secretKey ?? $this->getSecretKeyFromEnv();
     }
 
     /**
-     * Get secret key from environment or generate error.
+     * Get the SQL to create the jobs table.
+     *
+     * @throws \InvalidArgumentException If $table contains characters outside [a-zA-Z0-9_]
      */
-    private function getSecretKeyFromEnv(): string
+    public static function createTableSql(string $table = 'jobs'): string
     {
-        $key = $_ENV['QUEUE_SECRET_KEY'] ?? getenv('QUEUE_SECRET_KEY');
-
-        if ($key === false || $key === '') {
-            throw new \RuntimeException(
-                'QUEUE_SECRET_KEY environment variable must be set for DatabaseDriver. ' .
-                'Generate with: php -r "echo bin2hex(random_bytes(32));"'
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/', $table)) {
+            throw new \InvalidArgumentException(
+                "Invalid queue table name '{$table}'. Only alphanumerics and underscores are allowed."
             );
         }
 
-        return $key;
+        return <<<SQL
+            CREATE TABLE IF NOT EXISTS `{$table}` (
+                id VARCHAR(32) PRIMARY KEY,
+                queue VARCHAR(255) NOT NULL DEFAULT 'default',
+                payload LONGTEXT NOT NULL,
+                attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                available_at INT UNSIGNED NOT NULL,
+                reserved_at INT UNSIGNED NULL,
+                created_at INT UNSIGNED NOT NULL,
+                INDEX idx_queue_available (queue, available_at),
+                INDEX idx_reserved (reserved_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            SQL;
     }
 
     /**
-     * Sign a serialized job payload with HMAC.
-     */
-    private function signPayload(string $serialized): string
-    {
-        $signature = hash_hmac('sha256', $serialized, $this->secretKey);
-        return $signature . '.' . base64_encode($serialized);
-    }
-
-    /**
-     * Verify and extract a signed job payload.
+     * Restrict deserialization to a specific set of job class names.
+     * Call this after construction to enable defense-in-depth.
      *
-     * @throws \RuntimeException If signature is invalid
+     * @param list<class-string> $classes
      */
-    private function verifyPayload(string $signed): string
+    public function allowClasses(array $classes): self
     {
-        $parts = explode('.', $signed, 2);
-
-        if (count($parts) !== 2) {
-            throw new \RuntimeException('Invalid job payload format');
-        }
-
-        [$signature, $encoded] = $parts;
-        $serialized = base64_decode($encoded, true);
-
-        if ($serialized === false) {
-            throw new \RuntimeException('Invalid job payload encoding');
-        }
-
-        $expectedSignature = hash_hmac('sha256', $serialized, $this->secretKey);
-
-        if (!hash_equals($expectedSignature, $signature)) {
-            throw new \RuntimeException('Job payload signature verification failed - possible tampering detected');
-        }
-
-        return $serialized;
+        $this->allowedClasses = $classes;
+        return $this;
     }
 
     public function push(JobInterface $job): string
@@ -106,7 +113,7 @@ final class DatabaseDriver implements DriverInterface
 
         return $this->db->transaction(function (Connection $db) use ($queue, $now) {
             $row = $db->selectOne(
-                "SELECT * FROM {$this->table}
+                "SELECT * FROM {$this->quotedTable}
                  WHERE queue = ?
                    AND available_at <= ?
                    AND (reserved_at IS NULL OR reserved_at < ?)
@@ -132,34 +139,31 @@ final class DatabaseDriver implements DriverInterface
             // Verify signature before deserializing (prevents RCE via tampering)
             try {
                 $serialized = $this->verifyPayload($row['payload']);
-            } catch (\RuntimeException $e) {
+            } catch (RuntimeException $e) {
                 // Tampered or corrupted job - delete it
                 $db->delete($this->table, ['id' => $row['id']]);
                 throw $e;
             }
 
-            // Only allow concrete Job class to be unserialized (defense in depth)
-            // SECURITY: Do NOT use interfaces in allowed_classes - they can't be
-            // instantiated and provide no protection. Only list concrete classes.
-            $job = unserialize($serialized, ['allowed_classes' => [Job::class]]);
+            $job = unserialize($serialized, ['allowed_classes' => $this->allowedClasses]);
+
+            if ($job instanceof \__PHP_Incomplete_Class) {
+                throw new \RuntimeException(
+                    'Invalid job payload: class not found during deserialization. ' .
+                    'Ensure the concrete job class is available to the autoloader.'
+                );
+            }
 
             // Validate the unserialized object implements JobInterface
-            // This catches cases where Job class exists but doesn't implement the interface
             if (!$job instanceof JobInterface) {
                 throw new \RuntimeException('Invalid job payload: not a JobInterface');
             }
-
-            // Additional validation: ensure it's exactly the Job class, not a subclass
-            // that might have been injected. This is strict but prevents class injection.
-            if (get_class($job) !== Job::class) {
-                throw new \RuntimeException(
-                    'Invalid job payload: unexpected class ' . get_class($job) .
-                    '. Only ' . Job::class . ' is allowed.'
-                );
-            }
             $job->setJobId($row['id']);
 
-            for ($i = 0; $i <= $row['attempts']; $i++) {
+            // attempts was already incremented in the UPDATE above, so
+            // $row['attempts'] now holds the *previous* count. The in-memory
+            // counter must match the stored value after the UPDATE.
+            for ($i = 0; $i < $row['attempts'] + 1; $i++) {
                 $job->incrementAttempts();
             }
 
@@ -191,7 +195,7 @@ final class DatabaseDriver implements DriverInterface
     public function size(string $queue = 'default'): int
     {
         $result = $this->db->selectOne(
-            "SELECT COUNT(*) as count FROM {$this->table} WHERE queue = ?",
+            "SELECT COUNT(*) as count FROM {$this->quotedTable} WHERE queue = ?",
             [$queue]
         );
 
@@ -201,28 +205,63 @@ final class DatabaseDriver implements DriverInterface
     public function clear(string $queue = 'default'): int
     {
         return $this->db->query(
-            "DELETE FROM {$this->table} WHERE queue = ?",
+            "DELETE FROM {$this->quotedTable} WHERE queue = ?",
             [$queue]
         )->rowCount();
     }
 
     /**
-     * Get the SQL to create the jobs table.
+     * Get secret key from environment or generate error.
      */
-    public static function createTableSql(string $table = 'jobs'): string
+    private function getSecretKeyFromEnv(): string
     {
-        return <<<SQL
-            CREATE TABLE IF NOT EXISTS {$table} (
-                id VARCHAR(32) PRIMARY KEY,
-                queue VARCHAR(255) NOT NULL DEFAULT 'default',
-                payload LONGTEXT NOT NULL,
-                attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
-                available_at INT UNSIGNED NOT NULL,
-                reserved_at INT UNSIGNED NULL,
-                created_at INT UNSIGNED NOT NULL,
-                INDEX idx_queue_available (queue, available_at),
-                INDEX idx_reserved (reserved_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            SQL;
+        $key = $_ENV['QUEUE_SECRET_KEY'] ?? getenv('QUEUE_SECRET_KEY');
+
+        if ($key === false || $key === '') {
+            throw new RuntimeException(
+                'QUEUE_SECRET_KEY environment variable must be set for DatabaseDriver. ' .
+                'Generate with: php -r "echo bin2hex(random_bytes(32));"'
+            );
+        }
+
+        return $key;
+    }
+
+    /**
+     * Sign a serialized job payload with HMAC.
+     */
+    private function signPayload(string $serialized): string
+    {
+        $signature = hash_hmac('sha256', $serialized, $this->secretKey);
+        return $signature . '.' . base64_encode($serialized);
+    }
+
+    /**
+     * Verify and extract a signed job payload.
+     *
+     * @throws RuntimeException If signature is invalid
+     */
+    private function verifyPayload(string $signed): string
+    {
+        $parts = explode('.', $signed, 2);
+
+        if (count($parts) !== 2) {
+            throw new RuntimeException('Invalid job payload format');
+        }
+
+        [$signature, $encoded] = $parts;
+        $serialized = base64_decode($encoded, true);
+
+        if ($serialized === false) {
+            throw new RuntimeException('Invalid job payload encoding');
+        }
+
+        $expectedSignature = hash_hmac('sha256', $serialized, $this->secretKey);
+
+        if (!hash_equals($expectedSignature, $signature)) {
+            throw new RuntimeException('Job payload signature verification failed - possible tampering detected');
+        }
+
+        return $serialized;
     }
 }
