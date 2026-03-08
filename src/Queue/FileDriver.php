@@ -4,16 +4,10 @@ declare(strict_types=1);
 
 namespace Fw\Queue;
 
+use RuntimeException;
+
 final class FileDriver implements DriverInterface
 {
-    private string $path;
-
-    /**
-     * Secret key for HMAC signing of serialized job payloads.
-     * Prevents RCE via deserialization of tampered payloads.
-     */
-    private string $secretKey;
-
     /**
      * Lock file TTL in seconds. Lock files older than this are considered stale.
      */
@@ -25,6 +19,24 @@ final class FileDriver implements DriverInterface
      */
     private const int MAX_PAYLOAD_SIZE = 1024 * 1024;
 
+    private string $path;
+
+    /**
+     * Secret key for HMAC signing of serialized job payloads.
+     * Prevents RCE via deserialization of tampered payloads.
+     */
+    private string $secretKey;
+
+    /**
+     * Allowed classes for unserialize. Defaults to true (all classes) because
+     * HMAC signature verification ensures only your own signed payloads are
+     * deserialized. Narrow this to a list of concrete job class names for
+     * defense-in-depth in high-security environments.
+     *
+     * @var list<class-string>|true
+     */
+    private array|true $allowedClasses = true;
+
     public function __construct(string $path, ?string $secretKey = null)
     {
         $this->path = rtrim($path, '/');
@@ -33,119 +45,20 @@ final class FileDriver implements DriverInterface
         $this->secretKey = $secretKey ?? $this->getOrCreateSecretKey();
 
         if (!is_dir($this->path)) {
-            mkdir($this->path, 0755, true);
+            mkdir($this->path, 0o755, true);
         }
     }
 
     /**
-     * Get or create a persistent secret key for job signing.
+     * Restrict deserialization to a specific set of job class names.
+     * Call this after construction to enable defense-in-depth.
      *
-     * Uses file locking to prevent race conditions when multiple workers
-     * start simultaneously and all try to create/read the key.
+     * @param list<class-string> $classes
      */
-    private function getOrCreateSecretKey(): string
+    public function allowClasses(array $classes): self
     {
-        // Ensure directory exists first
-        if (!is_dir($this->path)) {
-            mkdir($this->path, 0755, true);
-        }
-
-        $keyFile = $this->path . '/.queue_key';
-        $lockFile = $this->path . '/.queue_key.lock';
-
-        // Acquire exclusive lock before any file operations
-        $lockHandle = fopen($lockFile, 'c');
-        if ($lockHandle === false) {
-            throw new \RuntimeException('Failed to open lock file for queue key');
-        }
-
-        try {
-            // Block until we get exclusive lock
-            if (!flock($lockHandle, LOCK_EX)) {
-                throw new \RuntimeException('Failed to acquire lock for queue key');
-            }
-
-            // Re-check if file exists AFTER acquiring lock (another process may have created it)
-            if (file_exists($keyFile)) {
-                $key = file_get_contents($keyFile);
-                if ($key !== false && strlen($key) >= 32) {
-                    return $key;
-                }
-            }
-
-            // Generate a new key
-            $key = bin2hex(random_bytes(32));
-
-            // Set restrictive umask BEFORE writing to prevent race condition
-            // where file is briefly world-readable
-            $oldUmask = umask(0077);
-
-            try {
-                // Write to temp file first, then rename for atomicity
-                $tempFile = $keyFile . '.' . bin2hex(random_bytes(8)) . '.tmp';
-                file_put_contents($tempFile, $key, LOCK_EX);
-                chmod($tempFile, 0600);
-
-                // Atomic rename
-                if (!rename($tempFile, $keyFile)) {
-                    @unlink($tempFile);
-                    throw new \RuntimeException('Failed to atomically create queue key file');
-                }
-            } finally {
-                umask($oldUmask);
-            }
-
-            // Verify permissions were set correctly
-            $perms = fileperms($keyFile) & 0777;
-            if ($perms !== 0600) {
-                error_log(
-                    "Warning: Queue secret key file has unexpected permissions {$perms}. Expected 0600."
-                );
-            }
-
-            return $key;
-        } finally {
-            flock($lockHandle, LOCK_UN);
-            fclose($lockHandle);
-        }
-    }
-
-    /**
-     * Sign a serialized job payload with HMAC.
-     */
-    private function signPayload(string $serialized): string
-    {
-        $signature = hash_hmac('sha256', $serialized, $this->secretKey);
-        return $signature . '.' . base64_encode($serialized);
-    }
-
-    /**
-     * Verify and extract a signed job payload.
-     *
-     * @throws \RuntimeException If signature is invalid
-     */
-    private function verifyPayload(string $signed): string
-    {
-        $parts = explode('.', $signed, 2);
-
-        if (count($parts) !== 2) {
-            throw new \RuntimeException('Invalid job payload format');
-        }
-
-        [$signature, $encoded] = $parts;
-        $serialized = base64_decode($encoded, true);
-
-        if ($serialized === false) {
-            throw new \RuntimeException('Invalid job payload encoding');
-        }
-
-        $expectedSignature = hash_hmac('sha256', $serialized, $this->secretKey);
-
-        if (!hash_equals($expectedSignature, $signature)) {
-            throw new \RuntimeException('Job payload signature verification failed - possible tampering detected');
-        }
-
-        return $serialized;
+        $this->allowedClasses = $classes;
+        return $this;
     }
 
     public function push(JobInterface $job): string
@@ -162,7 +75,7 @@ final class FileDriver implements DriverInterface
         // Serialize and validate payload size
         $serialized = serialize($job);
         if (strlen($serialized) > self::MAX_PAYLOAD_SIZE) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'Job payload too large: ' . strlen($serialized) . ' bytes exceeds maximum of ' . self::MAX_PAYLOAD_SIZE
             );
         }
@@ -224,13 +137,15 @@ final class FileDriver implements DriverInterface
             }
 
             $content = file_get_contents($file);
-            $payload = json_decode($content, true);
 
-            if ($payload === null) {
+            try {
+                $payload = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
                 flock($lock, LOCK_UN);
                 fclose($lock);
                 @unlink($file);
                 @unlink($lockFile);
+                error_log("Queue: deleted corrupt job file: {$file}");
                 continue;
             }
 
@@ -260,15 +175,22 @@ final class FileDriver implements DriverInterface
             // Verify signature before deserializing (prevents RCE via tampering)
             try {
                 $serialized = $this->verifyPayload($payload['job']);
-            } catch (\RuntimeException $e) {
+            } catch (RuntimeException $e) {
                 // Tampered or corrupted job - delete it
                 @unlink($file);
                 @unlink($lockFile);
                 throw $e;
             }
 
-            // Only allow Job classes to be unserialized (defense in depth)
-            $job = unserialize($serialized, ['allowed_classes' => [JobInterface::class, Job::class]]);
+            $job = unserialize($serialized, ['allowed_classes' => $this->allowedClasses]);
+
+            if ($job instanceof \__PHP_Incomplete_Class) {
+                throw new \RuntimeException(
+                    'Invalid job payload: class not found during deserialization. ' .
+                    'Ensure the concrete job class is available to the autoloader.'
+                );
+            }
+
             if (!$job instanceof JobInterface) {
                 throw new \RuntimeException('Invalid job payload: not a JobInterface');
             }
@@ -316,9 +238,11 @@ final class FileDriver implements DriverInterface
             }
 
             $content = file_get_contents($file);
-            $payload = json_decode($content, true);
 
-            if ($payload === null) {
+            try {
+                $payload = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                error_log("Queue: corrupt job file during release: {$file}");
                 continue;
             }
 
@@ -359,6 +283,117 @@ final class FileDriver implements DriverInterface
         return $count;
     }
 
+    /**
+     * Get or create a persistent secret key for job signing.
+     *
+     * Uses file locking to prevent race conditions when multiple workers
+     * start simultaneously and all try to create/read the key.
+     */
+    private function getOrCreateSecretKey(): string
+    {
+        // Ensure directory exists first
+        if (!is_dir($this->path)) {
+            mkdir($this->path, 0o755, true);
+        }
+
+        $keyFile = $this->path . '/.queue_key';
+        $lockFile = $this->path . '/.queue_key.lock';
+
+        // Acquire exclusive lock before any file operations
+        $lockHandle = fopen($lockFile, 'c');
+        if ($lockHandle === false) {
+            throw new RuntimeException('Failed to open lock file for queue key');
+        }
+
+        try {
+            // Block until we get exclusive lock
+            if (!flock($lockHandle, LOCK_EX)) {
+                throw new RuntimeException('Failed to acquire lock for queue key');
+            }
+
+            // Re-check if file exists AFTER acquiring lock (another process may have created it)
+            if (file_exists($keyFile)) {
+                $key = file_get_contents($keyFile);
+                if ($key !== false && strlen($key) >= 32) {
+                    return $key;
+                }
+            }
+
+            // Generate a new key
+            $key = bin2hex(random_bytes(32));
+
+            // Set restrictive umask BEFORE writing to prevent race condition
+            // where file is briefly world-readable
+            $oldUmask = umask(0o077);
+
+            try {
+                // Write to temp file first, then rename for atomicity
+                $tempFile = $keyFile . '.' . bin2hex(random_bytes(8)) . '.tmp';
+                file_put_contents($tempFile, $key, LOCK_EX);
+                chmod($tempFile, 0o600);
+
+                // Atomic rename
+                if (!rename($tempFile, $keyFile)) {
+                    @unlink($tempFile);
+                    throw new RuntimeException('Failed to atomically create queue key file');
+                }
+            } finally {
+                umask($oldUmask);
+            }
+
+            // Verify permissions were set correctly
+            $perms = fileperms($keyFile) & 0o777;
+            if ($perms !== 0o600) {
+                error_log(
+                    "Warning: Queue secret key file has unexpected permissions {$perms}. Expected 0600."
+                );
+            }
+
+            return $key;
+        } finally {
+            flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
+        }
+    }
+
+    /**
+     * Sign a serialized job payload with HMAC.
+     */
+    private function signPayload(string $serialized): string
+    {
+        $signature = hash_hmac('sha256', $serialized, $this->secretKey);
+        return $signature . '.' . base64_encode($serialized);
+    }
+
+    /**
+     * Verify and extract a signed job payload.
+     *
+     * @throws RuntimeException If signature is invalid
+     */
+    private function verifyPayload(string $signed): string
+    {
+        $parts = explode('.', $signed, 2);
+
+        if (count($parts) !== 2) {
+            throw new RuntimeException('Invalid job payload format');
+        }
+
+        [$signature, $encoded] = $parts;
+        $serialized = base64_decode($encoded, true);
+
+        if ($serialized === false) {
+            throw new RuntimeException('Invalid job payload encoding');
+        }
+
+        $expectedSignature = hash_hmac('sha256', $serialized, $this->secretKey);
+
+        if (!hash_equals($expectedSignature, $signature)) {
+            throw new RuntimeException('Job payload signature verification failed - possible tampering detected');
+        }
+
+        return $serialized;
+    }
+
     private function generateId(): string
     {
         return sprintf('%d_%s', time(), bin2hex(random_bytes(8)));
@@ -379,7 +414,7 @@ final class FileDriver implements DriverInterface
         $dir = $this->getQueuePath($queue);
 
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0o755, true);
         }
     }
 
