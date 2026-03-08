@@ -334,7 +334,7 @@ final class Router
 
         foreach ($params as $key => $value) {
             $path = preg_replace(
-                '/\{' . $key . '(?::[^}]+)?\}/',
+                '/\{' . preg_quote($key, '/') . '(?::[^}]+)?\}/',
                 rawurlencode((string) $value),
                 $path
             );
