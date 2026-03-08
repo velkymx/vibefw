@@ -1,0 +1,30 @@
+# VibeUI Context for LLMs
+
+## Framework
+- Backend: VibeFW (PHP 8.4+, Fiber-safe)
+- Frontend: Vue 3 (Composition API), Vite, TypeScript
+- UI Library: @velkymx/vibeui ^0.7.0 (Bootstrap 5.3 based)
+
+## Core Rules
+- Components are registered globally via `app.use(VibeUI)`. Do NOT import them.
+- Validators and `useFormValidation` MUST be imported: `import { validators, useFormValidation } from '@velkymx/vibeui'`
+- There is NO `useToast()` composable. Use `<VibeToast v-model="show" />` instead.
+- Use `<script setup lang="ts">` exclusively. No Options API.
+- Use Bootstrap CSS variables (e.g. `var(--bs-body-bg)`) for dark mode compatibility.
+
+## Component Reference (Vibe prefix, globally available)
+- Forms: VibeFormGroup, VibeFormInput, VibeFormSelect, VibeFormCheckbox, VibeFormRadio, VibeFormTextarea
+- Actions: VibeButton (props: variant, loading, size, outline, to, href)
+- Feedback: VibeAlert (v-model, variant, message, dismissable), VibeToast (v-model, title, variant, autohide, delay)
+- Layout: VibeCard (slots: #body, #header, #footer), VibeModal (v-model, title, size, centered)
+- Data: VibeDataTable (items, columns, searchable, sortable, paginated)
+- Navigation: VibeNavbar, VibeDropdown, VibeOffcanvas, VibeBadge
+- Loading: VibeSpinner (type, variant, size)
+
+## Standard Patterns
+- Auth: Bearer tokens in localStorage, key 'token'
+- API: Prefix /api, returns JSON. 422 = validation errors as `{ errors: { field: "message" } }`
+- State: Pinia for global, ref() for local
+- Styling: Scoped SCSS + Bootstrap 5 utility classes
+- Validation: Map 422 errors to VibeFormInput :validation-state and :validation-message
+- Navigation guards: Vue Router 5 return-value style (no next() callback)
