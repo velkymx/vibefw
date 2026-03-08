@@ -201,7 +201,9 @@ final class SecurityPatternTest extends TestCase
                     // - $q* variables: pre-quoted identifiers via quoteIdentifier()
                     // - $placeholders: parameter placeholder strings like ?,?,?
                     $isSafe = str_contains($line, '$this->table')
+                        || str_contains($line, '$this->quotedTable')
                         || str_contains($line, '$table')
+                        || str_contains($line, '$quoted')
                         || preg_match('/\$q[A-Z]/', $line)
                         || str_contains($line, '$placeholders');
                     if (!$isSafe) {

@@ -13,17 +13,44 @@ final class ScaffoldSpaTest extends TestCase
     private string $tempApp;
     private string $tempFrontend;
 
+    private ?string $backupDir = null;
+
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->tempApp = BASE_PATH . '/app';
         $this->tempFrontend = BASE_PATH . '/frontend';
-        
+
         // Ensure clean state for tests
         if (is_dir($this->tempFrontend)) {
             $this->deleteDir($this->tempFrontend);
         }
+    }
+
+    protected function tearDown(): void
+    {
+        // Restore the original app directory from the most recent backup
+        $backups = glob(BASE_PATH . '/storage/backups/app_*');
+        if (!empty($backups)) {
+            sort($backups);
+            $latestBackup = end($backups);
+
+            // Remove the scaffolded app directory
+            if (is_dir($this->tempApp)) {
+                $this->deleteDir($this->tempApp);
+            }
+
+            // Restore from backup
+            rename($latestBackup, $this->tempApp);
+        }
+
+        // Clean up scaffolded frontend
+        if (is_dir($this->tempFrontend)) {
+            $this->deleteDir($this->tempFrontend);
+        }
+
+        parent::tearDown();
     }
 
     public function test_it_scaffolds_frontend_and_backend(): void
