@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Worker` unbounded log growth** — `failed_jobs.log` grew without limit. Added automatic log rotation at 10MB, keeping one backup file.
 - **`Request::rawBody()` size limit off-by-8KB** — The body size check used `>` instead of `>=`, allowing up to 8191 bytes over `$maxBodySize` (one chunk's worth). Changed to `>=` for exact enforcement.
 - **`SecurityPatternTest` false positive on quoted identifiers** — The SQL concatenation security test flagged `BelongsToMany` queries that use properly quoted identifiers via `quoteIdentifier()`. Updated the test to recognize `$q*` prefixed variables and `$placeholders` as safe patterns.
+- **`DateTime::equals()` identity comparison on value objects** — Used `===` (identity) instead of `==` (equality) to compare `DateTimeImmutable` instances. Two independently created `DateTimeImmutable` objects representing the same instant would never be `===`. Changed to `==` for correct value comparison.
+- **`Model` JSON cast returns `null` instead of `[]`** — The `castAttribute()` null-to-empty-array handling only covered the `'array'` cast type, not `'json'`. A model attribute cast as `json` with a `NULL` database value returned `null` instead of `[]`, breaking code that expected an iterable. Added `'json'` to the null check.
+- **`PersonalAccessToken` model incomplete** — The model was missing `$incrementing = false` and `$keyType = 'string'` (token table uses `VARCHAR(36)` primary key), causing `find()` to cast UUIDs to `0`. Also missing: `isValid()`, `cannot()`, `touchLastUsed()`, `revoke()`, hierarchical `can()` with parent/action matching (e.g. `posts:create` matched by `posts` ability), and `user()` BelongsTo relationship.
+- **`LayerTest` false positive on allowed circular dependencies** — `Core <-> Model` (HttpKernel resets Model static state; Model uses Core\Config) and `Core <-> Auth` (HttpKernel resets Auth static state; Auth uses Core\RequestContext) are architectural necessities. Added both pairs to the allowed exceptions list.
 
 ## [2.1.8] - 2026-03-07
 
