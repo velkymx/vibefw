@@ -142,8 +142,13 @@ final class Auth
         if (isset($_SESSION[self::SESSION_KEY])) {
             $sessionUserId = $_SESSION[self::SESSION_KEY];
 
-            // Validate session user ID is a positive integer
-            if (!is_int($sessionUserId) || $sessionUserId <= 0) {
+            // Validate session user ID is a non-empty integer or string (UUID support)
+            if (is_int($sessionUserId)) {
+                if ($sessionUserId <= 0) {
+                    unset($_SESSION[self::SESSION_KEY]);
+                    return null;
+                }
+            } elseif (!is_string($sessionUserId) || $sessionUserId === '') {
                 unset($_SESSION[self::SESSION_KEY]);
                 return null;
             }
