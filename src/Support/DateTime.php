@@ -515,7 +515,8 @@ final readonly class DateTime implements Stringable, JsonSerializable
     {
         $otherValue = $other instanceof self ? $other->value : $other;
 
-        return $this->value == $otherValue;
+        return $this->value->getTimestamp() === $otherValue->getTimestamp()
+            && $this->value->format('u') === $otherValue->format('u');
     }
 
     public function isBefore(self|DateTimeInterface $other): bool
