@@ -4,40 +4,40 @@ declare(strict_types=1);
 
 namespace Fw\Auth;
 
-use App\Models\User;
+use Fw\Model\Model;
 
 /**
  * Base Policy Class.
  *
  * EVERY policy MUST extend this class.
  * EVERY policy method MUST return bool.
- * EVERY policy method receives the authenticated User as the first argument.
+ * EVERY policy method receives the authenticated user model as the first argument.
  *
  * Naming convention:
  *   - Policy class: {ModelName}Policy (e.g., PostPolicy for Post model)
- *   - Policy location: App\Policies\{ModelName}Policy
+ *   - Policy location: Configurable via Gate::setPolicyNamespace() (default: App\Policies)
  *   - Method names: Match the action (view, create, edit, delete, etc.)
  *
  * Example:
  *
  *   class PostPolicy extends Policy
  *   {
- *       public function view(User $user, Post $post): bool
+ *       public function view(Model $user, Post $post): bool
  *       {
  *           return true; // Anyone can view
  *       }
  *
- *       public function create(User $user): bool
+ *       public function create(Model $user): bool
  *       {
  *           return true; // Any authenticated user can create
  *       }
  *
- *       public function edit(User $user, Post $post): bool
+ *       public function edit(Model $user, Post $post): bool
  *       {
  *           return $user->id === $post->user_id;
  *       }
  *
- *       public function delete(User $user, Post $post): bool
+ *       public function delete(Model $user, Post $post): bool
  *       {
  *           return $user->id === $post->user_id;
  *       }
@@ -53,7 +53,7 @@ abstract class Policy
      *
      * Use this for admin bypass:
      *
-     *   protected function before(User $user, string $action): ?bool
+     *   protected function before(Model $user, string $action): ?bool
      *   {
      *       if ($user->role === 'admin') {
      *           return true;
@@ -61,7 +61,7 @@ abstract class Policy
      *       return null;
      *   }
      */
-    public function before(User $user, string $action): ?bool
+    public function before(Model $user, string $action): ?bool
     {
         return null;
     }

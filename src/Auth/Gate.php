@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Auth;
 
-use App\Models\User;
+use Fw\Model\Model;
 use RuntimeException;
 
 /**
@@ -12,8 +12,9 @@ use RuntimeException;
  *
  * The ONLY way to check permissions in this framework.
  *
- * Policies are classes in App\Policies named {Model}Policy.
- * Policy methods receive the User and optionally a model instance.
+ * Policies are classes named {Model}Policy in a configurable namespace
+ * (defaults to App\Policies).
+ * Policy methods receive the authenticated user and optionally a model instance.
  * Policy methods MUST return bool.
  *
  * Usage:
@@ -24,10 +25,24 @@ use RuntimeException;
  * Policy resolution:
  *   Gate::allows('edit', $post)        -> PostPolicy::edit(User, Post)
  *   Gate::allows('create', Post::class) -> PostPolicy::create(User)
+ *
+ * Configuration:
+ *   Gate::setPolicyNamespace('App\\Policies');
  */
 final class Gate
 {
+    private static string $policyNamespace = 'App\\Policies';
+
     private static array $policyCache = [];
+
+    /**
+     * Set the namespace where policy classes are resolved from.
+     */
+    public static function setPolicyNamespace(string $namespace): void
+    {
+        self::$policyNamespace = rtrim($namespace, '\\');
+        self::$policyCache = [];
+    }
 
     /**
      * Check if the current user is allowed to perform an action.
@@ -69,7 +84,7 @@ final class Gate
     /**
      * Check authorization for a specific user (used internally and for testing).
      */
-    public static function check(User $user, string $action, object|string $target): bool
+    public static function check(Model $user, string $action, object|string $target): bool
     {
         $policy = self::resolvePolicy($target);
 
@@ -113,7 +128,7 @@ final class Gate
         }
 
         $modelName = self::classBasename($class);
-        $policyClass = "App\\Policies\\{$modelName}Policy";
+        $policyClass = self::$policyNamespace . "\\{$modelName}Policy";
 
         if (!class_exists($policyClass)) {
             return null;
