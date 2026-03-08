@@ -190,7 +190,7 @@ final class Worker
         // Rotate log file if it exceeds 10MB to prevent unbounded growth
         $this->rotateLogIfNeeded($logFile, 10 * 1024 * 1024);
 
-        $sanitizedTrace = $this->sanitizeStackTrace($e->getTrace());
+        $sanitizedTrace = $this->sanitizeStackTrace(array_slice($e->getTrace(), 0, 30));
 
         $entry = sprintf(
             "[%s] %s: %s\nStack trace:\n%s\n\n",
