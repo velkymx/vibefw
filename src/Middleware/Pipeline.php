@@ -7,10 +7,12 @@ namespace Fw\Middleware;
 use Fw\Core\Application;
 use Fw\Core\Request;
 use Fw\Core\Response;
+use InvalidArgumentException;
 
 final class Pipeline
 {
     private array $middleware = [];
+
     private Application $app;
 
     /**
@@ -24,28 +26,6 @@ final class Pipeline
     {
         $this->app = $app;
         $this->loadAliases();
-    }
-
-    /**
-     * Load middleware aliases from container/config.
-     */
-    private function loadAliases(): void
-    {
-        // Try to get config from container (set by MiddlewareServiceProvider)
-        $config = $this->app->getContainer()->tryGet('middleware.config');
-
-        if ($config->isSome()) {
-            $this->aliases = $config->unwrap()->aliases;
-            return;
-        }
-
-        // Fallback to loading directly from config
-        $configFile = BASE_PATH . '/config/middleware.php';
-
-        if (file_exists($configFile)) {
-            $configData = require $configFile;
-            $this->aliases = $configData['aliases'] ?? [];
-        }
     }
 
     /**
@@ -74,6 +54,28 @@ final class Pipeline
         return $pipeline($request);
     }
 
+    /**
+     * Load middleware aliases from container/config.
+     */
+    private function loadAliases(): void
+    {
+        // Try to get config from container (set by MiddlewareServiceProvider)
+        $config = $this->app->getContainer()->tryGet('middleware.config');
+
+        if ($config->isSome()) {
+            $this->aliases = $config->unwrap()->aliases;
+            return;
+        }
+
+        // Fallback to loading directly from config
+        $configFile = BASE_PATH . '/config/middleware.php';
+
+        if (file_exists($configFile)) {
+            $configData = require $configFile;
+            $this->aliases = $configData['aliases'] ?? [];
+        }
+    }
+
     private function carry(): callable
     {
         return function (callable $next, string|callable|MiddlewareInterface $middleware): callable {
@@ -99,7 +101,7 @@ final class Pipeline
             return $this->resolveString($middleware);
         }
 
-        throw new \InvalidArgumentException(
+        throw new InvalidArgumentException(
             "Invalid middleware: must be a class name, callable, or MiddlewareInterface instance"
         );
     }
@@ -119,21 +121,20 @@ final class Pipeline
         $class = $this->aliases[$name] ?? $name;
 
         if (!class_exists($class)) {
-            throw new \InvalidArgumentException("Middleware '$name' not found");
+            throw new InvalidArgumentException("Middleware '$name' not found");
         }
 
-        // Use the container to create the middleware instance
-        // This allows for automatic dependency injection
-        $instance = $this->app->getContainer()->make($class, $params);
-
-        if ($name === 'can' && !empty($params)) {
-            $instance = $this->app->getContainer()->make(\Fw\Middleware\CanMiddleware::class, [
+        // CanMiddleware needs params as 'permissions' constructor arg
+        if ($class === \Fw\Middleware\CanMiddleware::class && !empty($params)) {
+            $instance = $this->app->getContainer()->make($class, [
                 'permissions' => $params,
             ]);
+        } else {
+            $instance = $this->app->getContainer()->make($class, $params);
         }
 
         if (!$instance instanceof MiddlewareInterface) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Middleware class '$class' must implement MiddlewareInterface"
             );
         }
