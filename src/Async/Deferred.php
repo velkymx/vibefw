@@ -26,6 +26,9 @@ final class Deferred
     /** @var array<Fiber> */
     private array $waiting = [];
 
+    /** @var array<callable(self): void> */
+    private array $listeners = [];
+
     /**
      * Create a pre-resolved deferred.
      */
@@ -75,27 +78,25 @@ final class Deferred
         }
 
         $result = new self();
-        // Hold references in a mutable container so we can release them after settlement
+        // Hold references so we can release them after settlement
         $remaining = $deferreds;
 
-        foreach ($deferreds as $key => $deferred) {
-            EventLoop::getInstance()->defer(function () use ($deferred, $result, &$remaining, $key): void {
+        foreach ($deferreds as $deferred) {
+            $deferred->onSettle(function (self $settled) use ($result, &$remaining): void {
                 if ($result->isResolved()) {
                     return;
                 }
 
+                // Release all references to prevent memory leak
+                $remaining = [];
+
                 try {
-                    if ($deferred->isResolved()) {
-                        // Release all references before settling to prevent memory leak
-                        $remaining = [];
-                        if ($deferred->isRejected()) {
-                            $result->reject($deferred->getError());
-                        } else {
-                            $result->resolve($deferred->getValue());
-                        }
+                    if ($settled->isRejected()) {
+                        $result->reject($settled->getError());
+                    } else {
+                        $result->resolve($settled->getValue());
                     }
                 } catch (Throwable $e) {
-                    $remaining = [];
                     if (!$result->isResolved()) {
                         $result->reject($e);
                     }
@@ -135,6 +136,7 @@ final class Deferred
         }
 
         $this->waiting = [];
+        $this->notifyListeners();
     }
 
     /**
@@ -166,6 +168,7 @@ final class Deferred
         }
 
         $this->waiting = [];
+        $this->notifyListeners();
     }
 
     /**
@@ -243,5 +246,36 @@ final class Deferred
     public function getError(): ?Throwable
     {
         return $this->error;
+    }
+
+    /**
+     * Register a callback to be called when this deferred settles.
+     *
+     * If already settled, the callback is invoked immediately.
+     *
+     * @param callable(self): void $listener
+     */
+    public function onSettle(callable $listener): void
+    {
+        if ($this->resolved) {
+            $listener($this);
+            return;
+        }
+        $this->listeners[] = $listener;
+    }
+
+    /**
+     * Notify all registered listeners after settlement.
+     */
+    private function notifyListeners(): void
+    {
+        foreach ($this->listeners as $listener) {
+            try {
+                $listener($this);
+            } catch (Throwable) {
+                // Listener errors must not prevent other listeners from running
+            }
+        }
+        $this->listeners = [];
     }
 }
