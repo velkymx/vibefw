@@ -204,6 +204,32 @@ abstract class Command
     }
 
     /**
+     * Ask a question without echoing the input (for passwords/secrets).
+     */
+    protected function secret(string $question, ?string $default = null): string
+    {
+        $prompt = $question;
+        if ($default !== null) {
+            $prompt .= ' [' . $default . ']';
+        }
+        $prompt .= ': ';
+
+        $this->output->write($this->output->color($prompt, 'green'));
+
+        // Disable echo on POSIX systems; fall back to plain ask on Windows
+        if (DIRECTORY_SEPARATOR === '/') {
+            shell_exec('stty -echo');
+            $answer = trim((string) fgets(STDIN));
+            shell_exec('stty echo');
+            $this->output->newLine();
+        } else {
+            $answer = trim((string) fgets(STDIN));
+        }
+
+        return $answer !== '' ? $answer : ($default ?? '');
+    }
+
+    /**
      * Ask for confirmation (y/n).
      */
     protected function confirm(string $question, bool $default = false): bool

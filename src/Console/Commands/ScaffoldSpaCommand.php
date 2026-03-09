@@ -176,7 +176,7 @@ final class ScaffoldSpaCommand extends Command
             $config['DB_PORT'] = $this->ask('Database port', $driver === 'mysql' ? '3306' : '5432');
             $config['DB_DATABASE'] = $this->ask('Database name', 'vibefw');
             $config['DB_USERNAME'] = $this->ask('Database username', 'root');
-            $config['DB_PASSWORD'] = $this->ask('Database password', '', true); // Hidden
+            $config['DB_PASSWORD'] = $this->secret('Database password', ''); // Hidden input
         }
 
         $this->task('Updating .env configuration', function () use ($config) {
