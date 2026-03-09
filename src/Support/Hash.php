@@ -6,13 +6,18 @@ namespace Fw\Support;
 
 final class Hash
 {
-    public static function make(string $value): string
+    public static function make(string $value, array $options = []): string
     {
-        return password_hash($value, PASSWORD_BCRYPT);
+        return password_hash($value, PASSWORD_DEFAULT, $options);
     }
 
     public static function check(string $value, string $hash): bool
     {
         return password_verify($value, $hash);
+    }
+
+    public static function needsRehash(string $hash, array $options = []): bool
+    {
+        return password_needs_rehash($hash, PASSWORD_DEFAULT, $options);
     }
 }
