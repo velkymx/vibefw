@@ -489,15 +489,13 @@ final class ScaffoldSpaCommand extends Command
     private function updateConfiguration(): void
     {
         $this->task('Updating application configuration', function () {
-            // 1. Update CORS configuration if it exists
-            $middlewareConfig = BASE_PATH . '/config/middleware.php';
-            if (file_exists($middlewareConfig)) {
-                $config = file_get_contents($middlewareConfig);
-                // Simple logic to ensure frontend port is allowed in CORS if present
-                // (Assuming there's a CORS section or similar)
-            }
+            // Write CORS origins to .env so CorsMiddleware allows the Vite dev server.
+            // CorsMiddleware reads $app->config('cors.allowed_origins') which maps to
+            // the CORS_ALLOWED_ORIGINS env variable read in config/app.php.
+            $appUrl = (string) (getenv('APP_URL') ?: 'http://localhost:8000');
+            $this->updateEnv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,' . $appUrl);
 
-            // 2. Ensure storage directories for backups/logs exist
+            // Ensure storage directories for backups/logs exist
             if (!is_dir(BASE_PATH . '/storage/backups')) {
                 mkdir(BASE_PATH . '/storage/backups', 0o755, true);
             }
