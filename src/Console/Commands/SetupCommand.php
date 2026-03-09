@@ -81,7 +81,7 @@ final class SetupCommand extends Command
             return;
         }
 
-        $this->task('Creating .env with secure keys', function () use ($envFile, $envExample) {
+        $this->task('Creating .env with secure keys', function () use ($envFile, $envExample): void {
             $env = file_get_contents($envExample);
 
             $appKey = bin2hex(random_bytes(32));
@@ -109,7 +109,7 @@ final class SetupCommand extends Command
             foreach ($dirs as $dir) {
                 $fullPath = $basePath . '/' . $dir;
                 if (!is_dir($fullPath)) {
-                    mkdir($fullPath, 0750, true);
+                    mkdir($fullPath, 0o750, true);
                     $created++;
                 }
                 $gitkeep = $fullPath . '/.gitkeep';
@@ -148,5 +148,4 @@ final class SetupCommand extends Command
             return 'already exists';
         });
     }
-
 }

@@ -46,7 +46,7 @@ final class SyncEnvCommand extends Command
 
             if (str_contains($line, '=')) {
                 [$key, $value] = explode('=', $line, 2);
-                $key   = trim($key);
+                $key = trim($key);
                 $value = trim($value, " \t\n\r\0\x0B\"'"); // strip whitespace and surrounding quotes
 
                 $shouldExpose = in_array($key, $exposedKeys, true);

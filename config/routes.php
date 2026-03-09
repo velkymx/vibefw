@@ -5,26 +5,24 @@ declare(strict_types=1);
 use Fw\Core\Router;
 use Fw\Core\Request;
 use Fw\Core\Response;
+use Fw\Auth\Auth;
 
-/**
- * VibeFW Routes
- *
- * Define your application routes here. Run `php fw routes:list` to see all
- * registered routes.
- *
- * Quick start:
- *   php fw make:spa          — Scaffolds API routes + Vue 3 frontend
- *   php fw make:controller   — Generate a new controller
- *
- * See docs/routing.md for full documentation.
- */
 return function (Router $router): void {
-    // Welcome route — replace this with your own routes
-    $router->get('/', function (Request $request): Response {
-        return new Response(
-            '<h1>Welcome to VibeFW</h1><p>Run <code>php fw make:spa</code> to scaffold a Vue 3 frontend.</p>',
-            200,
-            ['Content-Type' => 'text/html; charset=utf-8']
-        );
+    $router->group('/api', function (Router $router): void {
+
+        // Auth (public)
+        $router->post('/auth/login', [App\Controllers\Api\Auth\LoginController::class, 'login']);
+        $router->post('/auth/register', [App\Controllers\Api\Auth\RegisterController::class, 'register']);
+        $router->post('/auth/logout', [App\Controllers\Api\Auth\LoginController::class, 'logout']);
+
+        // User (protected)
+        $router->get('/user', function (Request $request): Response {
+            return (new Response(json_encode(Auth::user(), JSON_THROW_ON_ERROR), 200))
+                ->header('Content-Type', 'application/json');
+        })->middleware('auth:api');
+
+        // Dashboard data (protected)
+        $router->get('/dashboard/stats', [App\Controllers\Api\StatsController::class, 'index'])
+            ->middleware('auth:api');
     });
 };
