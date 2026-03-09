@@ -48,19 +48,9 @@ final class ApiAuthMiddleware implements MiddlewareInterface
     /**
      * Return a 401 Unauthorized JSON response.
      */
-    private function unauthorized(string $detail): array
+    private function unauthorized(string $detail): Response
     {
         $api = new ApiResponse($this->app->response);
-
-        $response = $api->unauthorized($detail, $this->app->request->uri);
-
-        // Set status and headers
-        $this->app->response->setStatus($api->getStatus());
-
-        foreach ($api->getHeaders() as $name => $value) {
-            $this->app->response->header($name, $value);
-        }
-
-        return $response;
+        return $api->unauthorized($detail, $this->app->request->uri);
     }
 }

@@ -9,10 +9,11 @@ final class CreateUsersTable extends Migration
 {
     public function up(): void
     {
-        $this->createTable('users', function (Blueprint $table) {
+        $this->createTable('users', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->datetime('email_verified_at')->nullable();
             $table->string('password');
             $table->timestamps();
         });

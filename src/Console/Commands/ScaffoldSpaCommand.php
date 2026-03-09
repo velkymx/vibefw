@@ -85,6 +85,9 @@ final class ScaffoldSpaCommand extends Command
             'app/Controllers/Api/Auth/RegisterController.php',
             'app/Controllers/Api/StatsController.php',
             'app/Models/User.php',
+            'database/migrations/0001_create_users_table.php',
+            'database/migrations/0005_create_password_resets_table.php',
+            'database/migrations/0006_create_personal_access_tokens_table.php',
             'frontend/package.json',
             'frontend/src/views/Home.vue',
             'frontend/src/views/auth/Login.vue',
@@ -124,6 +127,28 @@ final class ScaffoldSpaCommand extends Command
     {
         $this->newLine();
         $this->info('🗄️ Database Setup');
+
+        // Copy migration stubs into the project's database/migrations/ directory
+        $this->task('Installing database migrations', function () {
+            $stubDir = BASE_PATH . '/stubs/spa/database/migrations';
+            $targetDir = BASE_PATH . '/database/migrations';
+
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0o755, true);
+            }
+
+            $copied = 0;
+            foreach (glob($stubDir . '/*.php.stub') as $stub) {
+                $filename = basename($stub, '.stub'); // e.g. 0001_create_users_table.php
+                $target = $targetDir . '/' . $filename;
+                if (!file_exists($target)) {
+                    copy($stub, $target);
+                    $copied++;
+                }
+            }
+
+            return "{$copied} migrations installed";
+        });
 
         $driver = $this->choice('Which database driver will you use?', [
             'sqlite' => 'SQLite',

@@ -16,9 +16,10 @@ final class HelpCommand extends Command
 
     protected string $description = 'Display help for a command';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {

@@ -75,7 +75,7 @@ final class QueryBus
      */
     public function dispatch(Query $query): Result
     {
-        return Result::try(fn() => $this->handle($query));
+        return Result::try(fn () => $this->handle($query));
     }
 
     /**
@@ -99,10 +99,10 @@ final class QueryBus
         $handler = $this->resolveHandler($query);
 
         // Build middleware chain
-        $chain = fn($q) => $handler->handle($q);
+        $chain = fn ($q) => $handler->handle($q);
 
         foreach (array_reverse($this->middleware) as $middleware) {
-            $chain = fn($q) => $middleware($q, $chain);
+            $chain = fn ($q) => $middleware($q, $chain);
         }
 
         return $chain($query);
@@ -137,8 +137,9 @@ final class QueryBus
 
         // Callable handler
         if (is_callable($handler) && !is_string($handler)) {
-            return new class($handler) implements Handler {
+            return new class ($handler) implements Handler {
                 public function __construct(private readonly mixed $callable) {}
+
                 public function handle(Query $query): mixed
                 {
                     return ($this->callable)($query);

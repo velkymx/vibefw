@@ -23,6 +23,4 @@ namespace Fw\Bus;
  *         ) {}
  *     }
  */
-interface Query
-{
-}
+interface Query {}

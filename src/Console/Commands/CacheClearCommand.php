@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Fw\Console\Commands;
 
+use FilesystemIterator;
 use Fw\Console\Application;
 use Fw\Console\Command;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 
 /**
  * Clear application cache.
@@ -16,9 +19,10 @@ final class CacheClearCommand extends Command
 
     protected string $description = 'Clear all application caches';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -95,9 +99,9 @@ final class CacheClearCommand extends Command
         }
 
         $count = 0;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
         );
 
         foreach ($iterator as $file) {

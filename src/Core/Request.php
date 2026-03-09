@@ -260,11 +260,9 @@ final class Request
         // Bare */* is sent by browsers alongside text/html — do NOT treat that
         // as a JSON request, or HTML page visits break error handling.
         // Only accept */* when there is no explicit text/html preference.
-        if (str_contains($accept, '*/*') && !str_contains($accept, 'text/html')) {
-            return true;
-        }
+        return (bool) (str_contains($accept, '*/*') && !str_contains($accept, 'text/html'))
 
-        return false;
+        ;
     }
 
     public function wantsJson(): bool

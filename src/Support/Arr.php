@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Support;
 
 use ArrayAccess;
+use InvalidArgumentException;
 
 /**
  * Array helper utilities.
@@ -25,7 +26,7 @@ final class Arr
             return $array;
         }
 
-        if (static::exists($array, $key)) {
+        if (self::exists($array, $key)) {
             return $array[$key];
         }
 
@@ -34,7 +35,7 @@ final class Arr
         }
 
         foreach (explode('.', $key) as $segment) {
-            if (static::accessible($array) && static::exists($array, $segment)) {
+            if (self::accessible($array) && self::exists($array, $segment)) {
                 $array = $array[$segment];
             } else {
                 return $default;
@@ -93,12 +94,12 @@ final class Arr
         foreach ($keys as $key) {
             $subArray = $array;
 
-            if (static::exists($array, $key)) {
+            if (self::exists($array, $key)) {
                 continue;
             }
 
             foreach (explode('.', $key) as $segment) {
-                if (static::accessible($subArray) && static::exists($subArray, $segment)) {
+                if (self::accessible($subArray) && self::exists($subArray, $segment)) {
                     $subArray = $subArray[$segment];
                 } else {
                     return false;
@@ -124,7 +125,7 @@ final class Arr
         }
 
         foreach ($keys as $key) {
-            if (static::exists($array, $key)) {
+            if (self::exists($array, $key)) {
                 unset($array[$key]);
                 continue;
             }
@@ -135,7 +136,7 @@ final class Arr
             while (count($parts) > 1) {
                 $part = array_shift($parts);
 
-                if (isset($array[$part]) && static::accessible($array[$part])) {
+                if (isset($array[$part]) && self::accessible($array[$part])) {
                     $array = &$array[$part];
                 } else {
                     continue 2;
@@ -156,15 +157,15 @@ final class Arr
     {
         $results = [];
 
-        [$value, $key] = static::explodePluckParameters($value, $key);
+        [$value, $key] = self::explodePluckParameters($value, $key);
 
         foreach ($array as $item) {
-            $itemValue = static::dataGet($item, $value);
+            $itemValue = self::dataGet($item, $value);
 
             if ($key === null) {
                 $results[] = $itemValue;
             } else {
-                $itemKey = static::dataGet($item, $key);
+                $itemKey = self::dataGet($item, $key);
                 if (is_object($itemKey) && method_exists($itemKey, '__toString')) {
                     $itemKey = (string) $itemKey;
                 }
@@ -196,7 +197,7 @@ final class Arr
      */
     public static function except(array $array, array $keys): array
     {
-        static::forget($array, $keys);
+        self::forget($array, $keys);
         return $array;
     }
 
@@ -247,7 +248,7 @@ final class Arr
             return empty($array) ? $default : end($array);
         }
 
-        return static::first(array_reverse($array, true), $callback, $default);
+        return self::first(array_reverse($array, true), $callback, $default);
     }
 
     /**
@@ -266,7 +267,7 @@ final class Arr
             } else {
                 $values = $depth === 1
                     ? array_values($item)
-                    : static::flatten($item, $depth - 1);
+                    : self::flatten($item, $depth - 1);
 
                 foreach ($values as $value) {
                     $result[] = $value;
@@ -289,7 +290,7 @@ final class Arr
 
         foreach ($array as $key => $value) {
             if (is_array($value) && !empty($value)) {
-                $results = array_merge($results, static::dot($value, $prepend . $key . '.'));
+                $results = array_merge($results, self::dot($value, $prepend . $key . '.'));
             } else {
                 $results[$prepend . $key] = $value;
             }
@@ -309,7 +310,7 @@ final class Arr
         $results = [];
 
         foreach ($array as $key => $value) {
-            static::set($results, $key, $value);
+            self::set($results, $key, $value);
         }
 
         return $results;
@@ -349,7 +350,7 @@ final class Arr
      */
     public static function whereNotNull(array $array): array
     {
-        return static::where($array, fn($value) => $value !== null);
+        return self::where($array, fn ($value) => $value !== null);
     }
 
     /**
@@ -374,7 +375,7 @@ final class Arr
         foreach ($array as $key => $value) {
             $groupKey = is_callable($currentGroup)
                 ? $currentGroup($value, $key)
-                : static::dataGet($value, $currentGroup);
+                : self::dataGet($value, $currentGroup);
 
             if (!array_key_exists($groupKey, $results)) {
                 $results[$groupKey] = [];
@@ -389,7 +390,7 @@ final class Arr
 
         if (!empty($nextGroups)) {
             foreach ($results as $groupKey => $group) {
-                $results[$groupKey] = static::groupBy($group, $nextGroups, $preserveKeys);
+                $results[$groupKey] = self::groupBy($group, $nextGroups, $preserveKeys);
             }
         }
 
@@ -410,7 +411,7 @@ final class Arr
         foreach ($array as $key => $item) {
             $resolvedKey = is_callable($keyBy)
                 ? $keyBy($item, $key)
-                : static::dataGet($item, $keyBy);
+                : self::dataGet($item, $keyBy);
 
             if (is_object($resolvedKey) && method_exists($resolvedKey, '__toString')) {
                 $resolvedKey = (string) $resolvedKey;
@@ -433,7 +434,7 @@ final class Arr
     {
         $results = [];
 
-        $callback = static::valueRetriever($callback);
+        $callback = self::valueRetriever($callback);
 
         foreach ($array as $key => $value) {
             $results[$key] = $callback($value, $key);
@@ -457,7 +458,7 @@ final class Arr
      */
     public static function sortByDesc(array $array, callable|string|array $callback, int $options = SORT_REGULAR): array
     {
-        return static::sortBy($array, $callback, $options, true);
+        return self::sortBy($array, $callback, $options, true);
     }
 
     /**
@@ -469,10 +470,10 @@ final class Arr
     public static function unique(iterable $array, callable|string|null $key = null): array
     {
         if ($key === null) {
-            return array_unique(static::toArray($array), SORT_REGULAR);
+            return array_unique(self::toArray($array), SORT_REGULAR);
         }
 
-        $callback = static::valueRetriever($key);
+        $callback = self::valueRetriever($key);
         $exists = [];
         $results = [];
 
@@ -533,9 +534,9 @@ final class Arr
      */
     public static function pull(array &$array, string|int $key, mixed $default = null): mixed
     {
-        $value = static::get($array, $key, $default);
+        $value = self::get($array, $key, $default);
 
-        static::forget($array, $key);
+        self::forget($array, $key);
 
         return $value;
     }
@@ -552,7 +553,7 @@ final class Arr
         $count = count($array);
 
         if ($requested > $count) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "You requested {$requested} items, but there are only {$count} items available."
             );
         }
@@ -736,7 +737,7 @@ final class Arr
 
         foreach ($array2 as $key => $value) {
             if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {
-                $merged[$key] = static::mergeRecursiveDistinct($merged[$key], $value, $callback);
+                $merged[$key] = self::mergeRecursiveDistinct($merged[$key], $value, $callback);
             } elseif (isset($merged[$key]) && $callback !== null) {
                 $merged[$key] = $callback($merged[$key], $value);
             } else {
@@ -812,7 +813,7 @@ final class Arr
         $key = is_array($key) ? $key : explode('.', (string) $key);
 
         foreach ($key as $segment) {
-            if (is_array($target) && static::exists($target, $segment)) {
+            if (is_array($target) && self::exists($target, $segment)) {
                 $target = $target[$segment];
             } elseif ($target instanceof ArrayAccess && $target->offsetExists($segment)) {
                 $target = $target[$segment];
@@ -837,7 +838,7 @@ final class Arr
             return $value;
         }
 
-        return fn($item) => static::dataGet($item, $value);
+        return fn ($item) => self::dataGet($item, $value);
     }
 
     /**

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Console;
 
+use Throwable;
+
 /**
  * Base class for console commands.
  */
@@ -19,9 +21,16 @@ abstract class Command
     /** @var array<string, array{description: string, default: mixed, shortcut?: string}> */
     protected array $options = [];
 
+    protected Application $app;
+
     protected Input $input;
 
     protected Output $output;
+
+    public function __construct(Application $app)
+    {
+        $this->app = $app;
+    }
 
     /**
      * Execute the command.
@@ -74,7 +83,27 @@ abstract class Command
         $this->output = $output;
     }
 
-    // Helper methods for subclasses
+    /**
+     * Call another console command.
+     */
+    protected function call(string $name, array $args = []): int
+    {
+        // Add command name to args for Input
+        array_unshift($args, $name);
+
+        $app = $this->getApplication();
+        return $app->run($args);
+    }
+
+    /**
+     * Get the console application instance.
+     */
+    protected function getApplication(): Application
+    {
+        // This requires the application to be passed to the command or accessible.
+        // I will update the constructor of Command to accept Application.
+        return $this->app;
+    }
 
     protected function argument(string $name): ?string
     {
@@ -136,6 +165,27 @@ abstract class Command
     }
 
     /**
+     * Run a task with visual feedback.
+     */
+    protected function task(string $description, callable $task): void
+    {
+        $this->output->write("  $description: ");
+
+        try {
+            $result = $task();
+            $this->output->write($this->output->color('DONE', 'green'));
+            if (is_string($result)) {
+                $this->output->write(" <comment>($result)</comment>");
+            }
+            $this->output->newLine();
+        } catch (Throwable $e) {
+            $this->output->write($this->output->color('FAILED', 'red'));
+            $this->output->newLine();
+            throw $e;
+        }
+    }
+
+    /**
      * Ask a question and return the answer.
      */
     protected function ask(string $question, ?string $default = null): string
@@ -175,21 +225,26 @@ abstract class Command
     /**
      * Present a choice menu.
      *
-     * @param array<string> $choices
+     * @param array<string|int, string> $choices
      */
-    protected function choice(string $question, array $choices, ?int $default = null): string
+    protected function choice(string $question, array $choices, mixed $default = null): string
     {
         $this->line($question);
-        foreach ($choices as $i => $choice) {
-            $marker = $default === $i ? '*' : ' ';
-            $this->line("  [$marker] [$i] $choice");
+        $keys = array_keys($choices);
+
+        foreach ($choices as $key => $label) {
+            $marker = (string) $default === (string) $key ? '*' : ' ';
+            $this->line("  [$marker] [$key] $label");
         }
 
         $defaultText = $default !== null ? (string) $default : '';
         $answer = $this->ask('Enter choice', $defaultText);
 
-        $index = (int) $answer;
-        return $choices[$index] ?? $choices[0];
+        if (isset($choices[$answer])) {
+            return (string) $answer;
+        }
+
+        return (string) ($default ?? $keys[0]);
     }
 
     /**

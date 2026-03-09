@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Fw\Providers;
 
-use Fw\Core\ServiceProvider;
 use Fw\Cache\Cache;
 use Fw\Cache\CacheInterface;
 use Fw\Core\Env;
+use Fw\Core\ServiceProvider;
 
 /**
  * Cache Service Provider.
@@ -38,8 +38,8 @@ class CacheServiceProvider extends ServiceProvider
 
         $cache = new Cache($l2Store, $cachePath);
 
-        $this->container->singleton(Cache::class, fn() => $cache);
-        $this->container->singleton(CacheInterface::class, fn() => $cache);
+        $this->container->singleton(Cache::class, fn () => $cache);
+        $this->container->singleton(CacheInterface::class, fn () => $cache);
     }
 
     public function boot(): void

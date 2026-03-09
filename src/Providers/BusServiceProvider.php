@@ -70,6 +70,26 @@ class BusServiceProvider extends ServiceProvider
         $this->registerQueryHandlers();
     }
 
+    /**
+     * Get the registered command handlers.
+     *
+     * @return array<class-string, class-string<Handler>|callable>
+     */
+    public function getCommandHandlers(): array
+    {
+        return $this->commands;
+    }
+
+    /**
+     * Get the registered query handlers.
+     *
+     * @return array<class-string, class-string<Handler>|callable>
+     */
+    public function getQueryHandlers(): array
+    {
+        return $this->queries;
+    }
+
     protected function registerCommandHandlers(): void
     {
         $bus = $this->container->get(CommandBus::class);
@@ -98,25 +118,5 @@ class BusServiceProvider extends ServiceProvider
         foreach ($this->queries as $query => $handler) {
             $bus->register($query, $handler);
         }
-    }
-
-    /**
-     * Get the registered command handlers.
-     *
-     * @return array<class-string, class-string<Handler>|callable>
-     */
-    public function getCommandHandlers(): array
-    {
-        return $this->commands;
-    }
-
-    /**
-     * Get the registered query handlers.
-     *
-     * @return array<class-string, class-string<Handler>|callable>
-     */
-    public function getQueryHandlers(): array
-    {
-        return $this->queries;
     }
 }

@@ -7,6 +7,8 @@ namespace Fw\Console\Commands;
 use Fw\Console\Application;
 use Fw\Console\Command;
 use Fw\Queue\Queue;
+use RuntimeException;
+use Throwable;
 
 /**
  * Process queue jobs.
@@ -17,9 +19,10 @@ final class QueueWorkCommand extends Command
 
     protected string $description = 'Start processing jobs on the queue';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -55,10 +58,10 @@ final class QueueWorkCommand extends Command
         // Set up signal handling for graceful shutdown
         $shouldStop = false;
         if (function_exists('pcntl_signal')) {
-            pcntl_signal(SIGTERM, function () use (&$shouldStop) {
+            pcntl_signal(SIGTERM, function () use (&$shouldStop): void {
                 $shouldStop = true;
             });
-            pcntl_signal(SIGINT, function () use (&$shouldStop) {
+            pcntl_signal(SIGINT, function () use (&$shouldStop): void {
                 $shouldStop = true;
             });
         }
@@ -88,7 +91,7 @@ final class QueueWorkCommand extends Command
                 if ($once) {
                     break;
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->error("Worker error: " . $e->getMessage());
                 sleep($sleep);
             }
@@ -113,7 +116,7 @@ final class QueueWorkCommand extends Command
             $payload = $job['payload'] ?? [];
 
             if (!class_exists($handlerClass)) {
-                throw new \RuntimeException("Job handler not found: $handlerClass");
+                throw new RuntimeException("Job handler not found: $handlerClass");
             }
 
             $instance = new $handlerClass();
@@ -121,7 +124,7 @@ final class QueueWorkCommand extends Command
 
             $processed++;
             $this->success("Completed: $handler");
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $failed++;
             $this->error("Failed: $handler - " . $e->getMessage());
 

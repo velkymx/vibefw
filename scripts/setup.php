@@ -13,8 +13,9 @@
  *   2. Generates APP_KEY and QUEUE_SECRET_KEY
  *   3. Creates required storage directories
  *   4. Creates the SQLite database file
- *   5. Runs database migrations
- *   6. Prints a welcome message with next steps
+ *   5. Prints a welcome message with next steps
+ *
+ * Note: Migrations are NOT run here. They are installed and run by `php fw make:spa`.
  */
 
 $basePath = dirname(__DIR__);
@@ -112,27 +113,7 @@ if ($dbDriver === 'sqlite') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. Run migrations
-// ─────────────────────────────────────────────────────────────────────────────
-$fwCli = $basePath . '/fw';
-
-if (file_exists($fwCli) && file_exists($basePath . '/vendor/autoload.php')) {
-    echo "\n";
-    echo $dim("  Running migrations...\n");
-    $exitCode = 0;
-    passthru("php \"{$fwCli}\" migrate 2>&1", $exitCode);
-
-    if ($exitCode === 0) {
-        echo "  {$green('✓')} Migrations complete\n";
-    } else {
-        echo "  {$yellow('!')} Migration failed (exit code {$exitCode}) — run `php fw migrate` manually\n";
-    }
-} else {
-    echo "  {$yellow('!')} Skipping migrations (vendor not installed or fw CLI not found)\n";
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. Welcome message
+// 4. Welcome message
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\n";
 echo $dim("  ─────────────────────────────────\n");

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.18] - 2026-03-09
+
+### Changed (Architecture)
+
+- **Migrations moved to `make:spa` scope** — All 6 database migrations (users, jobs, remember_token, password_resets, personal_access_tokens, email_verifications) are now stored as stubs in `stubs/spa/database/migrations/` and only installed when `php fw make:spa` is run. A fresh `composer create-project` ships with an empty `database/migrations/` directory — no tables are created until the developer explicitly scaffolds the SPA.
+- **`scripts/setup.php` no longer runs migrations** — The post-create-project hook now only creates `.env`, generates keys, sets up storage dirs, and creates the SQLite file. Migrations are deferred to `make:spa`.
+- **`php fw setup` no longer runs migrations** — Removed `--no-migrate` option since there are no migrations to run on a bare project.
+
 ## [2.1.17] - 2026-03-08
 
 ### Added (Developer Experience)

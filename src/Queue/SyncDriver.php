@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Queue;
 
+use Throwable;
+
 final class SyncDriver implements DriverInterface
 {
     public function push(JobInterface $job): string
@@ -12,7 +14,7 @@ final class SyncDriver implements DriverInterface
 
         try {
             $job->handle();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $job->failed($e);
             throw $e;
         }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Fw\Validation;
 
 use Fw\Core\Request;
+use ReflectionClass;
+use ReflectionProperty;
 
 /**
  * Base class for form request validation with PHP 8 attributes.
@@ -93,9 +95,9 @@ abstract class FormRequest
     public function toArray(): array
     {
         $data = [];
-        $reflection = new \ReflectionClass($this);
+        $reflection = new ReflectionClass($this);
 
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             if ($property->isInitialized($this)) {
                 $data[$property->getName()] = $property->getValue($this);
             }

@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use LogicException;
 use PDO;
 use PDOStatement;
+use RuntimeException;
 use Throwable;
 
 final class Connection
@@ -244,7 +245,7 @@ final class Connection
     public function commit(): void
     {
         if ($this->transactionLevel <= 0) {
-            throw new \LogicException('Cannot commit: no transaction is active.');
+            throw new LogicException('Cannot commit: no transaction is active.');
         }
 
         $this->transactionLevel--;
@@ -259,7 +260,7 @@ final class Connection
     public function rollBack(): void
     {
         if ($this->transactionLevel <= 0) {
-            throw new \LogicException('Cannot rollback: no transaction is active.');
+            throw new LogicException('Cannot rollback: no transaction is active.');
         }
 
         $this->transactionLevel--;
@@ -288,7 +289,7 @@ final class Connection
             'sqlite', 'pgsql' => '"' . str_replace('"', '""', $identifier) . '"',
             // Fail loudly for unknown drivers rather than returning a bare identifier,
             // which would silently produce injection-vulnerable SQL.
-            default => throw new \RuntimeException(
+            default => throw new RuntimeException(
                 "Cannot safely quote identifier for unsupported database driver '{$this->driver}'."
             ),
         };

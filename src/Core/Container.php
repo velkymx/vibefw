@@ -13,6 +13,7 @@ use ReflectionClass;
 use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionNamedType;
+use RuntimeException;
 use stdClass;
 use Throwable;
 use WeakMap;
@@ -102,7 +103,7 @@ final class Container
             // If we exhausted the spin budget and still have no instance, the
             // initialising fiber likely crashed. Throw rather than silently
             // creating a second, partially-configured container.
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'Container initialisation deadlock: another context started initialising ' .
                 'the container but did not complete within the spin budget. ' .
                 'This usually means the bootstrapping Fiber threw an uncaught exception.'
@@ -468,7 +469,7 @@ final class Container
                 break;
             }
             if (++$spins > 1000) {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     "Container reflection deadlock: another context started reflecting {$concrete} but did not complete. " .
                     'This usually means the initialising Fiber threw an uncaught exception.'
                 );

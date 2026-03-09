@@ -7,14 +7,13 @@ namespace Fw\Core;
 use Fw\Async\EventLoop;
 use Fw\Bus\CommandBus;
 use Fw\Bus\QueryBus;
+use Fw\Cache\Cache;
+use Fw\Cache\CacheInterface;
+use Fw\Cache\MemoryCache;
 use Fw\Database\Connection;
 use Fw\Events\EventDispatcher;
 use Fw\Log\Logger;
 use Fw\Security\Csrf;
-use Fw\Core\ProviderRegistry;
-use Fw\Cache\CacheInterface;
-use Fw\Cache\MemoryCache;
-use Fw\Cache\Cache;
 
 /**
  * Main application class.
@@ -23,23 +22,37 @@ final class Application
 {
     private static ?self $instance = null;
 
-    private Container $container;
     public private(set) Logger $log;
+
     public private(set) ?Connection $db = null;
+
     public private(set) View $view;
+
     public private(set) Router $router;
+
     public private(set) Request $request;
+
     public private(set) Response $response;
+
     public private(set) Csrf $csrf;
+
     public private(set) EventDispatcher $events;
+
     public private(set) CommandBus $commands;
+
     public private(set) QueryBus $queries;
+
+    private Container $container;
 
     // Extracted subsystems
     private Env $env;
+
     private Config $configRepository;
+
     private ProviderRegistry $providers;
+
     private HttpKernel $kernel;
+
     private ErrorHandler $errorHandler;
 
     private function __construct()
@@ -62,17 +75,17 @@ final class Application
         $this->request = new Request();
         $this->response = new Response();
         $this->router = new Router($this->container);
-        $this->csrf = new Csrf(fn() => $this->initSession());
+        $this->csrf = new Csrf(fn () => $this->initSession());
         $this->commands = new CommandBus($this->container->resolver());
         $this->queries = new QueryBus($this->container->resolver());
-        
+
         // 4. Initialize Provider Registry
         $this->providers = new ProviderRegistry($this, $this->container, $this->log);
         $this->registerCoreProviders();
 
         // 5. Bind core singletons manually so they are available before full boot
         $this->registerCoreSingletons();
-        
+
         // 6. Register instances in container
         $this->registerContainerInstances();
 
@@ -80,7 +93,7 @@ final class Application
         $this->providers->boot();
 
         // 8. Initialize View (needs Cache from providers)
-        $cache = $this->container->has(CacheInterface::class) 
+        $cache = $this->container->has(CacheInterface::class)
             ? $this->container->get(CacheInterface::class)
             : new Cache(new MemoryCache());
 
@@ -101,55 +114,6 @@ final class Application
 
         // 11. Done
         $this->events->dispatch(new ApplicationBooted($this));
-    }
-
-    private function registerCoreSingletons(): void
-    {
-        // Provide a default MemoryCache if CacheServiceProvider hasn't booted yet
-        if (!$this->container->has(CacheInterface::class)) {
-            $this->container->singleton(CacheInterface::class, fn() => new Cache(new MemoryCache()), true);
-        }
-    }
-
-    private function registerCoreProviders(): void
-    {
-        // We use add() here to add them to the registry. boot() will then trigger their lifecycle.
-        $this->providers->add(\Fw\Providers\EventServiceProvider::class);
-        $this->providers->add(\Fw\Providers\BusServiceProvider::class);
-        $this->providers->add(\Fw\Providers\MiddlewareServiceProvider::class);
-        $this->providers->add(\Fw\Providers\DatabaseServiceProvider::class);
-        $this->providers->add(\Fw\Providers\CacheServiceProvider::class);
-        $this->providers->add(\Fw\Providers\QueueServiceProvider::class);
-    }
-
-    private function registerContainerInstances(): void
-    {
-        $this->container->instance(Env::class, $this->env, true);
-        $this->container->instance(self::class, $this, true);
-        $this->container->instance(Config::class, $this->configRepository, true);
-        
-        // Safety checks for typed properties
-        if (isset($this->request)) $this->container->instance(Request::class, $this->request);
-        if (isset($this->response)) $this->container->instance(Response::class, $this->response);
-        if (isset($this->router)) $this->container->instance(Router::class, $this->router);
-        if (isset($this->csrf)) $this->container->instance(Csrf::class, $this->csrf);
-        if (isset($this->events)) $this->container->instance(EventDispatcher::class, $this->events);
-        if (isset($this->commands)) $this->container->instance(CommandBus::class, $this->commands);
-        if (isset($this->queries)) $this->container->instance(QueryBus::class, $this->queries);
-        if (isset($this->log)) $this->container->instance(Logger::class, $this->log, true);
-        
-        $this->container->singleton(EventLoop::class, fn() => new EventLoop(), true);
-    }
-
-    private function initializeDatabase(): void
-    {
-        if (!$this->configRepository->get('database.enabled', false)) {
-            return;
-        }
-        $this->container->singleton(Connection::class, function () {
-            return Connection::createFresh($this->configRepository->section('database'));
-        }, false);
-        $this->db = $this->container->get(Connection::class);
     }
 
     public static function getInstance(): self
@@ -173,13 +137,6 @@ final class Application
         }
     }
 
-    private function resolveSecureCookieSetting(): bool
-    {
-        $configSecure = $this->configRepository->get('app.secure_cookies', true);
-        $isProduction = $this->configRepository->get('app.env', 'production') === 'production';
-        return $isProduction ?: (bool) $configSecure;
-    }
-
     public function config(string $key, mixed $default = null): mixed
     {
         return $this->configRepository->get($key, $default);
@@ -198,5 +155,77 @@ final class Application
     public function getContainer(): Container
     {
         return $this->container;
+    }
+
+    private function registerCoreSingletons(): void
+    {
+        // Provide a default MemoryCache if CacheServiceProvider hasn't booted yet
+        if (!$this->container->has(CacheInterface::class)) {
+            $this->container->singleton(CacheInterface::class, fn () => new Cache(new MemoryCache()), true);
+        }
+    }
+
+    private function registerCoreProviders(): void
+    {
+        // We use add() here to add them to the registry. boot() will then trigger their lifecycle.
+        $this->providers->add(\Fw\Providers\EventServiceProvider::class);
+        $this->providers->add(\Fw\Providers\BusServiceProvider::class);
+        $this->providers->add(\Fw\Providers\MiddlewareServiceProvider::class);
+        $this->providers->add(\Fw\Providers\DatabaseServiceProvider::class);
+        $this->providers->add(\Fw\Providers\CacheServiceProvider::class);
+        $this->providers->add(\Fw\Providers\QueueServiceProvider::class);
+    }
+
+    private function registerContainerInstances(): void
+    {
+        $this->container->instance(Env::class, $this->env, true);
+        $this->container->instance(self::class, $this, true);
+        $this->container->instance(Config::class, $this->configRepository, true);
+
+        // Safety checks for typed properties
+        if (isset($this->request)) {
+            $this->container->instance(Request::class, $this->request);
+        }
+        if (isset($this->response)) {
+            $this->container->instance(Response::class, $this->response);
+        }
+        if (isset($this->router)) {
+            $this->container->instance(Router::class, $this->router);
+        }
+        if (isset($this->csrf)) {
+            $this->container->instance(Csrf::class, $this->csrf);
+        }
+        if (isset($this->events)) {
+            $this->container->instance(EventDispatcher::class, $this->events);
+        }
+        if (isset($this->commands)) {
+            $this->container->instance(CommandBus::class, $this->commands);
+        }
+        if (isset($this->queries)) {
+            $this->container->instance(QueryBus::class, $this->queries);
+        }
+        if (isset($this->log)) {
+            $this->container->instance(Logger::class, $this->log, true);
+        }
+
+        $this->container->singleton(EventLoop::class, fn () => new EventLoop(), true);
+    }
+
+    private function initializeDatabase(): void
+    {
+        if (!$this->configRepository->get('database.enabled', false)) {
+            return;
+        }
+        $this->container->singleton(Connection::class, function () {
+            return Connection::createFresh($this->configRepository->section('database'));
+        }, false);
+        $this->db = $this->container->get(Connection::class);
+    }
+
+    private function resolveSecureCookieSetting(): bool
+    {
+        $configSecure = $this->configRepository->get('app.secure_cookies', true);
+        $isProduction = $this->configRepository->get('app.env', 'production') === 'production';
+        return $isProduction ?: (bool) $configSecure;
     }
 }

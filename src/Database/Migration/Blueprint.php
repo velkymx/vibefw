@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Database\Migration;
 
+use InvalidArgumentException;
+
 final class Blueprint
 {
     private string $table;
@@ -213,6 +215,8 @@ final class Blueprint
 
 final class ForeignKeyDefinition
 {
+    private const array ALLOWED_FK_ACTIONS = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION', 'SET DEFAULT'];
+
     private string $table;
 
     private string $column;
@@ -243,13 +247,11 @@ final class ForeignKeyDefinition
         return $this;
     }
 
-    private const array ALLOWED_FK_ACTIONS = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION', 'SET DEFAULT'];
-
     public function onDelete(string $action): self
     {
         $action = strtoupper($action);
         if (!in_array($action, self::ALLOWED_FK_ACTIONS, true)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Invalid foreign key action: {$action}. Allowed: " . implode(', ', self::ALLOWED_FK_ACTIONS)
             );
         }
@@ -261,7 +263,7 @@ final class ForeignKeyDefinition
     {
         $action = strtoupper($action);
         if (!in_array($action, self::ALLOWED_FK_ACTIONS, true)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Invalid foreign key action: {$action}. Allowed: " . implode(', ', self::ALLOWED_FK_ACTIONS)
             );
         }

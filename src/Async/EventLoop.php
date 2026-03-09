@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Fw\Async;
 
 use Fiber;
+use LogicException;
 use SplQueue;
+use Throwable;
 
 /**
  * Central event loop managing Fibers and I/O.
@@ -67,6 +69,22 @@ final class EventLoop
     }
 
     /**
+     * Suspend current Fiber and return to event loop.
+     *
+     * @throws LogicException If called outside of a Fiber
+     */
+    public static function suspend(mixed $value = null): mixed
+    {
+        $fiber = Fiber::getCurrent();
+
+        if ($fiber === null) {
+            throw new LogicException('Cannot suspend outside of a Fiber');
+        }
+
+        return Fiber::suspend($value);
+    }
+
+    /**
      * Schedule callback for next tick.
      */
     public function defer(callable $callback): void
@@ -121,22 +139,6 @@ final class EventLoop
     public function cancelTimer(int $timerId): void
     {
         unset($this->timers[$timerId]);
-    }
-
-    /**
-     * Suspend current Fiber and return to event loop.
-     *
-     * @throws \LogicException If called outside of a Fiber
-     */
-    public static function suspend(mixed $value = null): mixed
-    {
-        $fiber = Fiber::getCurrent();
-
-        if ($fiber === null) {
-            throw new \LogicException('Cannot suspend outside of a Fiber');
-        }
-
-        return Fiber::suspend($value);
     }
 
     /**
@@ -230,130 +232,6 @@ final class EventLoop
     }
 
     /**
-     * Process pending timers.
-     */
-    private function processTimers(): void
-    {
-        $now = microtime(true);
-        $expired = [];
-
-        foreach ($this->timers as $id => $timer) {
-            if ($timer['timeout'] <= $now) {
-                $expired[$id] = $timer['callback'];
-            }
-        }
-
-        foreach ($expired as $id => $callback) {
-            unset($this->timers[$id]);
-            $callback();
-        }
-    }
-
-    /**
-     * Process stream I/O using select().
-     */
-    private function processStreams(): void
-    {
-        $read = array_column($this->readStreams, 'stream');
-        $write = array_column($this->writeStreams, 'stream');
-        $except = null;
-
-        if (empty($read) && empty($write)) {
-            return;
-        }
-
-        // Filter out any invalid/closed streams before select
-        $read = array_filter($read, fn($s) => is_resource($s) && get_resource_type($s) !== 'Unknown');
-        $write = array_filter($write, fn($s) => is_resource($s) && get_resource_type($s) !== 'Unknown');
-
-        if (empty($read) && empty($write)) {
-            return;
-        }
-
-        // Clear any previous errors
-        error_clear_last();
-
-        // Non-blocking select with 10ms timeout
-        $changed = stream_select($read, $write, $except, 0, 10000);
-
-        // Handle stream_select errors properly
-        if ($changed === false) {
-            $error = error_get_last();
-            // EINTR (interrupted system call) is recoverable - just retry next tick
-            if ($error !== null && !str_contains($error['message'] ?? '', 'Interrupted')) {
-                // Log or handle the error - remove broken streams
-                $this->cleanupBrokenStreams();
-            }
-            return;
-        }
-
-        if ($changed === 0) {
-            return;
-        }
-
-        // Handle readable streams
-        foreach ($read as $stream) {
-            $id = (int) $stream;
-            if (isset($this->readStreams[$id])) {
-                try {
-                    ($this->readStreams[$id]['callback'])($stream);
-                } catch (\Throwable $e) {
-                    // Remove stream on callback error to prevent infinite error loops
-                    $this->removeReadStream($stream);
-                    throw $e;
-                }
-            }
-        }
-
-        // Handle writable streams
-        foreach ($write as $stream) {
-            $id = (int) $stream;
-            if (isset($this->writeStreams[$id])) {
-                try {
-                    ($this->writeStreams[$id]['callback'])($stream);
-                } catch (\Throwable $e) {
-                    // Remove stream on callback error to prevent infinite error loops
-                    $this->removeWriteStream($stream);
-                    throw $e;
-                }
-            }
-        }
-    }
-
-    /**
-     * Remove any broken or closed streams from watchers.
-     *
-     * Properly closes resources to prevent leaks in long-running processes.
-     */
-    private function cleanupBrokenStreams(): void
-    {
-        foreach ($this->readStreams as $id => $data) {
-            $stream = $data['stream'];
-            $isBroken = !is_resource($stream) || get_resource_type($stream) === 'Unknown';
-
-            if ($isBroken) {
-                // Try to close if still a valid resource (might be in error state)
-                if (is_resource($stream)) {
-                    @fclose($stream);
-                }
-                unset($this->readStreams[$id]);
-            }
-        }
-
-        foreach ($this->writeStreams as $id => $data) {
-            $stream = $data['stream'];
-            $isBroken = !is_resource($stream) || get_resource_type($stream) === 'Unknown';
-
-            if ($isBroken) {
-                if (is_resource($stream)) {
-                    @fclose($stream);
-                }
-                unset($this->writeStreams[$id]);
-            }
-        }
-    }
-
-    /**
      * Remove and close a read stream.
      *
      * @param resource $stream
@@ -411,17 +289,6 @@ final class EventLoop
     }
 
     /**
-     * Check if there is pending work.
-     */
-    private function hasPendingWork(): bool
-    {
-        return !$this->deferred->isEmpty()
-            || !empty($this->readStreams)
-            || !empty($this->writeStreams)
-            || !empty($this->timers);
-    }
-
-    /**
      * Get the count of pending deferred callbacks.
      */
     public function getDeferredCount(): int
@@ -451,5 +318,140 @@ final class EventLoop
     public function getTimerCount(): int
     {
         return count($this->timers);
+    }
+
+    /**
+     * Process pending timers.
+     */
+    private function processTimers(): void
+    {
+        $now = microtime(true);
+        $expired = [];
+
+        foreach ($this->timers as $id => $timer) {
+            if ($timer['timeout'] <= $now) {
+                $expired[$id] = $timer['callback'];
+            }
+        }
+
+        foreach ($expired as $id => $callback) {
+            unset($this->timers[$id]);
+            $callback();
+        }
+    }
+
+    /**
+     * Process stream I/O using select().
+     */
+    private function processStreams(): void
+    {
+        $read = array_column($this->readStreams, 'stream');
+        $write = array_column($this->writeStreams, 'stream');
+        $except = null;
+
+        if (empty($read) && empty($write)) {
+            return;
+        }
+
+        // Filter out any invalid/closed streams before select
+        $read = array_filter($read, fn ($s) => is_resource($s) && get_resource_type($s) !== 'Unknown');
+        $write = array_filter($write, fn ($s) => is_resource($s) && get_resource_type($s) !== 'Unknown');
+
+        if (empty($read) && empty($write)) {
+            return;
+        }
+
+        // Clear any previous errors
+        error_clear_last();
+
+        // Non-blocking select with 10ms timeout
+        $changed = stream_select($read, $write, $except, 0, 10000);
+
+        // Handle stream_select errors properly
+        if ($changed === false) {
+            $error = error_get_last();
+            // EINTR (interrupted system call) is recoverable - just retry next tick
+            if ($error !== null && !str_contains($error['message'] ?? '', 'Interrupted')) {
+                // Log or handle the error - remove broken streams
+                $this->cleanupBrokenStreams();
+            }
+            return;
+        }
+
+        if ($changed === 0) {
+            return;
+        }
+
+        // Handle readable streams
+        foreach ($read as $stream) {
+            $id = (int) $stream;
+            if (isset($this->readStreams[$id])) {
+                try {
+                    ($this->readStreams[$id]['callback'])($stream);
+                } catch (Throwable $e) {
+                    // Remove stream on callback error to prevent infinite error loops
+                    $this->removeReadStream($stream);
+                    throw $e;
+                }
+            }
+        }
+
+        // Handle writable streams
+        foreach ($write as $stream) {
+            $id = (int) $stream;
+            if (isset($this->writeStreams[$id])) {
+                try {
+                    ($this->writeStreams[$id]['callback'])($stream);
+                } catch (Throwable $e) {
+                    // Remove stream on callback error to prevent infinite error loops
+                    $this->removeWriteStream($stream);
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove any broken or closed streams from watchers.
+     *
+     * Properly closes resources to prevent leaks in long-running processes.
+     */
+    private function cleanupBrokenStreams(): void
+    {
+        foreach ($this->readStreams as $id => $data) {
+            $stream = $data['stream'];
+            $isBroken = !is_resource($stream) || get_resource_type($stream) === 'Unknown';
+
+            if ($isBroken) {
+                // Try to close if still a valid resource (might be in error state)
+                if (is_resource($stream)) {
+                    @fclose($stream);
+                }
+                unset($this->readStreams[$id]);
+            }
+        }
+
+        foreach ($this->writeStreams as $id => $data) {
+            $stream = $data['stream'];
+            $isBroken = !is_resource($stream) || get_resource_type($stream) === 'Unknown';
+
+            if ($isBroken) {
+                if (is_resource($stream)) {
+                    @fclose($stream);
+                }
+                unset($this->writeStreams[$id]);
+            }
+        }
+    }
+
+    /**
+     * Check if there is pending work.
+     */
+    private function hasPendingWork(): bool
+    {
+        return !$this->deferred->isEmpty()
+            || !empty($this->readStreams)
+            || !empty($this->writeStreams)
+            || !empty($this->timers);
     }
 }

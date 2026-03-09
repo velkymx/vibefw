@@ -7,6 +7,7 @@ namespace Fw\Queue;
 final class Queue
 {
     private DriverInterface $driver;
+
     private string $defaultQueue = 'default';
 
     public function __construct(DriverInterface $driver)

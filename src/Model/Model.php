@@ -1024,7 +1024,7 @@ abstract class Model implements JsonSerializable
         }
 
         if (!class_exists($class) && !enum_exists($class)) {
-            throw new \RuntimeException("Cast class does not exist: {$class}");
+            throw new RuntimeException("Cast class does not exist: {$class}");
         }
 
         // Backed enums
@@ -1053,7 +1053,7 @@ abstract class Model implements JsonSerializable
             return new $class($value);
         }
 
-        throw new \RuntimeException(
+        throw new RuntimeException(
             "Cannot cast to {$class}: class has no wrap/from/fromTrusted method " .
             "and is not in an allowed namespace (Fw\\, App\\)."
         );

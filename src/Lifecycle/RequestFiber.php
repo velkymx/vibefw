@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Fw\Lifecycle;
 
 use Fiber;
-use Fw\Async\EventLoop;
 use Fw\Core\Application;
 use Fw\Core\Request;
 use Fw\Core\Response;
@@ -21,12 +20,18 @@ use Throwable;
 final class RequestFiber
 {
     private Fiber $fiber;
+
     /** @var Application|object */
     private object $app;
+
     private Request $request;
+
     private mixed $output = null;
+
     private ?Throwable $error = null;
+
     private bool $completed = false;
+
     private Hook $currentHook = Hook::BOOTING;
 
     /** @var array<string, mixed> */
@@ -47,7 +52,7 @@ final class RequestFiber
         $this->request = $request;
         $this->params = $params;
 
-        $this->fiber = new Fiber(function () use ($handler) {
+        $this->fiber = new Fiber(function () use ($handler): void {
             try {
                 if ($handler instanceof Component) {
                     $this->output = $this->executeComponent($handler);
@@ -147,6 +152,14 @@ final class RequestFiber
     }
 
     /**
+     * Get the underlying Fiber instance.
+     */
+    public function getFiber(): Fiber
+    {
+        return $this->fiber;
+    }
+
+    /**
      * Execute a Component with full lifecycle.
      */
     private function executeComponent(Component $component): string
@@ -224,13 +237,5 @@ final class RequestFiber
     private function executeCallable(callable $handler): mixed
     {
         return $handler($this->request, ...$this->params);
-    }
-
-    /**
-     * Get the underlying Fiber instance.
-     */
-    public function getFiber(): Fiber
-    {
-        return $this->fiber;
     }
 }

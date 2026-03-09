@@ -16,9 +16,10 @@ final class MakeProviderCommand extends Command
 
     protected string $description = 'Create a new service provider class';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -68,7 +69,7 @@ final class MakeProviderCommand extends Command
         // Ensure directory exists
         $dir = dirname($providerPath);
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0o755, true);
         }
 
         // Write file

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Queue;
 
+use __PHP_Incomplete_Class;
+use JsonException;
 use RuntimeException;
 
 final class FileDriver implements DriverInterface
@@ -140,7 +142,7 @@ final class FileDriver implements DriverInterface
 
             try {
                 $payload = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
-            } catch (\JsonException) {
+            } catch (JsonException) {
                 flock($lock, LOCK_UN);
                 fclose($lock);
                 @unlink($file);
@@ -184,15 +186,15 @@ final class FileDriver implements DriverInterface
 
             $job = unserialize($serialized, ['allowed_classes' => $this->allowedClasses]);
 
-            if ($job instanceof \__PHP_Incomplete_Class) {
-                throw new \RuntimeException(
+            if ($job instanceof __PHP_Incomplete_Class) {
+                throw new RuntimeException(
                     'Invalid job payload: class not found during deserialization. ' .
                     'Ensure the concrete job class is available to the autoloader.'
                 );
             }
 
             if (!$job instanceof JobInterface) {
-                throw new \RuntimeException('Invalid job payload: not a JobInterface');
+                throw new RuntimeException('Invalid job payload: not a JobInterface');
             }
             $job->setJobId($payload['id']);
 
@@ -241,7 +243,7 @@ final class FileDriver implements DriverInterface
 
             try {
                 $payload = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
-            } catch (\JsonException) {
+            } catch (JsonException) {
                 error_log("Queue: corrupt job file during release: {$file}");
                 continue;
             }

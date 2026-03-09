@@ -15,6 +15,8 @@ use Fw\Support\Arr;
 use Fw\Support\Option;
 use Fw\Support\Result;
 use Fw\Support\Str;
+use RuntimeException;
+use Throwable;
 
 /**
  * Base Controller for MVC applications.
@@ -54,9 +56,13 @@ use Fw\Support\Str;
 abstract class Controller
 {
     protected Application $app;
+
     protected ?CommandBus $commands = null;
+
     protected ?QueryBus $queries = null;
+
     protected ?EventDispatcher $events = null;
+
     protected string $layout = 'app';
 
     public function __construct(Application $app)
@@ -83,7 +89,7 @@ abstract class Controller
         }
 
         $content = $this->app->view->render($template, $data);
-        return $this->app->response->setBody($content)->contentType('text/html');
+        return new Response($content)->contentType('text/html');
     }
 
     /**
@@ -103,7 +109,7 @@ abstract class Controller
         }
 
         $content = $this->app->view->renderCached($template, $data, $ttl);
-        return $this->app->response->setBody($content)->contentType('text/html');
+        return new Response($content)->contentType('text/html');
     }
 
     /**
@@ -124,7 +130,7 @@ abstract class Controller
      */
     protected function json(mixed $data, int $status = 200): Response
     {
-        return $this->app->response
+        return new Response()
             ->setStatus($status)
             ->header('Content-Type', 'application/json')
             ->setBody(json_encode($data, JSON_THROW_ON_ERROR));
@@ -135,7 +141,7 @@ abstract class Controller
      */
     protected function redirect(string $url, int $status = 302): Response
     {
-        return $this->app->response
+        return new Response()
             ->setStatus($status)
             ->header('Location', $url);
     }
@@ -154,9 +160,8 @@ abstract class Controller
      */
     protected function notFound(string $message = 'Not Found'): Response
     {
-        return $this->app->response
-            ->setStatus(404)
-            ->setBody($message);
+        return new Response($message)
+            ->setStatus(404);
     }
 
     /**
@@ -164,9 +169,8 @@ abstract class Controller
      */
     protected function forbidden(string $message = 'Forbidden'): Response
     {
-        return $this->app->response
-            ->setStatus(403)
-            ->setBody($message);
+        return new Response($message)
+            ->setStatus(403);
     }
 
     /**
@@ -174,9 +178,8 @@ abstract class Controller
      */
     protected function badRequest(string $message = 'Bad Request'): Response
     {
-        return $this->app->response
-            ->setStatus(400)
-            ->setBody($message);
+        return new Response($message)
+            ->setStatus(400);
     }
 
     /**
@@ -184,9 +187,8 @@ abstract class Controller
      */
     protected function serverError(string $message = 'Internal Server Error'): Response
     {
-        return $this->app->response
-            ->setStatus(500)
-            ->setBody($message);
+        return new Response($message)
+            ->setStatus(500);
     }
 
     /**
@@ -194,7 +196,7 @@ abstract class Controller
      */
     protected function noContent(int $status = 204): Response
     {
-        return $this->app->response->setStatus($status);
+        return new Response()->setStatus($status);
     }
 
     // ========================================
@@ -205,12 +207,12 @@ abstract class Controller
      * Dispatch a command through the command bus.
      *
      * @template T
-     * @return Result<T, \Throwable>
+     * @return Result<T, Throwable>
      */
     protected function dispatch(Command $command): Result
     {
         if ($this->commands === null) {
-            return Result::err(new \RuntimeException('CommandBus not configured'));
+            return Result::err(new RuntimeException('CommandBus not configured'));
         }
 
         return $this->commands->dispatch($command);
@@ -220,12 +222,12 @@ abstract class Controller
      * Dispatch a query through the query bus.
      *
      * @template T
-     * @return Result<T, \Throwable>
+     * @return Result<T, Throwable>
      */
     protected function query(Query $query): Result
     {
         if ($this->queries === null) {
-            return Result::err(new \RuntimeException('QueryBus not configured'));
+            return Result::err(new RuntimeException('QueryBus not configured'));
         }
 
         return $this->queries->dispatch($query);
@@ -265,7 +267,7 @@ abstract class Controller
     protected function dbQuery(string $sql, array $params = []): array
     {
         if ($this->app->db === null) {
-            throw new \RuntimeException('Database not configured');
+            throw new RuntimeException('Database not configured');
         }
 
         $asyncDb = new \Fw\Async\AsyncDatabase($this->app->db);
@@ -366,29 +368,6 @@ abstract class Controller
         return Result::ok(Arr::only($data, array_keys($rules)));
     }
 
-    /**
-     * Check a single validation rule.
-     */
-    private function checkRule(string $field, mixed $value, string $rule): ?string
-    {
-        $parts = explode(':', $rule);
-        $ruleName = $parts[0];
-        $param = $parts[1] ?? null;
-
-        return match ($ruleName) {
-            'required' => $value === null || $value === '' ? "{$field} is required" : null,
-            'email' => !filter_var($value, FILTER_VALIDATE_EMAIL) ? "{$field} must be a valid email" : null,
-            'min' => strlen((string) $value) < (int) $param ? "{$field} must be at least {$param} characters" : null,
-            'max' => strlen((string) $value) > (int) $param ? "{$field} must be at most {$param} characters" : null,
-            'numeric' => !is_numeric($value) ? "{$field} must be numeric" : null,
-            'alpha' => !ctype_alpha((string) $value) ? "{$field} must contain only letters" : null,
-            'alphanumeric' => !ctype_alnum((string) $value) ? "{$field} must contain only letters and numbers" : null,
-            'url' => !filter_var($value, FILTER_VALIDATE_URL) ? "{$field} must be a valid URL" : null,
-            'uuid' => !Str::isUuid((string) $value) ? "{$field} must be a valid UUID" : null,
-            default => null,
-        };
-    }
-
     // ========================================
     // UTILITY HELPERS
     // ========================================
@@ -416,6 +395,29 @@ abstract class Controller
      */
     protected function abort(int $status, string $message = ''): never
     {
-        throw new \RuntimeException($message ?: "HTTP Error {$status}", $status);
+        throw new RuntimeException($message ?: "HTTP Error {$status}", $status);
+    }
+
+    /**
+     * Check a single validation rule.
+     */
+    private function checkRule(string $field, mixed $value, string $rule): ?string
+    {
+        $parts = explode(':', $rule);
+        $ruleName = $parts[0];
+        $param = $parts[1] ?? null;
+
+        return match ($ruleName) {
+            'required' => $value === null || $value === '' ? "{$field} is required" : null,
+            'email' => !filter_var($value, FILTER_VALIDATE_EMAIL) ? "{$field} must be a valid email" : null,
+            'min' => strlen((string) $value) < (int) $param ? "{$field} must be at least {$param} characters" : null,
+            'max' => strlen((string) $value) > (int) $param ? "{$field} must be at most {$param} characters" : null,
+            'numeric' => !is_numeric($value) ? "{$field} must be numeric" : null,
+            'alpha' => !ctype_alpha((string) $value) ? "{$field} must contain only letters" : null,
+            'alphanumeric' => !ctype_alnum((string) $value) ? "{$field} must contain only letters and numbers" : null,
+            'url' => !filter_var($value, FILTER_VALIDATE_URL) ? "{$field} must be a valid URL" : null,
+            'uuid' => !Str::isUuid((string) $value) ? "{$field} must be a valid UUID" : null,
+            default => null,
+        };
     }
 }

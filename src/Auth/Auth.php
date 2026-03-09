@@ -25,13 +25,6 @@ final class Auth
     private const string CONTEXT_USER_KEY = '_auth_user';
 
     /**
-     * The user model class. Must have findByEmail() and verifyPassword() methods.
-     *
-     * @var class-string<Model>
-     */
-    private static string $userModel = 'App\\Models\\User';
-
-    /**
      * Dummy hash for timing-safe comparison when user doesn't exist.
      * This prevents user enumeration via timing attacks.
      * Generated with password_hash('dummy', PASSWORD_DEFAULT).
@@ -49,6 +42,13 @@ final class Auth
      * Minimum required length for APP_KEY (32 bytes = 64 hex chars or 44 base64 chars).
      */
     private const int MIN_KEY_LENGTH = 32;
+
+    /**
+     * The user model class. Must have findByEmail() and verifyPassword() methods.
+     *
+     * @var class-string<Model>
+     */
+    private static string $userModel = 'App\\Models\\User';
 
     /**
      * Set the user model class used for authentication.

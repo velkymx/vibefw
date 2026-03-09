@@ -9,14 +9,25 @@ namespace Fw\Log;
  */
 enum LogLevel: string
 {
-    case DEBUG = 'debug';
-    case INFO = 'info';
-    case NOTICE = 'notice';
-    case WARNING = 'warning';
-    case ERROR = 'error';
-    case CRITICAL = 'critical';
-    case ALERT = 'alert';
-    case EMERGENCY = 'emergency';
+    /**
+     * Create from string (case-insensitive).
+     */
+    public static function fromString(string $level): self
+    {
+        $level = strtolower($level);
+
+        return match ($level) {
+            'debug' => self::DEBUG,
+            'info' => self::INFO,
+            'notice' => self::NOTICE,
+            'warning', 'warn' => self::WARNING,
+            'error' => self::ERROR,
+            'critical' => self::CRITICAL,
+            'alert' => self::ALERT,
+            'emergency' => self::EMERGENCY,
+            default => self::DEBUG,
+        };
+    }
 
     /**
      * Get the numeric priority (lower = more severe).
@@ -42,24 +53,12 @@ enum LogLevel: string
     {
         return $this->priority() <= $minimumLevel->priority();
     }
-
-    /**
-     * Create from string (case-insensitive).
-     */
-    public static function fromString(string $level): self
-    {
-        $level = strtolower($level);
-
-        return match ($level) {
-            'debug' => self::DEBUG,
-            'info' => self::INFO,
-            'notice' => self::NOTICE,
-            'warning', 'warn' => self::WARNING,
-            'error' => self::ERROR,
-            'critical' => self::CRITICAL,
-            'alert' => self::ALERT,
-            'emergency' => self::EMERGENCY,
-            default => self::DEBUG,
-        };
-    }
+    case DEBUG = 'debug';
+    case INFO = 'info';
+    case NOTICE = 'notice';
+    case WARNING = 'warning';
+    case ERROR = 'error';
+    case CRITICAL = 'critical';
+    case ALERT = 'alert';
+    case EMERGENCY = 'emergency';
 }

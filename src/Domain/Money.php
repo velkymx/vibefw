@@ -31,6 +31,11 @@ final readonly class Money implements ValueObject, JsonSerializable
         }
     }
 
+    public function __toString(): string
+    {
+        return $this->formatted();
+    }
+
     /**
      * Create Money from dollar amount.
      */
@@ -114,7 +119,7 @@ final readonly class Money implements ValueObject, JsonSerializable
      */
     public function divide(float|int $divisor): self
     {
-        if ($divisor == 0) {
+        if ($divisor === 0) {
             throw new InvalidArgumentException('Cannot divide by zero');
         }
 
@@ -244,11 +249,6 @@ final readonly class Money implements ValueObject, JsonSerializable
         return $other instanceof self
             && $this->cents === $other->cents
             && $this->currency === $other->currency;
-    }
-
-    public function __toString(): string
-    {
-        return $this->formatted();
     }
 
     public function jsonSerialize(): array

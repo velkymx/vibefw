@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Support;
 
+use Countable;
+
 /**
  * String helper utilities.
  *
@@ -108,7 +110,7 @@ final class Str
             return $subject;
         }
 
-        return static::beforeLast(static::after($subject, $from), $to);
+        return self::beforeLast(self::after($subject, $from), $to);
     }
 
     /**
@@ -120,7 +122,7 @@ final class Str
             return $subject;
         }
 
-        return static::before(static::after($subject, $from), $to);
+        return self::before(self::after($subject, $from), $to);
     }
 
     /**
@@ -128,11 +130,15 @@ final class Str
      */
     public static function camel(string $value): string
     {
-        if (isset(static::$camelCache[$value])) {
-            return static::$camelCache[$value];
+        if (isset(self::$camelCache[$value])) {
+            return self::$camelCache[$value];
         }
 
-        return static::$camelCache[$value] = lcfirst(static::studly($value));
+        if (count(self::$camelCache) >= 512) {
+            self::$camelCache = array_slice(self::$camelCache, 256, null, true);
+        }
+
+        return self::$camelCache[$value] = lcfirst(self::studly($value));
     }
 
     /**
@@ -171,7 +177,7 @@ final class Str
     public static function containsAll(string $haystack, iterable $needles, bool $ignoreCase = false): bool
     {
         foreach ($needles as $needle) {
-            if (!static::contains($haystack, $needle, $ignoreCase)) {
+            if (!self::contains($haystack, $needle, $ignoreCase)) {
                 return false;
             }
         }
@@ -214,10 +220,10 @@ final class Str
         }
 
         $start = ltrim($matches[1]);
-        $start = static::of($start)->words((int) ($radius / 10), '')->value();
+        $start = self::of($start)->words((int) ($radius / 10), '')->value();
 
         $end = rtrim($matches[3]);
-        $end = static::of($end)->words((int) ($radius / 10), '')->value();
+        $end = self::of($end)->words((int) ($radius / 10), '')->value();
 
         $start = mb_strlen($start) < mb_strlen($matches[1]) ? $omission . $start : $start;
         $end = mb_strlen($end) < mb_strlen($matches[3]) ? $end . $omission : $end;
@@ -319,7 +325,7 @@ final class Str
      */
     public static function kebab(string $value): string
     {
-        return static::snake($value, '-');
+        return self::snake($value, '-');
     }
 
     /**
@@ -357,7 +363,7 @@ final class Str
     {
         preg_match('/^\s*+(?:\S++\s*+){1,' . $words . '}/u', $value, $matches);
 
-        if (!isset($matches[0]) || static::length($value) === static::length($matches[0])) {
+        if (!isset($matches[0]) || self::length($value) === self::length($matches[0])) {
             return $value;
         }
 
@@ -503,7 +509,7 @@ final class Str
     public static function replaceArray(string $search, array $replace, string $subject): string
     {
         foreach ($replace as $value) {
-            $subject = static::replaceFirst($search, (string) $value, $subject);
+            $subject = self::replaceFirst($search, (string) $value, $subject);
         }
 
         return $subject;
@@ -550,10 +556,10 @@ final class Str
     {
         $parts = explode(' ', $value);
         $parts = count($parts) > 1
-            ? array_map([static::class, 'title'], $parts)
-            : array_map([static::class, 'title'], static::ucsplit(implode('_', $parts)));
+            ? array_map([self::class, 'title'], $parts)
+            : array_map([self::class, 'title'], self::ucsplit(implode('_', $parts)));
 
-        $collapsed = static::replace(['-', '_', ' '], '_', implode('_', $parts));
+        $collapsed = self::replace(['-', '_', ' '], '_', implode('_', $parts));
 
         return implode(' ', array_filter(explode('_', $collapsed)));
     }
@@ -563,7 +569,7 @@ final class Str
      */
     public static function slug(string $title, string $separator = '-', ?string $language = 'en', array $dictionary = ['@' => 'at']): string
     {
-        $title = $language ? static::ascii($title, $language) : $title;
+        $title = $language ? self::ascii($title, $language) : $title;
 
         $flip = $separator === '-' ? '_' : '-';
 
@@ -575,7 +581,7 @@ final class Str
 
         $title = str_replace(array_keys($dictionary), array_values($dictionary), $title);
 
-        $title = preg_replace('![^' . preg_quote($separator, '!') . '\pL\pN\s]+!u', '', static::lower($title));
+        $title = preg_replace('![^' . preg_quote($separator, '!') . '\pL\pN\s]+!u', '', self::lower($title));
 
         $title = preg_replace('![' . preg_quote($separator, '!') . '\s]+!u', $separator, $title);
 
@@ -589,16 +595,23 @@ final class Str
     {
         $key = $value;
 
-        if (isset(static::$snakeCache[$key][$delimiter])) {
-            return static::$snakeCache[$key][$delimiter];
+        if (isset(self::$snakeCache[$key][$delimiter])) {
+            return self::$snakeCache[$key][$delimiter];
+        }
+
+        // Count total cached entries across all delimiters, not just top-level keys.
+        // Each word can have multiple entries (one per delimiter), so a simple
+        // count() on the outer array would undercount and allow unbounded growth.
+        if (array_sum(array_map('count', self::$snakeCache)) >= 512) {
+            self::$snakeCache = array_slice(self::$snakeCache, 256, null, true);
         }
 
         if (!ctype_lower($value)) {
             $value = preg_replace('/\s+/u', '', ucwords($value));
-            $value = static::lower(preg_replace('/(.)(?=[A-Z])/u', '$1' . $delimiter, $value));
+            $value = self::lower(preg_replace('/(.)(?=[A-Z])/u', '$1' . $delimiter, $value));
         }
 
-        return static::$snakeCache[$key][$delimiter] = $value;
+        return self::$snakeCache[$key][$delimiter] = $value;
     }
 
     /**
@@ -636,15 +649,19 @@ final class Str
     {
         $key = $value;
 
-        if (isset(static::$studlyCache[$key])) {
-            return static::$studlyCache[$key];
+        if (isset(self::$studlyCache[$key])) {
+            return self::$studlyCache[$key];
         }
 
-        $words = explode(' ', static::replace(['-', '_'], ' ', $value));
+        if (count(self::$studlyCache) >= 512) {
+            self::$studlyCache = array_slice(self::$studlyCache, 256, null, true);
+        }
 
-        $studlyWords = array_map(fn($word) => static::ucfirst($word), $words);
+        $words = explode(' ', self::replace(['-', '_'], ' ', $value));
 
-        return static::$studlyCache[$key] = implode('', $studlyWords);
+        $studlyWords = array_map(fn ($word) => self::ucfirst($word), $words);
+
+        return self::$studlyCache[$key] = implode('', $studlyWords);
     }
 
     /**
@@ -695,10 +712,10 @@ final class Str
     public static function take(string $string, int $limit): string
     {
         if ($limit < 0) {
-            return static::substr($string, $limit);
+            return self::substr($string, $limit);
         }
 
-        return static::substr($string, 0, $limit);
+        return self::substr($string, 0, $limit);
     }
 
     /**
@@ -742,7 +759,7 @@ final class Str
      */
     public static function lcfirst(string $string): string
     {
-        return static::lower(static::substr($string, 0, 1)) . static::substr($string, 1);
+        return self::lower(self::substr($string, 0, 1)) . self::substr($string, 1);
     }
 
     /**
@@ -750,7 +767,7 @@ final class Str
      */
     public static function ucfirst(string $string): string
     {
-        return static::upper(static::substr($string, 0, 1)) . static::substr($string, 1);
+        return self::upper(self::substr($string, 0, 1)) . self::substr($string, 1);
     }
 
     /**
@@ -807,10 +824,21 @@ final class Str
             $time = ($time - $mod) / 32;
         }
 
+        // Read all 80 bits from 10 random bytes using a bit-stream approach.
+        // The naive `ord($bytes[$i % 10]) % 32` only uses 5 low bits per byte
+        // and repeats bytes 0-5 for chars 10-15, giving just 50 bits of entropy.
+        // This correctly consumes every bit: 10 bytes × 8 = 80 bits → 16 chars × 5 bits.
         $randomChars = '';
         $randomBytes = random_bytes(10);
-        for ($i = 0; $i < 16; $i++) {
-            $randomChars .= $encoding[ord($randomBytes[$i % 10]) % 32];
+        $bits = 0;
+        $bitCount = 0;
+        for ($i = 0; $i < 10; $i++) {
+            $bits = ($bits << 8) | ord($randomBytes[$i]);
+            $bitCount += 8;
+            while ($bitCount >= 5) {
+                $bitCount -= 5;
+                $randomChars .= $encoding[($bits >> $bitCount) & 31];
+            }
         }
 
         return $timeChars . $randomChars;
@@ -839,7 +867,7 @@ final class Str
      */
     public static function isEmpty(?string $value): bool
     {
-        return $value === null || $value === '' || static::trim($value) === '';
+        return $value === null || $value === '' || self::trim($value) === '';
     }
 
     /**
@@ -847,7 +875,7 @@ final class Str
      */
     public static function isNotEmpty(?string $value): bool
     {
-        return !static::isEmpty($value);
+        return !self::isEmpty($value);
     }
 
     /**
@@ -857,7 +885,7 @@ final class Str
      */
     public static function parseCallback(string $callback, ?string $default = null): array
     {
-        if (static::contains($callback, '@')) {
+        if (self::contains($callback, '@')) {
             return explode('@', $callback, 2);
         }
 
@@ -867,7 +895,7 @@ final class Str
     /**
      * Get the plural form of an English word.
      */
-    public static function plural(string $value, int|array|\Countable $count = 2): string
+    public static function plural(string $value, int|array|Countable $count = 2): string
     {
         if (is_countable($count)) {
             $count = count($count);
@@ -877,7 +905,7 @@ final class Str
             return $value;
         }
 
-        $plural = static::pluralize($value);
+        $plural = self::pluralize($value);
 
         return $plural ?: $value;
     }
@@ -887,9 +915,19 @@ final class Str
      */
     public static function singular(string $value): string
     {
-        $singular = static::singularize($value);
+        $singular = self::singularize($value);
 
         return $singular ?: $value;
+    }
+
+    /**
+     * Clear the case conversion caches.
+     */
+    public static function flushCache(): void
+    {
+        self::$studlyCache = [];
+        self::$camelCache = [];
+        self::$snakeCache = [];
     }
 
     /**
@@ -897,7 +935,7 @@ final class Str
      */
     private static function pluralize(string $value): string
     {
-        $lower = static::lower($value);
+        $lower = self::lower($value);
 
         $irregulars = [
             'child' => 'children', 'goose' => 'geese', 'man' => 'men', 'woman' => 'women',
@@ -942,7 +980,7 @@ final class Str
      */
     private static function singularize(string $value): string
     {
-        $lower = static::lower($value);
+        $lower = self::lower($value);
 
         $irregulars = [
             'children' => 'child', 'geese' => 'goose', 'men' => 'man', 'women' => 'woman',
@@ -987,15 +1025,5 @@ final class Str
         }
 
         return $value;
-    }
-
-    /**
-     * Clear the case conversion caches.
-     */
-    public static function flushCache(): void
-    {
-        static::$studlyCache = [];
-        static::$camelCache = [];
-        static::$snakeCache = [];
     }
 }

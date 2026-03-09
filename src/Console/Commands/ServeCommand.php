@@ -16,9 +16,10 @@ final class ServeCommand extends Command
 
     protected string $description = 'Start the development server';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {

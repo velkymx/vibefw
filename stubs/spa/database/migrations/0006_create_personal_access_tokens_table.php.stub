@@ -9,7 +9,7 @@ final class CreatePersonalAccessTokensTable extends Migration
 {
     public function up(): void
     {
-        $this->createTable('personal_access_tokens', function (Blueprint $table) {
+        $this->createTable('personal_access_tokens', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('user_id');
             $table->string('name');

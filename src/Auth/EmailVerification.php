@@ -12,6 +12,12 @@ final class EmailVerification
     private const string TABLE = 'email_verifications';
     private const int TOKEN_EXPIRY = 86400; // 24 hours
 
+    /**
+     * Dummy hash for constant-time comparison when no token is found.
+     * Prevents token enumeration via timing side-channels.
+     */
+    private const string DUMMY_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
+
     private static ?Connection $connection = null;
 
     public static function setConnection(Connection $connection): void
@@ -50,12 +56,6 @@ final class EmailVerification
 
         return $token;
     }
-
-    /**
-     * Dummy hash for constant-time comparison when no token is found.
-     * Prevents token enumeration via timing side-channels.
-     */
-    private const string DUMMY_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
     public static function verify(string $token): ?string
     {

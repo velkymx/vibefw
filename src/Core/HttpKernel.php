@@ -10,11 +10,11 @@ use Fw\Auth\EmailVerification;
 use Fw\Auth\Gate;
 use Fw\Auth\PasswordReset;
 use Fw\Cache\CacheInterface;
-use Fw\Model\Model;
 use Fw\Events\EventDispatcher;
 use Fw\Lifecycle\Component;
 use Fw\Lifecycle\RequestFiber;
 use Fw\Middleware\Pipeline;
+use Fw\Model\Model;
 use RuntimeException;
 use Throwable;
 

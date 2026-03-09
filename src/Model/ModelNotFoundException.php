@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Fw\Model;
 
+use ReflectionClass;
+use RuntimeException;
+
 /**
  * Exception thrown when a model is not found.
  */
-final class ModelNotFoundException extends \RuntimeException
+final class ModelNotFoundException extends RuntimeException
 {
     /**
      * @param class-string<Model> $model
@@ -17,7 +20,7 @@ final class ModelNotFoundException extends \RuntimeException
         public readonly mixed $id = null,
         string $message = '',
     ) {
-        $className = (new \ReflectionClass($model))->getShortName();
+        $className = new ReflectionClass($model)->getShortName();
 
         parent::__construct(
             $message ?: ($id !== null

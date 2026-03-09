@@ -16,9 +16,10 @@ final class MakeMigrationCommand extends Command
 
     protected string $description = 'Create a new migration file';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -45,7 +46,7 @@ final class MakeMigrationCommand extends Command
 
         // Ensure directory exists
         if (! is_dir($migrationsDir)) {
-            mkdir($migrationsDir, 0755, true);
+            mkdir($migrationsDir, 0o755, true);
         }
 
         // Find next migration number

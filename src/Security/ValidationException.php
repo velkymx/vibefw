@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Fw\Security;
 
+use RuntimeException;
+
 /**
  * Exception thrown when validation fails.
  *
  * PHP 8.5 enhanced: Works with FILTER_FLAG_THROW_ON_FAILURE pattern.
  */
-final class ValidationException extends \RuntimeException
+final class ValidationException extends RuntimeException
 {
     /**
      * @param array<string, array<string>> $errors Validation errors keyed by field

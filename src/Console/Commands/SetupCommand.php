@@ -10,29 +10,25 @@ use Fw\Console\Command;
  * SetupCommand — Initialize a new VibeFW project
  *
  * This is the CLI equivalent of scripts/setup.php. It handles first-time
- * project setup: creating .env, generating keys, creating storage dirs,
- * and running migrations.
+ * project setup: creating .env, generating keys, and creating storage dirs.
+ *
+ * Migrations are NOT run here — they are installed and run by `php fw make:spa`.
  *
  * Usage:
  *   php fw setup              # Full setup
  *   php fw setup --force      # Overwrite existing .env
- *   php fw setup --no-migrate # Skip migrations
  */
 final class SetupCommand extends Command
 {
     protected string $name = 'setup';
 
-    protected string $description = 'Initialize a new VibeFW project (create .env, generate keys, run migrations)';
+    protected string $description = 'Initialize a new VibeFW project (create .env, generate keys, create storage dirs)';
 
     public function configure(): void
     {
         $this->options = [
             'force' => [
                 'description' => 'Overwrite existing .env file',
-                'default' => false,
-            ],
-            'no-migrate' => [
-                'description' => 'Skip running migrations',
                 'default' => false,
             ],
         ];
@@ -55,14 +51,7 @@ final class SetupCommand extends Command
         // 3. SQLite database
         $this->setupDatabase($basePath);
 
-        // 4. Migrations
-        if (!$this->hasOption('no-migrate')) {
-            $this->runMigrations();
-        } else {
-            $this->comment('  Skipping migrations (--no-migrate)');
-        }
-
-        // 5. Done
+        // 4. Done
         $this->newLine();
         $this->success('Project ready!');
         $this->newLine();
@@ -160,11 +149,4 @@ final class SetupCommand extends Command
         });
     }
 
-    private function runMigrations(): void
-    {
-        $this->newLine();
-        $this->task('Running migrations', function () {
-            return $this->call('migrate');
-        });
-    }
 }

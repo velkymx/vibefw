@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Testing;
 
+use DateTimeImmutable;
 use Fw\Support\Str;
 
 /**
@@ -244,21 +245,21 @@ final class FakerGenerator
     /**
      * Generate a datetime.
      */
-    public function dateTime(string $max = 'now'): \DateTimeImmutable
+    public function dateTime(string $max = 'now'): DateTimeImmutable
     {
         $timestamp = strtotime($max) - random_int(0, 365 * 24 * 60 * 60);
-        return new \DateTimeImmutable('@' . $timestamp);
+        return new DateTimeImmutable('@' . $timestamp);
     }
 
     /**
      * Generate a date between two dates.
      */
-    public function dateTimeBetween(string $start = '-30 years', string $end = 'now'): \DateTimeImmutable
+    public function dateTimeBetween(string $start = '-30 years', string $end = 'now'): DateTimeImmutable
     {
         $startTs = strtotime($start);
         $endTs = strtotime($end);
         $timestamp = random_int($startTs, $endTs);
-        return new \DateTimeImmutable('@' . $timestamp);
+        return new DateTimeImmutable('@' . $timestamp);
     }
 
     /**
@@ -370,6 +371,6 @@ final class FakerGenerator
             $keys = [$keys];
         }
 
-        return array_map(fn($k) => $array[$k], $keys);
+        return array_map(fn ($k) => $array[$k], $keys);
     }
 }

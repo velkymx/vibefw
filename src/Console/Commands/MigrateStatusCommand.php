@@ -6,9 +6,10 @@ namespace Fw\Console\Commands;
 
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Fw\Core\Env;
 use Fw\Database\Connection;
 use Fw\Database\Migration\Migrator;
-use Fw\Core\Env;
+use Throwable;
 
 /**
  * Show migration status.
@@ -19,9 +20,10 @@ final class MigrateStatusCommand extends Command
 
     protected string $description = 'Show the status of each migration';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function handle(): int
     {
@@ -78,7 +80,7 @@ final class MigrateStatusCommand extends Command
             $this->newLine();
 
             return 0;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error('Failed to get status: ' . $e->getMessage());
             return 1;
         }

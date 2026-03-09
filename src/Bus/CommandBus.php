@@ -78,7 +78,7 @@ final class CommandBus
      */
     public function dispatch(Command $command): Result
     {
-        return Result::try(fn() => $this->handle($command));
+        return Result::try(fn () => $this->handle($command));
     }
 
     /**
@@ -102,10 +102,10 @@ final class CommandBus
         $handler = $this->resolveHandler($command);
 
         // Build middleware chain
-        $chain = fn($cmd) => $handler->handle($cmd);
+        $chain = fn ($cmd) => $handler->handle($cmd);
 
         foreach (array_reverse($this->middleware) as $middleware) {
-            $chain = fn($cmd) => $middleware($cmd, $chain);
+            $chain = fn ($cmd) => $middleware($cmd, $chain);
         }
 
         return $chain($command);
@@ -140,8 +140,9 @@ final class CommandBus
 
         // Callable handler
         if (is_callable($handler) && !is_string($handler)) {
-            return new class($handler) implements Handler {
+            return new class ($handler) implements Handler {
                 public function __construct(private readonly mixed $callable) {}
+
                 public function handle(Command $command): mixed
                 {
                     return ($this->callable)($command);

@@ -33,19 +33,6 @@ abstract class InMemoryRepository implements Repository
     protected array $entities = [];
 
     /**
-     * Get the ID from an entity.
-     *
-     * @param T $entity
-     * @return TId
-     */
-    abstract protected function getId(mixed $entity): Id;
-
-    /**
-     * Get the entity class name for error messages.
-     */
-    abstract protected function getEntityClass(): string;
-
-    /**
      * @param TId $id
      * @return Option<T>
      */
@@ -62,7 +49,7 @@ abstract class InMemoryRepository implements Repository
     public function findOrFail(Id $id): mixed
     {
         return $this->find($id)->unwrapOrElse(
-            fn() => throw EntityNotFoundException::for($this->getEntityClass(), $id)
+            fn () => throw EntityNotFoundException::for($this->getEntityClass(), $id)
         );
     }
 
@@ -138,7 +125,7 @@ abstract class InMemoryRepository implements Repository
         foreach (array_reverse($criteria->getOrderBy()) as $order) {
             $results = Arr::sortBy(
                 $results,
-                fn($e) => $this->getFieldValue($e, $order['field']),
+                fn ($e) => $this->getFieldValue($e, $order['field']),
                 SORT_REGULAR,
                 $order['direction'] === 'desc'
             );
@@ -180,6 +167,19 @@ abstract class InMemoryRepository implements Repository
     {
         $this->entities = [];
     }
+
+    /**
+     * Get the ID from an entity.
+     *
+     * @param T $entity
+     * @return TId
+     */
+    abstract protected function getId(mixed $entity): Id;
+
+    /**
+     * Get the entity class name for error messages.
+     */
+    abstract protected function getEntityClass(): string;
 
     /**
      * Check if entity matches a condition.

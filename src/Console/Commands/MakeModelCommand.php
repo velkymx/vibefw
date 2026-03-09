@@ -16,9 +16,10 @@ final class MakeModelCommand extends Command
 
     protected string $description = 'Create a new model class';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -69,7 +70,7 @@ final class MakeModelCommand extends Command
         // Ensure directory exists
         $dir = dirname($modelPath);
         if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0o755, true);
         }
 
         // Write file

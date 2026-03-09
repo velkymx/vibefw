@@ -17,36 +17,45 @@ use Fw\Core\Response;
  */
 final class RateLimitMiddleware implements MiddlewareInterface
 {
-    private const CACHE_PREFIX = 'ratelimit:';
+    private const string CACHE_PREFIX = 'ratelimit:';
 
     private Application $app;
+
     private CacheInterface $cache;
+
     private int $maxRequests;
+
     private int $windowSeconds;
 
     public function __construct(Application $app, CacheInterface $cache)
     {
         $this->app = $app;
         $this->cache = $cache;
-        $this->maxRequests = $app->config('app.rate_limit.max', 60);
-        $this->windowSeconds = $app->config('app.rate_limit.window', 60);
+        $this->maxRequests = (int) $app->config('app.rate_limit.max', 60);
+        $this->windowSeconds = (int) $app->config('app.rate_limit.window', 60);
     }
 
     public function handle(Request $request, callable $next): Response|string|array
     {
         $key = $this->getKey($request);
-        $current = $this->getCurrentCount($key);
 
-        if ($current >= $this->maxRequests) {
-            return $this->tooManyRequests($current);
+        // Atomic increment — avoids the read/check/write race condition
+        $ttl = $this->windowSeconds + 60;
+        $current = $this->cache->increment($key, 1, $ttl);
+
+        // increment() returns false only on driver failure; treat as unlimited
+        if ($current === false) {
+            return $next($request);
         }
 
-        $this->increment($key);
+        if ($current > $this->maxRequests) {
+            return $this->tooManyRequests($current);
+        }
 
         $response = $next($request);
 
         if ($response instanceof Response) {
-            $this->addRateLimitHeaders($response, $current + 1);
+            return $this->addRateLimitHeaders($response, $current);
         }
 
         return $response;
@@ -62,35 +71,19 @@ final class RateLimitMiddleware implements MiddlewareInterface
         return self::CACHE_PREFIX . hash('sha256', $identifier . ':' . $window);
     }
 
-    private function getCurrentCount(string $key): int
-    {
-        return (int) $this->cache->get($key, 0);
-    }
-
-    private function increment(string $key): void
-    {
-        $count = $this->getCurrentCount($key) + 1;
-
-        // TTL is window + buffer to ensure cleanup
-        $ttl = $this->windowSeconds + 60;
-
-        $this->cache->set($key, $count, $ttl);
-    }
-
     private function tooManyRequests(int $current): Response
     {
         $response = $this->app->response->setStatus(429);
-        $this->addRateLimitHeaders($response, $current);
-        $response->header('Retry-After', (string) $this->windowSeconds);
-        return $response;
+        $response = $this->addRateLimitHeaders($response, $current);
+        return $response->header('Retry-After', (string) $this->windowSeconds);
     }
 
-    private function addRateLimitHeaders(Response $response, int $current): void
+    private function addRateLimitHeaders(Response $response, int $current): Response
     {
         $remaining = max(0, $this->maxRequests - $current);
 
-        $response->header('X-RateLimit-Limit', (string) $this->maxRequests);
-        $response->header('X-RateLimit-Remaining', (string) $remaining);
-        $response->header('X-RateLimit-Reset', (string) (time() + $this->windowSeconds));
+        return $response->header('X-RateLimit-Limit', (string) $this->maxRequests)
+            ->header('X-RateLimit-Remaining', (string) $remaining)
+            ->header('X-RateLimit-Reset', (string) (time() + $this->windowSeconds));
     }
 }

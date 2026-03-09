@@ -13,6 +13,12 @@ final class PasswordReset
     private const int TOKEN_EXPIRY = 3600; // 1 hour
 
     /**
+     * Dummy hash for constant-time comparison when no token is found.
+     * Prevents token enumeration via timing side-channels.
+     */
+    private const string DUMMY_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
+
+    /**
      * The database connection (set during bootstrap via setConnection()).
      */
     private static ?Connection $connection = null;
@@ -56,12 +62,6 @@ final class PasswordReset
 
         return $token;
     }
-
-    /**
-     * Dummy hash for constant-time comparison when no token is found.
-     * Prevents token enumeration via timing side-channels.
-     */
-    private const string DUMMY_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
     public static function findByToken(string $token): ?array
     {

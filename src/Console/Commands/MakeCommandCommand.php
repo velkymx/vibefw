@@ -16,9 +16,10 @@ final class MakeCommandCommand extends Command
 
     protected string $description = 'Create a new CQRS command class with handler';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -67,7 +68,7 @@ final class MakeCommandCommand extends Command
         // Ensure directory exists
         $dir = dirname($commandPath);
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0o755, true);
         }
 
         // Write command file
@@ -109,7 +110,7 @@ final class MakeCommandCommand extends Command
         // Ensure directory exists
         $dir = dirname($handlerPath);
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0o755, true);
         }
 
         file_put_contents($handlerPath, $content);

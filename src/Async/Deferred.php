@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Async;
 
 use Fiber;
+use FiberError;
 use InvalidArgumentException;
 use LogicException;
 use Throwable;
@@ -129,7 +130,7 @@ final class Deferred
                     if (!$fiber->isTerminated()) {
                         $fiber->resume($value);
                     }
-                } catch (\FiberError) {
+                } catch (FiberError) {
                     // Fiber was already terminated or in an invalid state — ignore.
                 }
             });
@@ -161,7 +162,7 @@ final class Deferred
                     if (!$fiber->isTerminated()) {
                         $fiber->throw($error);
                     }
-                } catch (\FiberError) {
+                } catch (FiberError) {
                     // Fiber was already terminated or in an invalid state — ignore.
                 }
             });

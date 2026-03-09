@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Fw\Queue;
 
+use __PHP_Incomplete_Class;
 use Fw\Database\Connection;
+use InvalidArgumentException;
 use RuntimeException;
 
 final class DatabaseDriver implements DriverInterface
@@ -30,7 +32,7 @@ final class DatabaseDriver implements DriverInterface
     public function __construct(Connection $db, string $table = 'jobs', ?string $secretKey = null)
     {
         if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/', $table)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Invalid queue table name '{$table}'. Only alphanumerics and underscores are allowed."
             );
         }
@@ -44,12 +46,12 @@ final class DatabaseDriver implements DriverInterface
     /**
      * Get the SQL to create the jobs table.
      *
-     * @throws \InvalidArgumentException If $table contains characters outside [a-zA-Z0-9_]
+     * @throws InvalidArgumentException If $table contains characters outside [a-zA-Z0-9_]
      */
     public static function createTableSql(string $table = 'jobs'): string
     {
         if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/', $table)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Invalid queue table name '{$table}'. Only alphanumerics and underscores are allowed."
             );
         }
@@ -147,8 +149,8 @@ final class DatabaseDriver implements DriverInterface
 
             $job = unserialize($serialized, ['allowed_classes' => $this->allowedClasses]);
 
-            if ($job instanceof \__PHP_Incomplete_Class) {
-                throw new \RuntimeException(
+            if ($job instanceof __PHP_Incomplete_Class) {
+                throw new RuntimeException(
                     'Invalid job payload: class not found during deserialization. ' .
                     'Ensure the concrete job class is available to the autoloader.'
                 );
@@ -156,7 +158,7 @@ final class DatabaseDriver implements DriverInterface
 
             // Validate the unserialized object implements JobInterface
             if (!$job instanceof JobInterface) {
-                throw new \RuntimeException('Invalid job payload: not a JobInterface');
+                throw new RuntimeException('Invalid job payload: not a JobInterface');
             }
             $job->setJobId($row['id']);
 

@@ -105,12 +105,11 @@ final class SpaAuthMiddleware implements MiddlewareInterface
             // (safe) or a non-browser client. Reject in production to be safe;
             // the CSRF check alone is insufficient for SPA protection.
             $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
-            if ($env === 'production') {
-                return false;
-            }
+            return ! ($env === 'production')
+
             // In development, allow requests without origin headers
             // (e.g. curl, Postman) for convenience.
-            return true;
+            ;
         }
 
         $parsed = parse_url($checkUrl);

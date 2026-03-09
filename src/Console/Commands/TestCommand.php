@@ -16,9 +16,10 @@ final class TestCommand extends Command
 
     protected string $description = 'Run the test suite';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {

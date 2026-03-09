@@ -12,12 +12,6 @@ use Throwable;
  */
 final class AsyncHttp
 {
-    private array $defaultHeaders = [
-        'User-Agent' => 'Fw-AsyncHttp/1.0',
-        'Accept' => 'application/json',
-        'Connection' => 'close',
-    ];
-
     /**
      * IP ranges that are blocked by default to prevent SSRF attacks.
      * Includes private, loopback, link-local, and cloud metadata ranges.
@@ -32,6 +26,12 @@ final class AsyncHttp
         '::1/128',           // IPv6 loopback
         'fc00::/7',          // IPv6 private
         'fe80::/10',         // IPv6 link-local
+    ];
+
+    private array $defaultHeaders = [
+        'User-Agent' => 'Fw-AsyncHttp/1.0',
+        'Accept' => 'application/json',
+        'Connection' => 'close',
     ];
 
     private int $timeout = 30;

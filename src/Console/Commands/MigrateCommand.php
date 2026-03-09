@@ -6,9 +6,10 @@ namespace Fw\Console\Commands;
 
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Fw\Core\Env;
 use Fw\Database\Connection;
 use Fw\Database\Migration\Migrator;
-use Fw\Core\Env;
+use Throwable;
 
 /**
  * Run pending database migrations.
@@ -19,9 +20,10 @@ final class MigrateCommand extends Command
 
     protected string $description = 'Run pending database migrations';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -81,7 +83,7 @@ final class MigrateCommand extends Command
             }
 
             return 0;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error('Migration failed: ' . $e->getMessage());
             return 1;
         }

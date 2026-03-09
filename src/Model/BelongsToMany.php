@@ -84,10 +84,10 @@ final class BelongsToMany extends Relation
 
         // Fetch all related models with pivot info
         $connection = Model::getConnection();
-        $qRelated  = $connection->quoteIdentifier($relatedTable);
-        $qRelKey   = $connection->quoteIdentifier($relatedKey);
-        $qPivot    = $connection->quoteIdentifier($this->table);
-        $qForeign  = $connection->quoteIdentifier($this->foreignPivotKey);
+        $qRelated = $connection->quoteIdentifier($relatedTable);
+        $qRelKey = $connection->quoteIdentifier($relatedKey);
+        $qPivot = $connection->quoteIdentifier($this->table);
+        $qForeign = $connection->quoteIdentifier($this->foreignPivotKey);
         $qRelPivot = $connection->quoteIdentifier($this->relatedPivotKey);
         $placeholders = implode(',', array_fill(0, count($keys), '?'));
 
@@ -182,7 +182,7 @@ final class BelongsToMany extends Relation
 
             // Build query with IN clause
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $qPivot   = $connection->quoteIdentifier($this->table);
+            $qPivot = $connection->quoteIdentifier($this->table);
             $qForeign = $connection->quoteIdentifier($this->foreignPivotKey);
             $qRelated = $connection->quoteIdentifier($this->relatedPivotKey);
             return $connection->query(
@@ -264,7 +264,7 @@ final class BelongsToMany extends Relation
 
         $connection = Model::getConnection();
         $qRelated = $connection->quoteIdentifier($this->relatedPivotKey);
-        $qPivot   = $connection->quoteIdentifier($this->table);
+        $qPivot = $connection->quoteIdentifier($this->table);
         $qForeign = $connection->quoteIdentifier($this->foreignPivotKey);
         $rows = $connection->select(
             "SELECT {$qRelated} FROM {$qPivot} WHERE {$qForeign} = ?",

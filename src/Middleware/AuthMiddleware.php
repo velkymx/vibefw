@@ -22,7 +22,7 @@ final class AuthMiddleware implements MiddlewareInterface
     {
         if (!Auth::check()) {
             if ($request->isAjax() || $request->isJson()) {
-                return (new Response())
+                return new Response()
                     ->setStatus(401)
                     ->securityHeaders();
             }
@@ -30,7 +30,7 @@ final class AuthMiddleware implements MiddlewareInterface
             // Validate and store intended URL to prevent open redirect
             $this->storeIntendedUrl($request->uri);
 
-            return (new Response())->redirect('/login');
+            return new Response()->redirect('/login');
         }
 
         return $next($request);

@@ -40,6 +40,4 @@ namespace Fw\Bus;
  *         }
  *     }
  */
-interface Handler
-{
-}
+interface Handler {}

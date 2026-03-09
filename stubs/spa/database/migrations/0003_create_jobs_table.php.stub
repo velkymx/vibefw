@@ -9,7 +9,7 @@ final class CreateJobsTable extends Migration
 {
     public function up(): void
     {
-        $this->createTable('jobs', function (Blueprint $table) {
+        $this->createTable('jobs', function (Blueprint $table): void {
             $table->string('id', 32);
             $table->string('queue')->default('default');
             $table->text('payload');

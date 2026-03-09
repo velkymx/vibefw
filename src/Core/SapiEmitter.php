@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Core;
 
+use RuntimeException;
+
 /**
  * Emitter for standard PHP SAPI environments (PHP-FPM, CLI-Server).
  */
@@ -15,12 +17,12 @@ final class SapiEmitter
     public function emit(Response $response): void
     {
         if (headers_sent()) {
-            throw new \RuntimeException('Headers already sent');
+            throw new RuntimeException('Headers already sent');
         }
 
         $statusCode = $response->getStatusCode();
         $statusText = $response->getStatusText();
-        
+
         // 1. Send status line
         header("HTTP/1.1 {$statusCode} {$statusText}", true, $statusCode);
 

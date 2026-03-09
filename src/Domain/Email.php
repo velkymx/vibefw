@@ -21,6 +21,11 @@ final readonly class Email implements ValueObject
         $this->value = $email;
     }
 
+    public function __toString(): string
+    {
+        return $this->value;
+    }
+
     /**
      * Create an Email from a string, validating the format.
      *
@@ -99,10 +104,5 @@ final readonly class Email implements ValueObject
     public function equals(ValueObject $other): bool
     {
         return $other instanceof self && $this->value === $other->value;
-    }
-
-    public function __toString(): string
-    {
-        return $this->value;
     }
 }

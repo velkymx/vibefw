@@ -27,7 +27,7 @@ class RouteCacheCommand extends Command
         // Create cache directory if needed
         $cacheDir = dirname($cacheFile);
         if (!is_dir($cacheDir)) {
-            mkdir($cacheDir, 0755, true);
+            mkdir($cacheDir, 0o755, true);
         }
 
         // Clear existing cache first
