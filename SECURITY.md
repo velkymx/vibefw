@@ -32,7 +32,7 @@ We take security seriously. If you discover a security vulnerability, please rep
 
 ## Security Features
 
-Fw Framework includes built-in protection against common vulnerabilities:
+VibeFW includes built-in protection against common vulnerabilities:
 
 ### CSRF Protection
 - Automatic token generation and validation
@@ -72,7 +72,7 @@ Fw Framework includes built-in protection against common vulnerabilities:
 
 ## Security Best Practices
 
-When using Fw Framework:
+When using VibeFW:
 
 1. **Environment Variables**: Never commit `.env` files. Use `.env.example` as a template.
 
