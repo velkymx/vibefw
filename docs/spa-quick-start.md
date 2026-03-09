@@ -9,24 +9,18 @@ Build a full-stack Vue 3 + PHP application with VibeFW in under 5 minutes.
 - Node.js 18+ and npm
 - SQLite (default) or MySQL/PostgreSQL
 
-## 1. Install VibeFW
+## 1. Create a New Project
 
 ```bash
-git clone https://github.com/velkymx/vibefw.git my-app
+composer create-project velkymx/vibefw my-app
 cd my-app
-composer install
-cp .env.example .env
 ```
 
-## 2. Run Migrations
+That's it — Composer automatically creates `.env` with secure keys, sets up storage, creates the SQLite database, and runs migrations. Everything is ready to go.
 
-```bash
-php fw migrate
-```
+> **Cloned the repo instead?** Run `php fw setup` to do the same thing.
 
-This creates the database tables needed for authentication (users, personal_access_tokens, etc.).
-
-## 3. Scaffold the SPA
+## 2. Scaffold the SPA
 
 ```bash
 php fw make:spa
@@ -38,7 +32,7 @@ This single command:
 - Updates `config/routes.php` — API routes wired to the new controllers
 - Runs `npm install` and `npm run build` automatically
 
-## 4. Start the Dev Server
+## 3. Start the Dev Server
 
 ```bash
 # Terminal 1: PHP backend (serves API + built SPA)
@@ -50,7 +44,7 @@ cd frontend && npm run dev
 
 Visit `http://localhost:8000` to see your app. The Vite dev server on port 5173 proxies API calls to the PHP backend.
 
-## 5. Register and Log In
+## 4. Register and Log In
 
 1. Click **Get Started** on the landing page
 2. Fill in the registration form

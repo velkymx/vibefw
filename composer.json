@@ -1,7 +1,7 @@
 {
     "name": "velkymx/vibefw",
     "description": "VibeFW: A high-performance, security-focused PHP 8.4+ MVC framework",
-    "type": "library",
+    "type": "project",
     "license": "MIT",
     "keywords": [
         "framework",
@@ -55,6 +55,9 @@
             "Fw\\Tests\\": "tests/"
         }
     },    "scripts": {
+        "post-create-project-cmd": [
+            "@php scripts/setup.php"
+        ],
         "test": "phpunit",
         "test:unit": "phpunit --testsuite=unit",
         "test:feature": "phpunit --testsuite=feature",

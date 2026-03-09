@@ -47,25 +47,34 @@ VibeFW v2.0 is a ground-up architectural refactor designed for persistent runtim
 
 ## Quick Start
 
-### Install as a Library
+### Create a New Project
 
 ```bash
-composer require velkymx/vibefw
+composer create-project velkymx/vibefw my-app
+cd my-app
 ```
 
-### Install as a Project
+That's it. Composer automatically:
+- Creates `.env` with secure keys
+- Sets up storage directories
+- Creates the SQLite database
+- Runs all migrations
+
+### Add a Vue 3 Frontend (Optional)
 
 ```bash
-# Clone and install
-git clone https://github.com/velkymx/vibefw.git
-cd vibefw
+php fw make:spa
+```
+
+Generates a complete SPA with auth, routing, and VibeUI components. See the [SPA Quick Start](docs/spa-quick-start.md) for details.
+
+### Manual Setup (for cloned repos)
+
+```bash
+git clone https://github.com/velkymx/vibefw.git my-app
+cd my-app
 composer install
-
-# Configure environment
-cp .env.example .env
-
-# Run migrations
-php fw migrate
+php fw setup
 ```
 
 ### Run in High-Performance Worker Mode (Recommended)
@@ -81,11 +90,14 @@ VibeFW is designed to run at peak performance using FrankenPHP:
 ```bash
 php fw                              # List all commands
 
+# Project Setup
+php fw setup                        # Initialize project (env, keys, database)
+php fw make:spa                     # Scaffold Vue 3 + TypeScript SPA
+
 # Code Generation
 php fw make:model Post -m           # Model + migration
 php fw make:controller PostController -r  # Resource controller
 php fw make:migration create_posts_table
-php fw make:spa                     # Scaffold Vue 3 + TypeScript SPA
 
 # Database
 php fw migrate                      # Run pending migrations
@@ -97,22 +109,19 @@ php fw routes:list                  # List all routes
 php fw security:check               # Security scan
 ```
 
-### `make:spa` Quick Start
+### Full-Stack in Two Commands
 
 ```bash
-php fw make:spa
-# Generates:
-#   app/Controllers/Api/        — Auth + stats API endpoints
-#   frontend/                   — Vue 3 + Vite + VibeUI SPA
-#   config/routes.php           — SPA-optimised API routes
-# Then automatically runs: npm install && npm run build
+composer create-project velkymx/vibefw my-app
+cd my-app && php fw make:spa
 ```
 
-The generated SPA includes:
-- **Home** — Public landing page
-- **Login / Register** — Auth forms backed by the PHP API
-- **Dashboard** — Protected page (redirects to login if unauthenticated)
-- **MainLayout** — Sidebar + topbar shell with dark mode toggle
+The SPA scaffold generates a complete Vue 3 + TypeScript + VibeUI frontend with:
+- **Home** — Public landing page with feature cards
+- **Login / Register** — Auth forms with validation, wired to the PHP API
+- **Dashboard** — Protected stats page inside a sidebar + topbar shell
+- **Dark mode** — Toggle with Bootstrap CSS variable support
+- **TypeScript types** — Interfaces for all API responses
 
 ## Documentation
 

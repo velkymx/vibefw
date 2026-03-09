@@ -1,0 +1,14 @@
+# Exclude dev-only files from Composer dist archives (create-project)
+/.github            export-ignore
+/tests              export-ignore
+/.hooks             export-ignore
+phpunit.xml         export-ignore
+phpstan.neon        export-ignore
+phpstan-baseline.neon export-ignore
+infection.json5     export-ignore
+.php-cs-fixer.php   export-ignore
+TODO.md             export-ignore
+UIUX-TODO.md        export-ignore
+RELEASE-NOTES.md    export-ignore
+RELEASE_NOTES_v1.0.3.md export-ignore
+RELEASE_NOTES_v2.1.md   export-ignore
