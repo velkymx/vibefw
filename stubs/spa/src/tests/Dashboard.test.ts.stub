@@ -1,3 +1,21 @@
+/**
+ * Dashboard.vue — Unit test
+ *
+ * This test verifies that the Dashboard component renders its heading.
+ * It uses Vitest + Vue Test Utils, which are included in the scaffold's
+ * devDependencies.
+ *
+ * Running tests:
+ *   npx vitest          — watch mode (re-runs on file changes)
+ *   npx vitest run      — single run (CI-friendly)
+ *
+ * Writing more tests:
+ *   1. Create a new .test.ts file in src/tests/
+ *   2. Import the component and mount() it
+ *   3. Use expect() assertions — see https://vitest.dev/api/expect.html
+ *
+ * Note: API calls in components should be mocked with vi.mock('axios').
+ */
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Dashboard from '../views/Dashboard.vue'

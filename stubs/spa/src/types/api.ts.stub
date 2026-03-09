@@ -1,0 +1,91 @@
+/**
+ * VibeFW SPA — API Type Definitions
+ *
+ * These interfaces match the JSON responses from the VibeFW PHP API.
+ * Use them in your components for type-safe API interactions.
+ *
+ * Example:
+ *   import type { User, DashboardStats } from '../types/api'
+ *   const user = ref<User | null>(null)
+ */
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+/** User object returned by GET /api/user and auth endpoints */
+export interface User {
+  id: number
+  name: string
+  email: string
+  email_verified_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** POST /api/auth/login — success response */
+export interface LoginResponse {
+  user: User
+  token: string
+}
+
+/** POST /api/auth/register — success response */
+export interface RegisterResponse {
+  user: User
+  token: string
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
+
+/** GET /api/dashboard/stats — success response */
+export interface DashboardStats {
+  users: number
+  posts: number
+  requestsPerSecond: string
+}
+
+// ---------------------------------------------------------------------------
+// Validation errors
+// ---------------------------------------------------------------------------
+
+/**
+ * 422 validation error response from VibeFW.
+ * The `errors` object maps field names to error messages.
+ *
+ * Example: { message: "Validation failed", errors: { email: "The email field is required." } }
+ */
+export interface ValidationErrorResponse {
+  message: string
+  errors: Record<string, string>
+}
+
+// ---------------------------------------------------------------------------
+// API tokens
+// ---------------------------------------------------------------------------
+
+/** Personal access token (from GET /api/tokens) */
+export interface PersonalAccessToken {
+  id: number
+  name: string
+  abilities: string[]
+  last_used_at: string | null
+  expires_at: string | null
+  created_at: string
+}
+
+/** POST /api/tokens — success response */
+export interface CreateTokenResponse {
+  token: string
+  message: string
+}
+
+// ---------------------------------------------------------------------------
+// Generic API response wrapper
+// ---------------------------------------------------------------------------
+
+/** Standard message response (used by logout, password reset, etc.) */
+export interface MessageResponse {
+  message: string
+}

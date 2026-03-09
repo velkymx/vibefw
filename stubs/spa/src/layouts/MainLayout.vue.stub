@@ -1,11 +1,40 @@
 <script setup lang="ts">
+/**
+ * MainLayout — Authenticated shell layout
+ *
+ * This layout wraps all authenticated pages with:
+ *   - A collapsible sidebar (navigation + user info)
+ *   - A top header bar (breadcrumb, dark mode toggle)
+ *   - A <router-view> content area
+ *
+ * Auth flow:
+ *   On mount, fetchUser() calls GET /api/user with the Bearer token.
+ *   If the token is invalid (401), the global axios interceptor in main.ts
+ *   clears localStorage and redirects to /login automatically.
+ *
+ * Dark mode:
+ *   Toggling dark mode sets `data-bs-theme="dark"` on <html>, which
+ *   Bootstrap 5.3 uses to switch all CSS variables. The preference is
+ *   persisted in localStorage under the key "theme".
+ *
+ * Extending the sidebar:
+ *   Add new <router-link> elements in the <nav> section below.
+ *   Use <VibeIcon icon="icon-name" custom-class="me-2" /> for the icon.
+ *   See Bootstrap Icons: https://icons.getbootstrap.com
+ */
 import { ref, computed, onMounted, provide } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
+
+// User state — loaded from API on mount
 const user = ref<any>(null)
+
+// Sidebar toggle state
 const isSidebarOpen = ref(true)
+
+// Dark mode — persisted in localStorage
 const isDarkMode = ref(localStorage.getItem('theme') === 'dark')
 
 // provide() must be called synchronously during setup — calling it inside an
@@ -13,10 +42,18 @@ const isDarkMode = ref(localStorage.getItem('theme') === 'dark')
 const userName = computed(() => user.value?.name ?? user.value?.email ?? '')
 provide('userName', userName)
 
+/**
+ * Helper to build auth headers for API requests.
+ * The token is stored in localStorage by the Login/Register views.
+ */
 const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem('token')}`
 })
 
+/**
+ * Apply the dark mode theme to the document.
+ * Bootstrap 5.3 uses `data-bs-theme` on <html> to toggle light/dark.
+ */
 const updateTheme = () => {
   if (isDarkMode.value) {
     document.documentElement.setAttribute('data-bs-theme', 'dark')
@@ -32,6 +69,11 @@ const toggleDarkMode = () => {
   updateTheme()
 }
 
+/**
+ * Fetch the authenticated user from the API.
+ * Called on mount. If the token is expired/invalid, the global
+ * axios 401 interceptor (main.ts) handles the redirect to /login.
+ */
 const fetchUser = async () => {
   try {
     const response = await axios.get('/api/user', { headers: authHeaders() })
@@ -42,11 +84,15 @@ const fetchUser = async () => {
   }
 }
 
+/**
+ * Logout: call the API to invalidate the token server-side,
+ * then clear local state regardless of whether the API call succeeds.
+ */
 const handleLogout = async () => {
   try {
     await axios.post('/api/auth/logout', {}, { headers: authHeaders() })
   } catch {
-    // proceed with logout even if request fails
+    // Proceed with client-side logout even if the API call fails
   } finally {
     localStorage.removeItem('token')
     router.push('/login')
@@ -65,7 +111,9 @@ onMounted(() => {
 
 <template>
   <div class="app-wrapper" :class="{ 'sidebar-closed': !isSidebarOpen }">
-    <!-- Sidebar -->
+    <!-- ================================================================= -->
+    <!-- Sidebar — collapsible navigation panel                            -->
+    <!-- ================================================================= -->
     <aside class="app-sidebar shadow-sm">
       <div class="sidebar-header p-3 d-flex align-items-center justify-content-between">
         <span class="fw-bold fs-4">Vibe<span class="text-primary">FW</span></span>
@@ -74,10 +122,16 @@ onMounted(() => {
         </button>
       </div>
 
+      <!-- Navigation links — add your own routes here -->
       <nav class="sidebar-nav p-2 flex-grow-1">
         <router-link to="/dashboard" class="nav-link py-2 px-3 rounded mb-1" active-class="active">
           <VibeIcon icon="speedometer2" custom-class="me-2" /> Dashboard
         </router-link>
+
+        <!-- Example: add more links like this -->
+        <!-- <router-link to="/settings" class="nav-link py-2 px-3 rounded mb-1" active-class="active">
+          <VibeIcon icon="gear" custom-class="me-2" /> Settings
+        </router-link> -->
 
         <div class="border-top my-2"></div>
 
@@ -89,6 +143,7 @@ onMounted(() => {
         </button>
       </nav>
 
+      <!-- User info footer — shown when user data is loaded -->
       <div class="sidebar-footer p-3 border-top" v-if="user">
         <div class="d-flex align-items-center">
           <div class="user-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0">
@@ -102,9 +157,11 @@ onMounted(() => {
       </div>
     </aside>
 
-    <!-- Main Content -->
+    <!-- ================================================================= -->
+    <!-- Main content area                                                 -->
+    <!-- ================================================================= -->
     <main class="app-main d-flex flex-column">
-      <!-- Top Navbar -->
+      <!-- Top header bar -->
       <header class="app-header shadow-sm p-3 d-flex align-items-center">
         <button class="btn btn-sm btn-light me-3" @click="toggleSidebar">
           <VibeIcon icon="list" />
@@ -124,7 +181,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <!-- Page Content -->
+      <!-- Page content — child routes render here -->
       <section class="app-content flex-grow-1 overflow-auto bg-body-secondary">
         <router-view />
       </section>
@@ -133,6 +190,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* Full-height flex layout: sidebar on the left, main content on the right */
 .app-wrapper {
   display: flex;
   height: 100vh;
@@ -140,6 +198,7 @@ onMounted(() => {
   overflow: hidden;
 }
 
+/* Sidebar — fixed width, collapsible via negative margin */
 .app-sidebar {
   width: 260px;
   background-color: var(--bs-body-bg);
@@ -180,10 +239,12 @@ onMounted(() => {
   font-size: 1rem;
 }
 
+/* Collapsed state — slides the sidebar off-screen */
 .sidebar-closed .app-sidebar {
   margin-left: -260px;
 }
 
+/* On mobile, sidebar overlays the content */
 @media (max-width: 991.98px) {
   .app-sidebar {
     position: fixed;

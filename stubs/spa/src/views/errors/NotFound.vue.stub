@@ -1,3 +1,10 @@
+<!--
+  404 Not Found — Catch-all error page
+
+  This page is shown for any URL that doesn't match a defined route.
+  The catch-all route is defined in router/index.ts:
+    { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFound }
+-->
 <template>
   <div class="error-container d-flex align-items-center justify-content-center">
     <div class="text-center" style="max-width: 420px;">

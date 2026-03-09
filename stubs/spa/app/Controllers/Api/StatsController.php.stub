@@ -10,6 +10,16 @@ use Fw\Core\Response;
 use App\Models\User;
 use App\Models\Post;
 
+/**
+ * StatsController — Dashboard statistics API
+ *
+ * Returns aggregated data for the SPA dashboard view.
+ * Protected by the auth:api middleware in config/routes.php.
+ *
+ * API contract:
+ *   GET /api/dashboard/stats  (Bearer token required)
+ *   Response: { users: int, posts: int, requestsPerSecond: string }
+ */
 final class StatsController extends Controller
 {
     public function index(Request $request): Response
@@ -17,7 +27,7 @@ final class StatsController extends Controller
         return $this->json([
             'users' => User::count(),
             'posts' => Post::count(),
-            'requestsPerSecond' => '40,058', // Proudly showing our benchmark
+            'requestsPerSecond' => '40,058',
         ]);
     }
 }

@@ -397,7 +397,7 @@ final class ScaffoldSpaCommand extends Command
             $dirs = [
                 '/src', '/src/assets', '/src/components', '/src/layouts',
                 '/src/views', '/src/router', '/src/views/auth',
-                '/src/views/errors', '/src/tests', '/e2e',
+                '/src/views/errors', '/src/tests', '/src/types', '/e2e',
             ];
             foreach ($dirs as $dir) {
                 if (!is_dir($frontendDir . $dir)) {
@@ -420,8 +420,15 @@ final class ScaffoldSpaCommand extends Command
             $this->copyStub('src/views/auth/Login.vue', $frontendDir . '/src/views/auth/Login.vue');
             $this->copyStub('src/views/auth/Register.vue', $frontendDir . '/src/views/auth/Register.vue');
             $this->copyStub('src/views/errors/NotFound.vue', $frontendDir . '/src/views/errors/NotFound.vue');
+            $this->copyStub('src/types/api.ts', $frontendDir . '/src/types/api.ts');
 
-            // 5. Create index.html
+            // 5. Copy README
+            $readmeStub = BASE_PATH . '/stubs/spa/README.md.stub';
+            if (file_exists($readmeStub)) {
+                copy($readmeStub, $frontendDir . '/README.md');
+            }
+
+            // 6. Create index.html
             $indexHtml = <<<HTML
                 <!DOCTYPE html>
                 <html lang="en">
