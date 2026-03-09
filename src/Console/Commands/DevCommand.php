@@ -34,7 +34,7 @@ final class DevCommand extends Command
                 $this->warning('Frontend dependencies not found.');
                 if ($this->confirm('Would you like to run "npm install" now?', true)) {
                     $this->info('📦 Installing dependencies... this may take a minute.');
-                    passthru("cd $frontendDir && npm install");
+                    passthru('cd ' . escapeshellarg($frontendDir) . ' && npm install');
                 } else {
                     $this->error('Vite cannot start without dependencies. Starting backend only.');
                     $hasFrontend = false;
@@ -60,8 +60,8 @@ final class DevCommand extends Command
         $this->newLine();
 
         $commands = [
-            "php fw serve --port=$backendPort",
-            "cd frontend && npm run dev",
+            'php fw serve --port=' . $backendPort,
+            'cd ' . escapeshellarg($frontendDir) . ' && npm run dev',
         ];
 
         // Simple parallel execution using pcntl_fork if available, or just outputting instructions
@@ -100,7 +100,8 @@ final class DevCommand extends Command
             $pid = pcntl_fork();
 
             if ($pid === -1) {
-                die("Could not fork");
+                $this->error('Could not fork process.');
+                return;
             }
             if ($pid) {
                 // Parent process - continue to next command
