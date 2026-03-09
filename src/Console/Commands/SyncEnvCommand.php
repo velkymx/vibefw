@@ -46,7 +46,8 @@ final class SyncEnvCommand extends Command
 
             if (str_contains($line, '=')) {
                 [$key, $value] = explode('=', $line, 2);
-                $key = trim($key);
+                $key   = trim($key);
+                $value = trim($value);
 
                 $shouldExpose = in_array($key, $exposedKeys, true);
                 if (!$shouldExpose) {
