@@ -55,6 +55,9 @@ final class SecurityCheckCommand extends Command
         $configFiles = glob(BASE_PATH . '/config/*.php') ?: [];
         foreach ($configFiles as $file) {
             $content = file_get_contents($file);
+            if ($content === false) {
+                continue;
+            }
             if (preg_match('/[\'"](password|secret|key)[\'"]\s*=>\s*[\'"](?!env\()[^\'"]+[\'"]/', $content)) {
                 $this->warning("Possible hardcoded credential found in " . basename($file));
                 $warnings++;
