@@ -86,7 +86,7 @@ These endpoints are created by `make:spa` in your PHP backend:
 | POST | `/api/auth/register` | No | Create account and receive token |
 | POST | `/api/auth/logout` | Yes | Invalidate token |
 | GET | `/api/user` | Yes | Get authenticated user |
-| GET | `/api/dashboard/stats` | Yes | Dashboard statistics |
+| GET | `/api/dashboard/stats` | Yes | Dashboard statistics (users, uptime, perf) |
 
 ### Validation Errors (422)
 

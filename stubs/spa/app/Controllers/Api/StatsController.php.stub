@@ -8,7 +8,6 @@ use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
 use App\Models\User;
-use App\Models\Post;
 
 /**
  * StatsController — Dashboard statistics API
@@ -18,7 +17,7 @@ use App\Models\Post;
  *
  * API contract:
  *   GET /api/dashboard/stats  (Bearer token required)
- *   Response: { users: int, posts: int, requestsPerSecond: string }
+ *   Response: { users: int, uptime: string, requestsPerSecond: string }
  */
 final class StatsController extends Controller
 {
@@ -26,8 +25,19 @@ final class StatsController extends Controller
     {
         return $this->json([
             'users' => User::count(),
-            'posts' => Post::count(),
+            'uptime' => $this->getUptime(),
             'requestsPerSecond' => '40,058',
         ]);
+    }
+
+    private function getUptime(): string
+    {
+        $seconds = time() - (int) ($_SERVER['REQUEST_TIME'] ?? time());
+        if ($seconds < 60) {
+            return 'Just started';
+        }
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+        return $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
     }
 }

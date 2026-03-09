@@ -42,7 +42,7 @@ export interface RegisterResponse {
 /** GET /api/dashboard/stats — success response */
 export interface DashboardStats {
   users: number
-  posts: number
+  uptime: string
   requestsPerSecond: string
 }
 
