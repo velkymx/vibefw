@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.16] - 2026-03-08
+
+### Added (Documentation)
+
+- **SPA Quick Start guide** — New `docs/spa-quick-start.md` with end-to-end walkthrough from install to production deployment, including how to add new pages and API endpoints.
+- **Comprehensive inline comments in all SPA stubs** — Every frontend stub (main.ts, router/index.ts, MainLayout.vue, Login.vue, Register.vue, Dashboard.vue, Home.vue, NotFound.vue, App.vue, Dashboard.test.ts) now has detailed doc comments explaining auth flow, API contracts, route guards, dark mode, and extension points.
+- **TypeScript API types stub** — New `src/types/api.ts.stub` generates typed interfaces for all API responses (User, LoginResponse, DashboardStats, ValidationErrorResponse, etc.).
+- **Frontend README stub** — New `README.md.stub` generates a comprehensive README in `/frontend/` with tech stack, project structure, auth flow, API reference, VibeUI cheat sheet, and troubleshooting guide.
+- **README.md updated** — Added links to SPA Quick Start guide and VibeUI component reference.
+- **ScaffoldSpaCommand updated** — Now copies the new types and README stubs, creates `src/types/` directory.
+
 ## [2.1.15] - 2026-03-08
 
 ### Fixed (make:spa)
