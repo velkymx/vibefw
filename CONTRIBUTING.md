@@ -36,8 +36,9 @@ By participating in this project, you agree to maintain a respectful and inclusi
 git clone https://github.com/YOUR_USERNAME/vibefw.git
 cd vibefw
 
-# Install dependencies
+# Install dependencies and set up the project
 composer install
+php fw setup
 
 # Run tests
 composer test
@@ -48,6 +49,8 @@ composer lint
 # Run static analysis
 composer analyse
 ```
+
+> **Starting fresh?** `composer create-project velkymx/vibefw my-app` handles setup automatically.
 
 ## Coding Standards
 

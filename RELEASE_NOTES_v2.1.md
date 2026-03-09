@@ -4,13 +4,34 @@
 
 ---
 
-## One Command, Full Stack
+## Two Commands, Full Stack
 
-VibeFW v2.1 is the release where the framework becomes a complete platform. Run `php fw make:spa` and in under 60 seconds you have a production-ready full-stack application: a PHP 8.4 API backend with Bearer token auth, a Vue 3 + TypeScript frontend with VibeUI components, dark mode, route guards, and validation — all wired together and ready to build on.
+```bash
+composer create-project velkymx/vibefw my-app
+cd my-app && php fw make:spa
+```
+
+VibeFW v2.1 is the release where the framework becomes a complete platform. `composer create-project` sets up everything automatically — `.env` with secure keys, storage directories, SQLite database, migrations. Then `make:spa` adds a production-ready Vue 3 + TypeScript frontend with auth, routing, and VibeUI components. From zero to full-stack app in under 60 seconds.
 
 ---
 
 ## Headline Features
+
+### Turnkey Project Setup
+
+```bash
+composer create-project velkymx/vibefw my-app
+```
+
+Composer automatically:
+- Creates `.env` with cryptographically secure `APP_KEY` and `QUEUE_SECRET_KEY`
+- Sets up storage directories with correct permissions
+- Creates the SQLite database
+- Runs all migrations
+
+No manual configuration. No copy-pasting keys. Just works.
+
+For cloned repos: `php fw setup` does the same thing.
 
 ### `make:spa` — Full-Stack Scaffold
 

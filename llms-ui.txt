@@ -36,6 +36,14 @@
 ```
 Size options: sm, lg, 1x, 2x, 3x, 4x, 5x
 
+## Quick Start
+```bash
+composer create-project velkymx/vibefw my-app && cd my-app
+php fw make:spa    # scaffolds Vue 3 + VibeUI frontend with auth
+php fw serve       # start PHP backend
+cd frontend && npm run dev  # start Vite dev server
+```
+
 ## Standard Patterns
 - Auth: Bearer tokens in localStorage, key 'token'
 - API: Prefix /api, returns JSON. 422 = validation errors as `{ errors: { field: "message" } }`

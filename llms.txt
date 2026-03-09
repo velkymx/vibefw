@@ -3,6 +3,14 @@
 > For the SPA/Vue frontend, see: llms-ui.txt
 > Full docs: https://github.com/velkymx/vibefw
 
+## Quick Start
+```bash
+composer create-project velkymx/vibefw my-app   # turnkey setup
+cd my-app && php fw serve                        # start dev server
+php fw make:spa                                  # optional: add Vue 3 SPA
+```
+For cloned repos: `php fw setup` handles .env, keys, database, and migrations.
+
 ## Quick Facts
 - PHP 8.4+ required (property hooks, asymmetric visibility)
 - Fiber-based async request handling
