@@ -22,10 +22,15 @@ final class SecurityCheckCommand extends Command
 
         // 1. Check .env permissions (if on linux/mac)
         if (DIRECTORY_SEPARATOR === '/') {
-            $perms = substr(sprintf('%o', fileperms(BASE_PATH . '/.env')), -3);
-            if ($perms !== '600' && $perms !== '640' && $perms !== '400') {
-                $this->warning(".env file has loose permissions ($perms). Recommend 600 or 640.");
-                $warnings++;
+            $envPath = BASE_PATH . '/.env';
+            if (!file_exists($envPath)) {
+                $this->warning('.env file not found — skipping permissions check.');
+            } else {
+                $perms = substr(sprintf('%o', fileperms($envPath)), -3);
+                if ($perms !== '600' && $perms !== '640' && $perms !== '400') {
+                    $this->warning(".env file has loose permissions ($perms). Recommend 600 or 640.");
+                    $warnings++;
+                }
             }
         }
 
@@ -47,7 +52,7 @@ final class SecurityCheckCommand extends Command
         }
 
         // 4. Check for hardcoded credentials in config (simple check)
-        $configFiles = glob(BASE_PATH . '/config/*.php');
+        $configFiles = glob(BASE_PATH . '/config/*.php') ?: [];
         foreach ($configFiles as $file) {
             $content = file_get_contents($file);
             if (preg_match('/[\'"](password|secret|key)[\'"]\s*=>\s*[\'"](?!env\()[^\'"]+[\'"]/', $content)) {
