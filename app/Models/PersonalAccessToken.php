@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Fw\Model\Model;
+use DateTimeImmutable;
+use DateTimeInterface;
+use Fw\Domain\UserId;
 use Fw\Model\BelongsTo;
 use Fw\Model\Collection;
-use Fw\Domain\UserId;
+use Fw\Model\Model;
 
 class PersonalAccessToken extends Model
 {
@@ -34,6 +36,16 @@ class PersonalAccessToken extends Model
         'expires_at' => 'datetime',
         'last_used_at' => 'datetime',
     ];
+
+    public static function findToken(string $hashedToken): ?self
+    {
+        return static::where('token', $hashedToken)->first()->unwrapOr(null);
+    }
+
+    public static function forUser(string|UserId $userId): Collection
+    {
+        return static::where('user_id', (string) $userId)->get();
+    }
 
     public function user(): BelongsTo
     {
@@ -81,7 +93,7 @@ class PersonalAccessToken extends Model
         if ($expiresAt === null) {
             return false;
         }
-        if ($expiresAt instanceof \DateTimeInterface) {
+        if ($expiresAt instanceof DateTimeInterface) {
             return $expiresAt->getTimestamp() < time();
         }
         return strtotime((string) $expiresAt) < time();
@@ -99,17 +111,7 @@ class PersonalAccessToken extends Model
 
     public function touchLastUsed(): void
     {
-        $this->setAttribute('last_used_at', new \DateTimeImmutable());
+        $this->setAttribute('last_used_at', new DateTimeImmutable());
         $this->save();
-    }
-
-    public static function findToken(string $hashedToken): ?self
-    {
-        return static::where('token', $hashedToken)->first()->unwrapOr(null);
-    }
-
-    public static function forUser(string|UserId $userId): Collection
-    {
-        return static::where('user_id', (string) $userId)->get();
     }
 }
