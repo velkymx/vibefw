@@ -11,7 +11,15 @@ use Fw\Auth\Auth;
 use Fw\Auth\ApiToken;
 
 /**
- * ApiTokenController handles personal access token management.
+ * ApiTokenController — Personal access token management API
+ *
+ * API contract:
+ *   GET    /api/tokens      → List all tokens for the authenticated user
+ *   POST   /api/tokens      → Create a new token (returns plaintext token)
+ *   DELETE /api/tokens/{id}  → Revoke a specific token
+ *
+ * All endpoints are protected by the auth:api middleware in config/routes.php.
+ * Tokens are stored in the personal_access_tokens table via Fw\Auth\ApiToken.
  */
 final class ApiTokenController extends Controller
 {

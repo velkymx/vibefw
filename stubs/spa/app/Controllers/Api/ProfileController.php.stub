@@ -11,7 +11,14 @@ use Fw\Auth\Auth;
 use Fw\Support\Hash;
 
 /**
- * ProfileController handles user profile updates and security settings.
+ * ProfileController — User profile and security settings API
+ *
+ * API contract:
+ *   PUT    /api/profile           → Update name/email (Bearer token required)
+ *   PUT    /api/profile/password  → Change password (Bearer token required)
+ *   DELETE /api/profile           → Delete account (Bearer token + password confirmation)
+ *
+ * All endpoints are protected by the auth:api middleware in config/routes.php.
  */
 final class ProfileController extends Controller
 {

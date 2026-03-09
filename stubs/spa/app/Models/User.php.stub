@@ -8,6 +8,19 @@ use Fw\Model\Model;
 use Fw\Auth\ApiToken;
 use Fw\Support\Option;
 
+/**
+ * User model — Represents an authenticated user
+ *
+ * This model is used by the SPA auth controllers (LoginController,
+ * RegisterController) and by Fw\Auth\Auth for session management.
+ *
+ * Key methods:
+ *   - createToken()      — Generate a personal access token (Bearer auth)
+ *   - findByEmail()      — Lookup user by email (returns Option)
+ *   - verifyPassword()   — Check plaintext password against hash
+ *   - hasVerifiedEmail()  — Check if email_verified_at is set
+ *   - markEmailAsVerified() — Stamp email_verified_at
+ */
 class User extends Model
 {
     protected static ?string $table = 'users';
