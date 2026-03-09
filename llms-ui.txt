@@ -1,6 +1,7 @@
 # VibeUI Context for LLMs
 
 > Full docs: https://github.com/velkymx/vibeui/blob/main/docs/README.md
+> For the PHP backend, see: llms.txt
 
 ## Framework
 - Backend: VibeFW (PHP 8.4+, Fiber-safe)

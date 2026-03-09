@@ -1,12 +1,15 @@
-# FW Framework Documentation
-> High-performance, opinionated PHP 8.5+ MVC with Fibers, Result types, and zero-null architecture.
+# VibeFW Documentation
+> High-performance, opinionated PHP 8.4+ MVC with Fibers, Result types, and zero-null architecture.
+> For the SPA/Vue frontend, see: llms-ui.txt
+> Full docs: https://github.com/velkymx/vibefw
 
 ## Quick Facts
-- PHP 8.5+ required (property hooks, asymmetric visibility)
+- PHP 8.4+ required (property hooks, asymmetric visibility)
 - Fiber-based async request handling
-- 6,000+ req/sec with FrankenPHP
+- 40,000+ req/sec with FrankenPHP worker mode
 - Result/Option types - NO null, NO try/catch for control flow
 - Active Record ORM with query builder
+- SPA scaffold: `php fw make:spa` (Vue 3 + TypeScript + VibeUI)
 
 ## Core Principles
 
@@ -280,7 +283,7 @@ Post::where('user_id', $id)
 - `App\Models\` - Your models
 - `App\Providers\` - Your service providers
 
-## PHP 8.5 Features
+## PHP 8.4+ Features
 
 ### array_first() / array_last()
 ```php
