@@ -15,8 +15,8 @@ parameters:
     # Report unused parameters
     reportUnmatchedIgnoredErrors: false
 
-    # PHP 8.5 features
-    phpVersion: 80500
+    # PHP 8.4 features
+    phpVersion: 80400
 
     # Ignore patterns for framework magic
     ignoreErrors:
