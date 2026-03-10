@@ -156,7 +156,7 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Run architecture tests
-        run: vendor/bin/phpunit --testsuite=architecture
+        run: vendor/bin/phpunit --testsuite=architecture --no-coverage
 
   # ============================================
   # Mutation Testing (on main only)
