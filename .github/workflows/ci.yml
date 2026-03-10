@@ -116,13 +116,13 @@ jobs:
           echo "DB_DATABASE=:memory:" >> .env.testing
 
       - name: Run tests with coverage
-        run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-text
+        run: vendor/bin/phpunit
         env:
           APP_ENV: testing
 
       - name: Check coverage threshold
         run: |
-          COVERAGE=$(grep -oP 'Lines:\s+\K[\d.]+' <<< "$(vendor/bin/phpunit --coverage-text 2>/dev/null | grep Lines)")
+          COVERAGE=$(grep -oP 'Lines:\s+\K[\d.]+' storage/coverage/coverage.txt)
           echo "Coverage: ${COVERAGE}%"
           if (( $(echo "$COVERAGE < 50" | bc -l) )); then
             echo "::error::Code coverage ${COVERAGE}% is below minimum threshold of 50%"
@@ -132,7 +132,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: coverage.xml
+          files: storage/coverage/clover.xml
           fail_ci_if_error: false
 
   # ============================================
