@@ -4,7 +4,7 @@
          bootstrap="tests/bootstrap.php"
          colors="true"
          failOnRisky="true"
-         failOnWarning="false"
+         failOnWarning="true"
          stopOnFailure="false"
          cacheDirectory=".phpunit.cache"
          beStrictAboutOutputDuringTests="true"
@@ -38,11 +38,11 @@
         </exclude>
     </source>
 
-    <coverage>
+    <coverage processUncoveredFiles="true">
         <report>
             <html outputDirectory="storage/coverage"/>
             <clover outputFile="storage/coverage/clover.xml"/>
-            <text outputFile="storage/coverage/coverage.txt" showOnlySummary="true"/>
+            <text outputFile="storage/coverage/coverage.txt" showUncoveredFiles="false"/>
         </report>
     </coverage>
 
