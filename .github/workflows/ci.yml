@@ -114,11 +114,13 @@ jobs:
           cp .env.example .env.testing
           echo "DB_DRIVER=sqlite" >> .env.testing
           echo "DB_DATABASE=:memory:" >> .env.testing
+          mkdir -p storage/coverage
 
       - name: Run tests with coverage
         run: vendor/bin/phpunit
         env:
           APP_ENV: testing
+          XDEBUG_MODE: coverage
 
       - name: Check coverage threshold
         run: |
@@ -179,8 +181,11 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Run Infection
-        run: vendor/bin/infection --min-msi=60 --min-covered-msi=80 --threads=4
+        run: |
+          mkdir -p storage/coverage
+          vendor/bin/infection --min-msi=60 --min-covered-msi=80 --threads=4
         env:
+          XDEBUG_MODE: coverage
           INFECTION_BADGE_API_KEY: ${{ secrets.INFECTION_BADGE_API_KEY }}
 
   # ============================================
