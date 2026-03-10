@@ -1,188 +1,314 @@
 # VibeFW v2.1 Release Notes
 
-**Release Date:** March 8, 2026
+**Released:** March 2026 | **Requires:** PHP 8.4+
+
+v2.1 is the largest single release in VibeFW's history. Building on the concurrency architecture introduced in v2.0, it ships the full SPA scaffolding stack, an extensive security hardening pass, a turnkey project setup experience, and 13 patch versions worth of correctness and reliability fixes.
+
+## What Changed in v2.1
+
+**For new projects** — `composer create-project velkymx/vibefw my-app` now gets you a fully working app in one command. No manual `.env` setup, no key generation, no empty database.
+
+**For SPA projects** — `php fw make:spa` scaffolds a complete Vue 3 + TypeScript + Vite frontend with authentication, routing, and VibeUI components in a single interactive command. `php fw dev` then starts both servers concurrently.
+
+**For all projects** — 30+ security fixes land automatically on `composer update`. Nothing breaks; everything gets safer. Highlights include a complete `Sanitizer` rewrite, Fiber instance leak elimination, timing-attack hardening in auth flows, and storage permission tightening across the board.
+
+**New in the box** — `Fw\Support\Hash` for future-proof password hashing, `Fw\Auth\EmailVerification` for confirmation flows, five new CLI commands, and configurable CORS origins.
+
+> **Upgrading from v2.0?** v2.1 is fully backwards compatible — run `composer update velkymx/vibefw` and you're done. See the [Upgrading from v2.0](#upgrading-from-v20) section at the bottom of this document for recommended (optional) adoptions.
 
 ---
 
-## Two Commands, Full Stack
+---
+
+## What's New
+
+### SPA Scaffolding — `php fw make:spa`
+
+Run one command to scaffold a complete, production-ready Vue 3 + TypeScript + Vite frontend wired to a PHP API backend.
 
 ```bash
-composer create-project velkymx/vibefw my-app
-cd my-app && php fw make:spa
+php fw make:spa
 ```
 
-VibeFW v2.1 is the release where the framework becomes a complete platform. `composer create-project` sets up everything automatically — `.env` with secure keys, storage directories, SQLite database, migrations. Then `make:spa` adds a production-ready Vue 3 + TypeScript frontend with auth, routing, and VibeUI components. From zero to full-stack app in under 60 seconds.
+What you get:
+- **Vue 3 + TypeScript** frontend in `/frontend/` using **VibeUI 0.7+** components
+- **4-page starter** — Home, Login, Register, Dashboard — with dark mode support throughout
+- **Full auth flow** — Bearer token login/register/logout, Axios 401 interceptor for server-side revocation
+- **Vue Router 5** with authenticated route guards
+- **Pinia** state management
+- **Vite 7** dev server with API proxy to `localhost:8000`
+- **PHP API controllers** — `Api/Auth/LoginController`, `Api/Auth/RegisterController`, `Api/StatsController`
+- **Database migrations** installed and run (users, jobs, remember token, password resets, personal access tokens, email verifications)
+- **CORS** pre-configured for the Vite dev server
+- **TypeScript API types** — typed interfaces for all API responses
+- **Vitest + Playwright** test scaffolding
+- **Frontend README** with auth flow, API reference, and VibeUI cheat sheet
+
+After scaffolding, start the full stack with:
+
+```bash
+php fw dev
+```
 
 ---
 
-## Headline Features
+### `php fw dev` — Concurrent Dev Server
+
+New command that runs the PHP backend and Vite frontend concurrently via `pcntl_fork`, so you get a single terminal for the full stack.
+
+```
+Backend:  http://localhost:8000
+Frontend: http://localhost:5173
+```
+
+Falls back gracefully if `pcntl` is unavailable, printing the commands to run separately.
+
+---
 
 ### Turnkey Project Setup
 
 ```bash
 composer create-project velkymx/vibefw my-app
+cd my-app
 ```
 
-Composer automatically:
-- Creates `.env` with cryptographically secure `APP_KEY` and `QUEUE_SECRET_KEY`
-- Sets up storage directories with correct permissions
-- Creates the SQLite database
-- Runs all migrations
+That's it. The post-install hook automatically:
+- Creates `.env` with a secure `APP_KEY`
+- Sets up `storage/` directories
+- Creates the SQLite database file
 
-No manual configuration. No copy-pasting keys. Just works.
-
-For cloned repos: `php fw setup` does the same thing.
-
-### `make:spa` — Full-Stack Scaffold
+No manual `cp .env.example .env` or key generation required. Also available for cloned repos:
 
 ```bash
-php fw make:spa
+php fw setup
 ```
 
-One command generates:
+---
 
-- **PHP API** — Login, register, logout, user profile, password management, API token CRUD, and dashboard stats endpoints
-- **Vue 3 SPA** — Home page, auth forms, protected dashboard with sidebar layout, dark mode toggle, 404 page
-- **VibeUI 0.7+** — Every component globally registered. Forms, buttons, cards, modals, data tables, icons — just use them
-- **Auth wired end-to-end** — Bearer tokens, localStorage, route guards, global 401 interceptor, server-side validation mapped to form fields
-- **TypeScript types** — Generated `api.ts` with interfaces for every API response
-- **Tests included** — Vitest unit test + Playwright e2e test scaffolded
-- **Documentation generated** — `frontend/README.md` with tech stack, project structure, auth flow, API reference, and troubleshooting
+### New CLI Commands
 
-### Framework / Application Layer Fully Decoupled
+| Command | Description |
+|---|---|
+| `php fw make:spa` | Scaffold Vue 3 + TypeScript SPA starter |
+| `php fw dev` | Start backend + frontend dev servers concurrently |
+| `php fw setup` | First-time project initialization |
+| `php fw env:sync` | Sync `.env` keys to `frontend/.env.local` with `VITE_` prefix |
+| `php fw security:check` | Focused security audit (permissions, debug flags, exposed files, hardcoded credentials) |
 
-The entire `src/` directory is now free of `App\` namespace imports. The framework no longer assumes your models live in `App\Models`:
+---
+
+### `Fw\Support\Hash`
+
+New utility class for password hashing:
 
 ```php
-// Configure once in your service provider
-Auth::setUserModel(App\Models\User::class);
-Gate::setPolicyNamespace('App\\Policies');
-ApiToken::setTokenModel(App\Models\PersonalAccessToken::class);
+use Fw\Support\Hash;
+
+$hash  = Hash::make($password);                    // PASSWORD_DEFAULT algorithm
+$valid = Hash::check($password, $hash);            // true/false
+$stale = Hash::needsRehash($hash);                 // true if algorithm or cost changed
+$hash  = Hash::make($password, ['cost' => 12]);    // custom cost
 ```
 
-This means VibeFW can be used as a library in any project structure — not just the default scaffold.
+Uses `PASSWORD_DEFAULT` so the algorithm automatically upgrades as PHP evolves.
 
-### PHPStan Level 8
+---
 
-All new code is checked at PHPStan level 8 (the strictest). A baseline covers 641 pre-existing type annotations. The CI pipeline enforces this on every commit.
+### `Fw\Auth\EmailVerification`
+
+Foundation class for email confirmation flows. Supports token generation, single-use verification with timing-attack protection, and automatic expiry cleanup. Opt-in — no routes or sending logic included.
+
+---
+
+### Queue Security: `allowClasses()`
+
+`FileDriver` and `DatabaseDriver` now expose an explicit deserialization allowlist on top of the default HMAC verification:
+
+```php
+$queue->driver()->allowClasses([
+    SendWelcomeEmail::class,
+    ProcessPayment::class,
+]);
+```
+
+---
+
+### CORS Configuration
+
+`CorsMiddleware` now reads from `$app->config('cors')` for per-project overrides:
+
+```php
+// config/app.php
+'cors' => [
+    'allowed_origins'      => array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', '*')))),
+    'supports_credentials' => true,
+],
+```
+
+`make:spa` automatically writes `CORS_ALLOWED_ORIGINS` to `.env` to allow the Vite dev server.
 
 ---
 
 ## Security Hardening
 
-v2.1 includes **30+ security fixes** discovered through systematic code review:
+v2.1 includes **30+ targeted security fixes**. Highlights by area:
 
-### Critical
+### Authentication & Sessions
+- **Remember token replay** — Token rotated on every use; old token invalidated immediately
+- **Remember cookie `Secure` flag** — Set to `true` on HTTPS automatically, respects trusted proxy headers
+- **`Auth logout()` order** — `clearRememberToken()` now runs before context teardown
+- **Logout Bearer token revocation** — Token cannot be replayed after logout
+- **UUID session user IDs** — `Auth::user()` and `Auth::id()` now accept both integer and string (UUID) primary keys
+- **`RegisterController` TOCTOU race** — Duplicate email race caught at the DB unique constraint level
 
-- **Container Fiber instance leak** — `spl_object_id` reuse allowed auth state to leak between requests in worker mode. Fixed with `WeakMap`.
-- **Auth remember token replay** — Tokens weren't rotated on use, allowing 30-day replay. Now single-use with rotation.
-- **View path traversal** — View names like `../../etc/passwd` could read arbitrary files. Now validated against the views directory.
-- **SSRF in AsyncHttp** — No host validation allowed requests to internal services and cloud metadata endpoints. Now blocks private/internal IPs.
-- **QueryBuilder SQL injection** — Two separate injection vectors in `validateIdentifier()` via alias expressions and function calls. Both tightened.
-- **CSP `unsafe-inline` in security headers** — Negated all XSS protection. Removed.
+### SQL & QueryBuilder
+- **SQL injection via alias expressions** — `validateIdentifier()` tightened to reject arbitrary SQL in `AS` aliases
+- **SQL injection via aggregate functions** — `COUNT(*) OR 1=1; --` patterns now rejected
+- **Foreign key action injection** — `onDelete()`/`onUpdate()` validate against a whitelist
+- **`BelongsToMany` unquoted identifiers** — All identifiers in `eagerLoad()`, `detach()`, `pluck()` now quoted
+- **`DatabaseDriver` table name injection** — Constructor validates table names at construction time
+- **`Migrator` path traversal** — Migration files validated with `realpath()` to stay within migrations directory
 
-### High
+### Cryptography & Tokens
+- **`Str::ulid()` entropy** — Fixed from 50-bit to correct 80-bit per the ULID spec
+- **`EmailVerification` single-use tokens** — Verification links now consumed on first use
+- **`PersonalAccessToken` token hash isolation** — Rotating the configured prefix no longer invalidates existing tokens
+- **`Auth::getUserFromRememberToken()` integer overflow** — `(int)` cast replaced with `ctype_digit()` + constant-time dummy comparison
 
-- **CSRF bypass on premature output** — `ensureSession()` silently failed when headers were already sent, making all CSRF checks pass. Now throws immediately.
-- **SPA auth middleware origin bypass** — Missing Origin + Referer headers were accepted. Debug mode allowed all origins. Both fixed.
-- **DatabaseDriver SQL injection** — Constructor accepted arbitrary table names interpolated into raw SQL. Now validated.
-- **Blueprint foreign key action injection** — `onDelete()`/`onUpdate()` accepted arbitrary strings. Now whitelisted.
-- **Auth middleware redirect allows `javascript:` scheme** — URL scheme not validated. Now whitelists http/https only.
-- **Str::ulid() only 50-bit entropy** — Should be 80-bit per spec. Fixed bit extraction.
+### Input Validation & Sanitization
+- **`Sanitizer` rewrite** — `json()`, `float()`, `url()` hardened; `stripTags()` no longer accepts an allowlist (was insecure)
+- **Validator ReDoS** — `validateAlpha()` / `validateAlphaNum()` reject inputs over 65KB before reaching the Unicode regex
+- **`Router::validateConstraint()` ReDoS** — Replaced blacklist approach with a whitelist that rejects all parenthesized groups
+- **`QueryWatcher` ReDoS** — `normalizeQueryPattern()` capped at 8KB input
 
-### Medium
+### Async & HTTP
+- **SSRF in `AsyncHttp`** — `validateHost()` rejects private IPs, loopback, and cloud metadata addresses
+- **`AsyncHttp` header injection** — Headers validated against `\r\n` before sending
+- **`SpaAuthMiddleware` origin bypass** — Missing origin headers now rejected in production; dev mode restricted to localhost
+- **`View::resolvePath()` path traversal** — View names validated with `realpath()`
 
-- **PasswordReset / EmailVerification timing attacks** — Token enumeration via response timing. Constant-time comparison on all paths.
-- **Validator ReDoS** — Unicode regex without input length guards. 64KB cap added.
-- **CORS case-sensitive origin matching** — `EXAMPLE.COM` bypassed `example.com` allowlist. Case-insensitive now.
-- **Model::castToClass() arbitrary instantiation** — Restricted to `Fw\` and `App\` namespaces.
-- **Storage directories world-readable** — Cache, logs, queue changed from 0755 to 0750.
-- **OpcacheCache increment race condition** — Non-atomic read-then-write. Now uses lock files.
-- **Request wildcard trusted proxies warning** — `['*']` allows IP spoofing. Now logs production warning.
-- **BelongsToMany loose comparison** — `in_array()` without strict flag. Fixed.
-- **ApiToken prefix-independent hashing** — Changing prefix invalidated all tokens. Now hashes body only.
-
----
-
-## Correctness Fixes
-
-v2.1 includes **40+ correctness fixes**:
-
-- **Deferred::race() fundamentally broken** — Polling-based approach never settled if no deferred resolved on first tick. Replaced with listener mechanism.
-- **Collection::first()/last() wrong for falsy values** — `0`, `""`, `false` treated as missing. Fixed.
-- **FileCache::gc() deletes forever-cached entries** — `null < time()` evaluates true in PHP 8. Explicit null check added.
-- **Env escape sequences not processed** — `\"`, `\\`, `\n`, `\r`, `\t` stored verbatim in double-quoted values. Now parsed.
-- **Transaction commit/rollback underflow** — No active transaction decremented to -1. Now throws LogicException.
-- **Connection::transaction() original exception lost** — Rollback failure swallowed the real error. Now always re-throws original.
-- **Model JSON cast returns null instead of []** — Only `'array'` cast handled null-to-empty. `'json'` cast now included.
-- **DateTime::equals() identity vs value comparison** — Two equivalent DateTimeImmutable objects compared unequal. Fixed.
-- **QueryBuilder paginate division by zero** — `$perPage = 0` produced `INF`. Now throws.
-- **Container reflection cache infinite spin** — Crashed Fiber caused infinite loop. Timeout after 1000 iterations.
-- **CorsMiddleware headers silently dropped** — Immutable Response returns discarded. Chained properly now.
-- **Env integer overflow** — `9999999999999999999` silently truncated to `PHP_INT_MAX`. Now preserved as string.
-- **View ob_buffer leak in worker mode** — Exceptions inside cache fragments left orphaned buffers. Full baseline unwind added.
+### Infrastructure
+- **Storage permissions** — All cache, log, queue, and config cache directories changed from `0755` → `0750`; log files set to `0640`
+- **`ErrorHandler` path leakage** — Debug pages strip `BASE_PATH` from file paths
+- **`StreamedResponse` security headers** — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` now included
+- **CSP `unsafe-inline` removed** — No longer included in `script-src` or `style-src`
+- **CSRF silent failure** — `ensureSession()` throws `RuntimeException` on premature output instead of silently disabling CSRF protection
 
 ---
 
-## Architecture Improvements
+## Reliability & Correctness
 
-- **Framework/app boundary enforced** — Architecture tests verify `src/` never imports from `app/`. Gate, Auth, ApiToken, TokenGuard all use configurable class references.
-- **Autoload fixed** — `App\` namespace moved from `autoload-dev` to `autoload`. Production `--no-dev` installs now work.
-- **PersonalAccessToken model complete** — Added `isValid()`, `cannot()`, `touchLastUsed()`, `revoke()`, hierarchical `can()`, `user()` relationship, UUID-compatible key type.
-- **Worker-mode state resets** — `Gate::flushCache()`, `ApiToken::resetConfig()`, `PasswordReset::resetConnection()`, `EmailVerification::resetConnection()`, `Model::resetStrictMode()` all wired into `HttpKernel::resetState()`.
+### Fiber / Worker Mode
+- **`Container` Fiber instance leak** — `spl_object_id()` keying replaced with `WeakMap<Fiber, array>` for automatic GC
+- **`Model` strict mode leak** — `$globalStrictMode` reset between requests
+- **`PasswordReset` / `Gate` / `ApiToken` static leaks** — All wired into `HttpKernel::resetState()`
+- **View output buffer leak** — Exception inside a fragment cache block no longer leaves buffers open across requests
+- **`Deferred` fiber resurrection crash** — `resolve()`/`reject()` check `isTerminated()` before resuming a Fiber
+
+### Async
+- **`Deferred::race()` never settles** — Replaced polling with `onSettle()` listener that fires immediately on resolution
+- **`Deferred::race()` memory leak** — Losing deferreds release references after the race settles
+
+### Cache
+- **Null TTL semantics** — `set($k, $v, null)` now stores indefinitely per PSR-16 in both `FileCache` and `OpcacheCache`
+- **`FileCache::gc()` orphaned lock files** — `.lock` sidecars cleaned up alongside expired entries
+- **`OpcacheCache::increment()` race** — Atomic via sidecar lock file
+- **`ViewCache` temp file race** — `tempnam()` replaces `uniqid()` for OS-guaranteed uniqueness
+
+### Model & Database
+- **`Blueprint::foreignId()` missing index** — Index created automatically on foreign key columns
+- **`BelongsToMany::contains()` loose comparison** — Changed to strict to prevent authorization bypass on `'1' == 1`
+- **`Connection::transaction()` exception loss** — Original exception always re-thrown even if `rollBack()` also throws
+- **`Connection::commit()`/`rollBack()` underflow** — Throws `LogicException` with no active transaction
+- **`Model` JSON cast** — Invalid JSON throws `JsonException`; null DB values in `json`/`array` casts return `[]`
+- **`Model::castToClass()` arbitrary class instantiation** — Restricted to `Fw\` and `App\` namespaces
+- **`PersonalAccessToken` model** — Restored and completed: `isValid()`, `cannot()`, `touchLastUsed()`, `revoke()`, `user()`, hierarchical ability matching
+- **N+1 detection** — Lazy-loaded relationships in debug mode emit a warning
+
+### Collections & Utilities
+- **`Collection::first()`/`last()` falsy values** — `0`, `""`, `false` no longer treated as missing
+- **`DateTime::equals()`** — Fixed to value comparison; `create()` zeroes microseconds for deterministic equality
+- **`Str` static cache bounds** — Capped at 512 entries each to prevent unbounded memory growth in worker mode
+- **`Worker`** — Log rotation at 10MB; stack traces capped at 30 frames; signal handlers restored on shutdown
+- **`QueryBuilder::paginate()`** — `$perPage = 0` throws `InvalidArgumentException` instead of division by zero
 
 ---
 
-## Documentation
+## Architecture Changes
 
-- **SPA Quick Start Guide** — End-to-end walkthrough from `git clone` to production deployment
-- **Frontend README** — Generated in every scaffold with tech stack, auth flow, API reference, VibeUI cheat sheet
-- **TypeScript API types** — Generated interfaces for all API responses
-- **Inline comments** — Every SPA stub extensively documented with API contracts, auth flow explanations, and extension guides
-- **AI context files** — `llms.txt` (backend) and `llms-ui.txt` (frontend) cross-referenced with canonical doc links
-- **VibeUI AI Blueprint** — Full component reference with VibeIcon docs, dark mode rules, validation patterns
+### Framework / App Layer Separation
+The entire `src/` directory is now free of `App\` namespace imports:
 
----
+- `Auth::setUserModel()` — configures the user model class
+- `ApiToken::setTokenModel()` — configures the token model class
+- `Gate::setPolicyNamespace()` — configures the policy namespace
+- `composer.json` — `App\\` moved from `autoload-dev` to `autoload` so production deploys work
 
-## By the Numbers
+### Static Analysis & Code Quality
+- PHPStan level 8 passes with a baseline for pre-existing annotations
+- PHP-CS-Fixer passes across all 216+ files
+- Architecture tests enforce layer boundaries (Controllers cannot access PDO, `src/` cannot import `app/`)
 
-| Metric | Count |
-|--------|-------|
-| Security fixes | 30+ |
-| Correctness fixes | 40+ |
-| Architecture improvements | 10+ |
-| Documentation additions | 6 new files |
-| Commits since 2.1.0 | 55 |
-| PHPStan level | 8 (strictest) |
-| Performance | 40,058 req/s |
-| Memory leaks after 1.2M requests | 0 |
+### CI Pipeline
+- PHPStan, PHP-CS-Fixer, security scan, `composer audit`, unit/integration tests with coverage, architecture tests
+- Coverage threshold: 50% minimum enforced
+- `.gitattributes` keeps Composer dist archives lean (excludes tests, CI, PHPStan config)
 
 ---
 
-## Upgrade Guide
+## Upgrading from v2.0
 
-v2.1 is fully backward compatible with v2.0. No breaking changes.
+v2.1 is **fully backwards compatible** with v2.0.
 
 ```bash
 composer update velkymx/vibefw
-php fw migrate
-php fw optimize
 ```
 
-To use the new SPA scaffold on an existing project:
+### Recommended Adoptions
 
-```bash
-php fw make:spa
+**Password hashing** — replace direct `password_hash()` calls:
+```php
+use Fw\Support\Hash;
+
+// Before
+$hash = password_hash($password, PASSWORD_DEFAULT);
+
+// After
+$hash = Hash::make($password);
+if (Hash::needsRehash($hash)) {
+    $hash = Hash::make($newPassword);
+}
 ```
 
-If you were previously importing `App\Models\User` in framework-level code, the framework now handles this internally via configurable model classes. No action needed unless you customized the Auth layer.
+**CORS in production** — restrict allowed origins:
+```php
+// config/app.php
+'cors' => [
+    'allowed_origins' => array_filter(array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', '*')))),
+],
+```
+
+```env
+# .env
+CORS_ALLOWED_ORIGINS=https://yourapp.com,https://www.yourapp.com
+```
+
+**Auth user model** — if you use a custom User model:
+```php
+// In a service provider
+Auth::setUserModel(App\Models\CustomUser::class);
+```
 
 ---
 
-## What's Next
+## Performance
 
-VibeFW v2.1 is the foundation. The framework is fast, secure, documented, and complete. Build something great with it.
+v2.1 maintains the benchmark results established in v2.0:
 
----
+| Metric | Result |
+|---|---|
+| Requests/sec (FrankenPHP, 4 workers, M2) | 40,058+ |
+| Avg latency | 5.15ms |
+| Memory stability | Stable over 1.2M+ requests |
 
-*Full changelog: [CHANGELOG.md](CHANGELOG.md)*
+The focus of v2.1 was correctness and developer experience. Performance tuning is planned for v2.2.
