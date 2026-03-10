@@ -6,14 +6,23 @@ namespace Fw\Async;
 
 use Fw\Database\Connection;
 use PDOStatement;
+use Throwable;
 
 /**
- * Non-blocking database wrapper using Fibers.
+ * Deferred database wrapper using Fibers.
  *
- * Wraps the synchronous Connection class and returns Deferred objects
- * that can be awaited. For SQLite and standard PDO drivers, queries
- * are executed synchronously but deferred to the next event loop tick,
- * allowing the lifecycle hooks to complete properly.
+ * WARNING: This does NOT provide true non-blocking I/O. PHP's PDO is
+ * inherently synchronous, so each query blocks the event loop until
+ * the database responds. The Deferred return type allows callers to
+ * use a consistent async API, but queries execute sequentially.
+ *
+ * For true non-blocking database access, use amphp/mysql or
+ * reactphp/mysql with their native event loops.
+ *
+ * This wrapper is useful for:
+ * - Consistent Deferred API across sync/async code paths
+ * - Deferring execution to the next event loop tick
+ * - Future migration to truly async drivers
  *
  * @example
  * $db = new AsyncDatabase($connection);
@@ -39,11 +48,11 @@ final class AsyncDatabase
 
         // For SQLite (sync), resolve in next tick via defer
         // For MySQL/PostgreSQL with async drivers, this would use non-blocking I/O
-        EventLoop::getInstance()->defer(function () use ($deferred, $sql, $params) {
+        EventLoop::getInstance()->defer(function () use ($deferred, $sql, $params): void {
             try {
                 $result = $this->connection->query($sql, $params);
                 $deferred->resolve($result);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $deferred->reject($e);
             }
         });
@@ -61,11 +70,11 @@ final class AsyncDatabase
     {
         $deferred = new Deferred();
 
-        EventLoop::getInstance()->defer(function () use ($deferred, $sql, $params) {
+        EventLoop::getInstance()->defer(function () use ($deferred, $sql, $params): void {
             try {
                 $result = $this->connection->select($sql, $params);
                 $deferred->resolve($result);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $deferred->reject($e);
             }
         });
@@ -83,11 +92,11 @@ final class AsyncDatabase
     {
         $deferred = new Deferred();
 
-        EventLoop::getInstance()->defer(function () use ($deferred, $sql, $params) {
+        EventLoop::getInstance()->defer(function () use ($deferred, $sql, $params): void {
             try {
                 $result = $this->connection->selectOne($sql, $params);
                 $deferred->resolve($result);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $deferred->reject($e);
             }
         });
@@ -105,11 +114,11 @@ final class AsyncDatabase
     {
         $deferred = new Deferred();
 
-        EventLoop::getInstance()->defer(function () use ($deferred, $table, $data) {
+        EventLoop::getInstance()->defer(function () use ($deferred, $table, $data): void {
             try {
                 $result = $this->connection->insert($table, $data);
                 $deferred->resolve($result);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $deferred->reject($e);
             }
         });
@@ -128,11 +137,11 @@ final class AsyncDatabase
     {
         $deferred = new Deferred();
 
-        EventLoop::getInstance()->defer(function () use ($deferred, $table, $data, $where) {
+        EventLoop::getInstance()->defer(function () use ($deferred, $table, $data, $where): void {
             try {
                 $result = $this->connection->update($table, $data, $where);
                 $deferred->resolve($result);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $deferred->reject($e);
             }
         });
@@ -150,11 +159,11 @@ final class AsyncDatabase
     {
         $deferred = new Deferred();
 
-        EventLoop::getInstance()->defer(function () use ($deferred, $table, $where) {
+        EventLoop::getInstance()->defer(function () use ($deferred, $table, $where): void {
             try {
                 $result = $this->connection->delete($table, $where);
                 $deferred->resolve($result);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $deferred->reject($e);
             }
         });
@@ -171,11 +180,11 @@ final class AsyncDatabase
     {
         $deferred = new Deferred();
 
-        EventLoop::getInstance()->defer(function () use ($deferred, $callback) {
+        EventLoop::getInstance()->defer(function () use ($deferred, $callback): void {
             try {
                 $result = $this->connection->transaction($callback);
                 $deferred->resolve($result);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $deferred->reject($e);
             }
         });

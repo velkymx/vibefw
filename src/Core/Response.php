@@ -4,18 +4,10 @@ declare(strict_types=1);
 
 namespace Fw\Core;
 
+use InvalidArgumentException;
+
 final class Response
 {
-    private int $statusCode = 200;
-    private array $headers = [];
-    private string $body = '';
-
-    public function __construct(string $body = '', int $statusCode = 200)
-    {
-        $this->body = $body;
-        $this->statusCode = $statusCode;
-    }
-
     public const array STATUS_TEXTS = [
         200 => 'OK',
         201 => 'Created',
@@ -35,53 +27,59 @@ final class Response
         503 => 'Service Unavailable',
     ];
 
-    public function setBody(string $body): self
+    private int $statusCode = 200;
+
+    private array $headers = [];
+
+    private string $body = '';
+
+    private array $flash = [];
+
+    public function __construct(string $body = '', int $statusCode = 200)
     {
         $this->body = $body;
-        return $this;
+        $this->statusCode = $statusCode;
+    }
+
+    public function setBody(string $body): self
+    {
+        $new = clone $this;
+        $new->body = $body;
+        return $new;
     }
 
     public function setStatus(int $code): self
     {
-        $this->statusCode = $code;
-        return $this;
+        $new = clone $this;
+        $new->statusCode = $code;
+        return $new;
     }
 
     public function header(string $name, string $value): self
     {
         $this->validateHeader($name, $value);
-        $this->headers[$name] = $value;
-        return $this;
+        $new = clone $this;
+        $new->headers[$name] = $value;
+        return $new;
     }
 
     public function headers(array $headers): self
     {
+        $new = clone $this;
         foreach ($headers as $name => $value) {
-            $this->validateHeader($name, $value);
-            $this->headers[$name] = $value;
+            $new->validateHeader($name, $value);
+            $new->headers[$name] = $value;
         }
-        return $this;
-    }
-
-    private function validateHeader(string $name, string $value): void
-    {
-        if (preg_match("/[\r\n]/", $name) || preg_match("/[\r\n]/", $value)) {
-            throw new \InvalidArgumentException('Header contains CRLF');
-        }
-        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9\-]*$/', $name)) {
-            throw new \InvalidArgumentException("Invalid header name: {$name}");
-        }
-        if (str_contains($name, "\0") || str_contains($value, "\0")) {
-            throw new \InvalidArgumentException('Header contains null bytes');
-        }
+        return $new;
     }
 
     public function contentType(string $type, ?string $charset = 'UTF-8'): self
     {
-        $this->headers['Content-Type'] = $charset !== null && $charset !== ''
+        $new = clone $this;
+        $new->headers['Content-Type'] = $charset !== null && $charset !== ''
             ? "$type; charset=$charset"
             : $type;
-        return $this;
+        return $new;
     }
 
     /**
@@ -89,25 +87,33 @@ final class Response
      */
     public function redirect(string $url, int $code = 302): self
     {
-        $this->setStatus($code);
-        $this->header('Location', $url);
-        return $this;
+        return $this->setStatus($code)->header('Location', $url);
+    }
+
+    /**
+     * Set standard security headers.
+     */
+    public function securityHeaders(): self
+    {
+        return $this->header('X-Content-Type-Options', 'nosniff')
+            ->header('X-Frame-Options', 'SAMEORIGIN')
+            ->header('X-XSS-Protection', '1; mode=block')
+            ->header('Referrer-Policy', 'no-referrer-when-downgrade')
+            ->header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self';");
     }
 
     public function cache(int $seconds, bool $public = true): self
     {
         $directive = $public ? 'public' : 'private';
-        $this->header('Cache-Control', "$directive, max-age=$seconds");
-        $this->header('Expires', gmdate('D, d M Y H:i:s', time() + $seconds) . ' GMT');
-        return $this;
+        return $this->header('Cache-Control', "$directive, max-age=$seconds")
+            ->header('Expires', gmdate('D, d M Y H:i:s', time() + $seconds) . ' GMT');
     }
 
     public function noCache(): self
     {
-        $this->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-        $this->header('Pragma', 'no-cache');
-        $this->header('Expires', '0');
-        return $this;
+        return $this->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**
@@ -115,11 +121,9 @@ final class Response
      */
     public function with(string $key, mixed $value): self
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $_SESSION['_flash'][$key] = $value;
-        return $this;
+        $new = clone $this;
+        $new->flash[$key] = $value;
+        return $new;
     }
 
     /**
@@ -128,6 +132,14 @@ final class Response
     public function withErrors(array $errors): self
     {
         return $this->with('errors', $errors);
+    }
+
+    /**
+     * Get flash data.
+     */
+    public function getFlash(): array
+    {
+        return $this->flash;
     }
 
     public function getStatusCode(): int
@@ -151,5 +163,18 @@ final class Response
     public function getStatusText(): string
     {
         return self::STATUS_TEXTS[$this->statusCode] ?? 'Unknown';
+    }
+
+    private function validateHeader(string $name, string $value): void
+    {
+        if (preg_match("/[\r\n]/", $name) || preg_match("/[\r\n]/", $value)) {
+            throw new InvalidArgumentException('Header contains CRLF');
+        }
+        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9\-]*$/', $name)) {
+            throw new InvalidArgumentException("Invalid header name: {$name}");
+        }
+        if (str_contains($name, "\0") || str_contains($value, "\0")) {
+            throw new InvalidArgumentException('Header contains null bytes');
+        }
     }
 }

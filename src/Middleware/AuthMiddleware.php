@@ -22,7 +22,7 @@ final class AuthMiddleware implements MiddlewareInterface
     {
         if (!Auth::check()) {
             if ($request->isAjax() || $request->isJson()) {
-                return $this->app->response
+                return new Response()
                     ->setStatus(401)
                     ->securityHeaders();
             }
@@ -30,7 +30,7 @@ final class AuthMiddleware implements MiddlewareInterface
             // Validate and store intended URL to prevent open redirect
             $this->storeIntendedUrl($request->uri);
 
-            $this->app->response->redirect('/login');
+            return new Response()->redirect('/login');
         }
 
         return $next($request);
@@ -44,6 +44,9 @@ final class AuthMiddleware implements MiddlewareInterface
     private function storeIntendedUrl(string $url): void
     {
         if ($this->isSafeRedirectUrl($url)) {
+            // Session may not be started yet if the 'web'/'csrf' middleware group
+            // is not applied to this route — start it explicitly before writing.
+            $this->app->initSession();
             $_SESSION['_intended_url'] = $url;
         }
     }
@@ -71,16 +74,12 @@ final class AuthMiddleware implements MiddlewareInterface
         // Parse the URL
         $parsed = parse_url($url);
 
-        // Relative URLs without scheme/host are safe
-        if (!isset($parsed['scheme']) && !isset($parsed['host'])) {
-            return true;
-        }
-
-        // If it has a host, it's external - not safe
-        if (isset($parsed['host'])) {
+        // Block dangerous schemes (javascript:, data:, vbscript:, etc.)
+        if (isset($parsed['scheme']) && !in_array($parsed['scheme'], ['http', 'https'], true)) {
             return false;
         }
 
-        return true;
+        // If it has a host, it's external - not safe
+        return !isset($parsed['host']);
     }
 }

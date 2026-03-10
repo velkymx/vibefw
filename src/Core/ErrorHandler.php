@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Core;
 
 use Fw\Log\Logger;
+use Throwable;
 
 /**
  * Centralized error and exception handling.
@@ -46,7 +47,7 @@ final class ErrorHandler
     /**
      * Create a response for uncaught exceptions.
      */
-    public function createExceptionResponse(\Throwable $e, Request $request): Response
+    public function createExceptionResponse(Throwable $e, Request $request): Response
     {
         $debug = $this->config->get('app.debug', false);
 
@@ -73,9 +74,45 @@ final class ErrorHandler
     }
 
     /**
+     * @deprecated Use createRoutingResponse
+     */
+    public function handleRoutingError(RouteNotFound|MethodNotAllowed $error): void
+    {
+        // This is now handled by HttpKernel returning the response
+    }
+
+    /**
+     * @deprecated Use createExceptionResponse
+     */
+    public function handleException(Throwable $e, ?Request $request = null): void
+    {
+        // This is now handled by HttpKernel returning the response
+    }
+
+    public function notFound(string $message = '404 Not Found'): Response
+    {
+        return new Response()->setStatus(404)->setBody($message);
+    }
+
+    public function forbidden(string $message = '403 Forbidden'): Response
+    {
+        return new Response()->setStatus(403)->setBody($message);
+    }
+
+    public function badRequest(string $message = '400 Bad Request'): Response
+    {
+        return new Response()->setStatus(400)->setBody($message);
+    }
+
+    public function serverError(string $message = '500 Internal Server Error'): Response
+    {
+        return new Response()->setStatus(500)->setBody($message);
+    }
+
+    /**
      * Render detailed error information for debug mode.
      */
-    private function renderDebugErrorHtml(\Throwable $e): string
+    private function renderDebugErrorHtml(Throwable $e): string
     {
         $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
         $isProduction = in_array($env, ['production', 'prod', 'live'], true);
@@ -124,7 +161,7 @@ final class ErrorHandler
             $securityWarning,
             htmlspecialchars(get_class($e), ENT_QUOTES, 'UTF-8'),
             htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'),
-            htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($this->stripBasePath($e->getFile()), ENT_QUOTES, 'UTF-8'),
             $e->getLine(),
             $this->formatTrace($e)
         );
@@ -133,11 +170,20 @@ final class ErrorHandler
     /**
      * Format the stack trace for display.
      */
-    private function formatTrace(\Throwable $e): string
+    private function stripBasePath(string $file): string
+    {
+        $basePath = defined('BASE_PATH') ? BASE_PATH . '/' : '';
+        if ($basePath !== '' && str_starts_with($file, $basePath)) {
+            return substr($file, strlen($basePath));
+        }
+        return $file;
+    }
+
+    private function formatTrace(Throwable $e): string
     {
         $lines = [];
         foreach ($e->getTrace() as $i => $frame) {
-            $file = $frame['file'] ?? '[internal]';
+            $file = $this->stripBasePath($frame['file'] ?? '[internal]');
             $line = $frame['line'] ?? 0;
             $function = $frame['function'] ?? '';
             $class = $frame['class'] ?? '';
@@ -153,41 +199,5 @@ final class ErrorHandler
             );
         }
         return implode("\n", $lines);
-    }
-
-    /**
-     * @deprecated Use createRoutingResponse
-     */
-    public function handleRoutingError(RouteNotFound|MethodNotAllowed $error): void
-    {
-        // This is now handled by HttpKernel returning the response
-    }
-
-    /**
-     * @deprecated Use createExceptionResponse
-     */
-    public function handleException(\Throwable $e, ?Request $request = null): void
-    {
-        // This is now handled by HttpKernel returning the response
-    }
-
-    public function notFound(string $message = '404 Not Found'): Response
-    {
-        return (new Response())->setStatus(404)->setBody($message);
-    }
-
-    public function forbidden(string $message = '403 Forbidden'): Response
-    {
-        return (new Response())->setStatus(403)->setBody($message);
-    }
-
-    public function badRequest(string $message = '400 Bad Request'): Response
-    {
-        return (new Response())->setStatus(400)->setBody($message);
-    }
-
-    public function serverError(string $message = '500 Internal Server Error'): Response
-    {
-        return (new Response())->setStatus(500)->setBody($message);
     }
 }

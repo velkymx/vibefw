@@ -10,6 +10,4 @@ namespace Fw\Domain;
  * UUID-based identifier for User entities.
  * Extends Id to inherit generation and validation.
  */
-final readonly class UserId extends Id
-{
-}
+final readonly class UserId extends Id {}

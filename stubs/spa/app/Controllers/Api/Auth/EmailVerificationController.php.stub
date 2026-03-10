@@ -1,0 +1,65 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers\Api\Auth;
+
+use Fw\Core\Controller;
+use Fw\Core\Request;
+use Fw\Core\Response;
+use App\Models\User;
+use Fw\Auth\EmailVerification;
+use Fw\Auth\Auth;
+
+/**
+ * EmailVerificationController handles the email verification lifecycle.
+ */
+final class EmailVerificationController extends Controller
+{
+    /**
+     * Send a new verification email.
+     */
+    public function send(Request $request): Response
+    {
+        $user = Auth::user();
+
+        if ($user->hasVerifiedEmail()) {
+            return $this->json(['message' => 'Email already verified']);
+        }
+
+        $token = EmailVerification::createToken($user->email);
+
+        // TODO: Dispatch job to send the verification email
+        
+        return $this->json(['message' => 'Verification link sent']);
+    }
+
+    /**
+     * Mark the user's email address as verified.
+     */
+    public function verify(Request $request): Response
+    {
+        $token = $request->get('token');
+
+        if (!$token) {
+            return $this->json(['message' => 'Token required'], 422);
+        }
+
+        $email = EmailVerification::verify($token);
+
+        if (!$email) {
+            return $this->json(['message' => 'Invalid or expired token'], 422);
+        }
+
+        $user = User::where('email', $email)->first()->unwrapOr(null);
+
+        if ($user && !$user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+            EmailVerification::deleteToken($token);
+            
+            return $this->json(['message' => 'Email verified successfully']);
+        }
+
+        return $this->json(['message' => 'Verification failed or already verified'], 422);
+    }
+}

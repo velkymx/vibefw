@@ -44,7 +44,7 @@ jobs:
         run: vendor/bin/phpstan analyse --error-format=github
 
       - name: Run PHP-CS-Fixer
-        run: vendor/bin/php-cs-fixer fix --dry-run --diff --format=checkstyle | cs2pr
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --format=txt
 
   # ============================================
   # Security Scan
@@ -102,8 +102,9 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: mbstring, pdo, pdo_mysql, pdo_sqlite
+          extensions: mbstring, pdo, pdo_mysql, pdo_sqlite, xdebug
           coverage: xdebug
+          ini-values: xdebug.mode=coverage,xdebug.enabled=1
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
@@ -113,15 +114,17 @@ jobs:
           cp .env.example .env.testing
           echo "DB_DRIVER=sqlite" >> .env.testing
           echo "DB_DATABASE=:memory:" >> .env.testing
+          mkdir -p storage/coverage
 
       - name: Run tests with coverage
-        run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-text
+        run: vendor/bin/phpunit --coverage-clover=storage/coverage/clover.xml --coverage-text=storage/coverage/coverage.txt
         env:
           APP_ENV: testing
+          XDEBUG_MODE: coverage
 
       - name: Check coverage threshold
         run: |
-          COVERAGE=$(grep -oP 'Lines:\s+\K[\d.]+' <<< "$(vendor/bin/phpunit --coverage-text 2>/dev/null | grep Lines)")
+          COVERAGE=$(grep -oP 'Lines:\s+\K[\d.]+' storage/coverage/coverage.txt)
           echo "Coverage: ${COVERAGE}%"
           if (( $(echo "$COVERAGE < 50" | bc -l) )); then
             echo "::error::Code coverage ${COVERAGE}% is below minimum threshold of 50%"
@@ -131,7 +134,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: coverage.xml
+          files: storage/coverage/clover.xml
           fail_ci_if_error: false
 
   # ============================================
@@ -153,7 +156,7 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Run architecture tests
-        run: vendor/bin/phpunit --testsuite=architecture
+        run: vendor/bin/phpunit --testsuite=architecture --no-coverage
 
   # ============================================
   # Mutation Testing (on main only)
@@ -170,15 +173,19 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: mbstring, pdo, pdo_sqlite
+          extensions: mbstring, pdo, pdo_sqlite, xdebug
           coverage: xdebug
+          ini-values: xdebug.mode=coverage,xdebug.enabled=1
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
       - name: Run Infection
-        run: vendor/bin/infection --min-msi=60 --min-covered-msi=80 --threads=4
+        run: |
+          mkdir -p storage/coverage
+          vendor/bin/infection --min-msi=60 --min-covered-msi=80 --threads=4
         env:
+          XDEBUG_MODE: coverage
           INFECTION_BADGE_API_KEY: ${{ secrets.INFECTION_BADGE_API_KEY }}
 
   # ============================================

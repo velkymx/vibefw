@@ -7,6 +7,7 @@ namespace Fw\Providers;
 use Fw\Core\Router;
 use Fw\Core\ServiceProvider;
 use Fw\Middleware\MiddlewareInterface;
+use stdClass;
 
 /**
  * Framework Middleware Service Provider.
@@ -75,36 +76,10 @@ class MiddlewareServiceProvider extends ServiceProvider
         }
 
         // Store middleware config as stdClass wrapper for Pipeline to access
-        $config = new \stdClass();
+        $config = new stdClass();
         $config->aliases = $this->aliases;
         $config->groups = $this->groups;
         $this->container->instance('middleware.config', $config);
-    }
-
-    /**
-     * Load middleware configuration from file.
-     */
-    protected function loadConfiguration(): void
-    {
-        $configFile = BASE_PATH . '/config/middleware.php';
-
-        if (!file_exists($configFile)) {
-            return;
-        }
-
-        $config = require $configFile;
-
-        if (isset($config['global'])) {
-            $this->global = array_merge($this->global, $config['global']);
-        }
-
-        if (isset($config['aliases'])) {
-            $this->aliases = array_merge($this->aliases, $config['aliases']);
-        }
-
-        if (isset($config['groups'])) {
-            $this->groups = array_merge($this->groups, $config['groups']);
-        }
     }
 
     /**
@@ -135,5 +110,31 @@ class MiddlewareServiceProvider extends ServiceProvider
     public function getGroups(): array
     {
         return $this->groups;
+    }
+
+    /**
+     * Load middleware configuration from file.
+     */
+    protected function loadConfiguration(): void
+    {
+        $configFile = BASE_PATH . '/config/middleware.php';
+
+        if (!file_exists($configFile)) {
+            return;
+        }
+
+        $config = require $configFile;
+
+        if (isset($config['global'])) {
+            $this->global = array_merge($this->global, $config['global']);
+        }
+
+        if (isset($config['aliases'])) {
+            $this->aliases = array_merge($this->aliases, $config['aliases']);
+        }
+
+        if (isset($config['groups'])) {
+            $this->groups = array_merge($this->groups, $config['groups']);
+        }
     }
 }

@@ -6,6 +6,7 @@ namespace Fw\Console\Commands;
 
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Throwable;
 
 /**
  * List all registered routes.
@@ -16,9 +17,10 @@ final class RoutesListCommand extends Command
 
     protected string $description = 'List all registered routes';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -45,7 +47,7 @@ final class RoutesListCommand extends Command
         // For now, let's try to instantiate the app and get routes
         try {
             $routes = $this->parseRoutes($routesFile);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error('Failed to parse routes: ' . $e->getMessage());
             return 1;
         }

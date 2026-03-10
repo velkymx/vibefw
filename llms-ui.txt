@@ -1,0 +1,53 @@
+# VibeUI Context for LLMs
+
+> Full docs: https://github.com/velkymx/vibeui/blob/main/docs/README.md
+> For the PHP backend, see: llms.txt
+
+## Framework
+- Backend: VibeFW (PHP 8.4+, Fiber-safe)
+- Frontend: Vue 3 (Composition API), Vite, TypeScript
+- UI Library: @velkymx/vibeui ^0.7.0 (Bootstrap 5.3 based)
+
+## Core Rules
+- Components are registered globally via `app.use(VibeUI)`. Do NOT import them.
+- Validators and `useFormValidation` MUST be imported: `import { validators, useFormValidation } from '@velkymx/vibeui'`
+- There is NO `useToast()` composable. Use `<VibeToast v-model="show" />` instead.
+- Use `<script setup lang="ts">` exclusively. No Options API.
+- Use Bootstrap CSS variables (e.g. `var(--bs-body-bg)`) for dark mode compatibility.
+- Always use `<VibeIcon icon="name" />` for icons. Never use raw `<i class="bi bi-...">`.
+
+## Component Reference (Vibe prefix, globally available)
+- Icons: VibeIcon (props: icon, size, fontSize, color, customClass, flipH, flipV, rotate)
+- Forms: VibeFormGroup, VibeFormInput, VibeFormSelect, VibeFormCheckbox, VibeFormRadio, VibeFormTextarea, VibeFormWysiwyg
+- Actions: VibeButton (props: variant, loading, size, outline, to, href)
+- Feedback: VibeAlert (v-model, variant, message, dismissable), VibeToast (v-model, title, variant, autohide, delay)
+- Layout: VibeCard (slots: #body, #header, #footer), VibeModal (v-model, title, size, centered), VibeContainer, VibeRow, VibeCol
+- Data: VibeDataTable (items, columns, searchable, sortable, paginated), VibePagination
+- Navigation: VibeNavbar, VibeNavbarBrand, VibeNavbarNav, VibeNavbarToggle, VibeDropdown, VibeOffcanvas, VibeBadge, VibeBreadcrumb, VibeNav
+- Loading: VibeSpinner (type, variant, size), VibePlaceholder
+- Display: VibeAccordion, VibeCarousel, VibeCollapse, VibeListGroup, VibeProgress
+- Overlay: VibeTooltip, VibePopover, VibeScrollspy
+
+## VibeIcon Usage
+```vue
+<VibeIcon icon="house" />
+<VibeIcon icon="heart-fill" size="2x" color="var(--bs-danger)" />
+<VibeIcon icon="arrow-right" custom-class="me-2" />
+```
+Size options: sm, lg, 1x, 2x, 3x, 4x, 5x
+
+## Quick Start
+```bash
+composer create-project velkymx/vibefw my-app && cd my-app
+php fw make:spa    # scaffolds Vue 3 + VibeUI frontend with auth
+php fw serve       # start PHP backend
+cd frontend && npm run dev  # start Vite dev server
+```
+
+## Standard Patterns
+- Auth: Bearer tokens in localStorage, key 'token'
+- API: Prefix /api, returns JSON. 422 = validation errors as `{ errors: { field: "message" } }`
+- State: Pinia for global, ref() for local
+- Styling: Scoped SCSS + Bootstrap 5 utility classes
+- Validation: Map 422 errors to VibeFormInput :validation-state and :validation-message
+- Navigation guards: Vue Router 5 return-value style (no next() callback)

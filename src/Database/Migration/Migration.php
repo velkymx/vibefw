@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Database\Migration;
 
 use Fw\Database\Connection;
+use RuntimeException;
 
 abstract class Migration
 {
@@ -84,7 +85,7 @@ abstract class Migration
             'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
             'mysql' => "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_NAME=?",
             'pgsql' => "SELECT tablename FROM pg_tables WHERE tablename=?",
-            default => throw new \RuntimeException("Unsupported driver: {$this->db->driver}"),
+            default => throw new RuntimeException("Unsupported driver: {$this->db->driver}"),
         };
 
         $result = $this->db->selectOne($sql, [$name]);

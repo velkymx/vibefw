@@ -4,19 +4,43 @@ declare(strict_types=1);
 
 namespace Fw\Core;
 
+use Closure;
 use Fw\Lifecycle\Component;
 use Fw\Support\Result;
+use InvalidArgumentException;
+use RuntimeException;
 
 final class Router
 {
+    /**
+     * Safe constraint patterns that are pre-validated.
+     * These are commonly used and known to be safe from ReDoS.
+     */
+    private const array SAFE_CONSTRAINTS = [
+        'id' => '[0-9]+',
+        'slug' => '[a-z0-9-]+',
+        'uuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+        'alpha' => '[a-zA-Z]+',
+        'alphanum' => '[a-zA-Z0-9]+',
+        'any' => '.+',
+    ];
+
     private array $routes = [];
+
     private array $namedRoutes = [];
+
     private string $groupPrefix = '';
+
     private array $groupMiddleware = [];
+
     private ?string $cacheFile = null;
+
     private array $globalMiddleware = [];
+
     private array $middlewareAliases = [];
+
     private array $middlewareGroups = [];
+
     private ?array $pendingRoute = null;
 
     public function setCacheFile(string $path): self
@@ -214,130 +238,6 @@ final class Router
     }
 
     /**
-     * Add a route to the routing table.
-     *
-     * @param callable|array|string $handler Can be callable, [Controller, method], or Component class name
-     */
-    private function addRoute(string $method, string $path, callable|array|string $handler, ?string $name): self
-    {
-        $fullPath = $this->groupPrefix . '/' . trim($path, '/');
-        $fullPath = '/' . trim($fullPath, '/');
-
-        $pattern = $this->compilePattern($fullPath);
-
-        // Validate Component class if string handler
-        if (is_string($handler) && !is_callable($handler)) {
-            if (!class_exists($handler)) {
-                throw new \InvalidArgumentException("Handler class '$handler' does not exist");
-            }
-            if (!is_subclass_of($handler, Component::class)) {
-                throw new \InvalidArgumentException("Handler class '$handler' must extend " . Component::class);
-            }
-        }
-
-        $route = [
-            'method' => $method,
-            'path' => $fullPath,
-            'pattern' => $pattern,
-            'handler' => $handler,
-            'middleware' => $this->groupMiddleware,
-        ];
-
-        $this->routes[$method][] = $route;
-        $index = array_key_last($this->routes[$method]);
-
-        $this->pendingRoute = ['method' => $method, 'index' => $index];
-
-        if ($name !== null) {
-            $this->namedRoutes[$name] = $fullPath;
-        }
-
-        return $this;
-    }
-
-    /**
-     * Safe constraint patterns that are pre-validated.
-     * These are commonly used and known to be safe from ReDoS.
-     */
-    private const array SAFE_CONSTRAINTS = [
-        'id' => '[0-9]+',
-        'slug' => '[a-z0-9-]+',
-        'uuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
-        'alpha' => '[a-zA-Z]+',
-        'alphanum' => '[a-zA-Z0-9]+',
-        'any' => '.+',
-    ];
-
-    private function compilePattern(string $path): string
-    {
-        $pattern = preg_replace_callback(
-            '/\{(\w+)(?::([^}]+))?\}/',
-            function (array $matches): string {
-                $name = $matches[1];
-                $constraint = $matches[2] ?? '[^/]+';
-
-                // Use safe preset if available
-                if (isset(self::SAFE_CONSTRAINTS[$constraint])) {
-                    $constraint = self::SAFE_CONSTRAINTS[$constraint];
-                } else {
-                    // Validate custom constraint for ReDoS safety
-                    $this->validateConstraint($constraint, $name);
-                }
-
-                return "(?P<$name>$constraint)";
-            },
-            $path
-        );
-
-        if ($pattern === null) {
-            throw new \RuntimeException("Failed to compile route pattern for path: {$path}");
-        }
-
-        return '#^' . $pattern . '$#';
-    }
-
-    /**
-     * Validate a route constraint pattern for ReDoS safety.
-     *
-     * Rejects patterns with known dangerous constructs like nested quantifiers.
-     *
-     * @throws \InvalidArgumentException If pattern is potentially dangerous
-     */
-    private function validateConstraint(string $constraint, string $paramName): void
-    {
-        // Check for nested quantifiers - the main cause of ReDoS
-        // Patterns like (a+)+, (a*)+, (a+)*, etc.
-        if (preg_match('/[+*]\s*\)[\s*+*?{]/', $constraint)) {
-            throw new \InvalidArgumentException(
-                "Route constraint for '{$paramName}' contains nested quantifiers which can cause ReDoS. " .
-                "Use a simpler pattern or a predefined constraint: " . implode(', ', array_keys(self::SAFE_CONSTRAINTS))
-            );
-        }
-
-        // Check for overlapping alternations like (a|a)+
-        if (preg_match('/\([^)]*\|[^)]*\)[+*]/', $constraint)) {
-            // This is a heuristic - not all alternations are dangerous
-            // but we warn about the pattern
-        }
-
-        // Test compile the pattern with a timeout simulation
-        // Use a simple test to ensure the pattern is valid
-        $testPattern = '#' . $constraint . '#';
-        if (@preg_match($testPattern, '') === false) {
-            throw new \InvalidArgumentException(
-                "Route constraint for '{$paramName}' is not a valid regular expression: {$constraint}"
-            );
-        }
-
-        // Check pattern complexity - reject overly complex patterns
-        if (strlen($constraint) > 100) {
-            throw new \InvalidArgumentException(
-                "Route constraint for '{$paramName}' is too complex (max 100 characters)"
-            );
-        }
-    }
-
-    /**
      * Dispatch a request to find matching route.
      *
      * @return Result<RouteMatch, RouteNotFound|MethodNotAllowed>
@@ -365,7 +265,7 @@ final class Router
             if (preg_match($route['pattern'], $uri, $matches)) {
                 $params = array_filter(
                     $matches,
-                    fn($key) => is_string($key),
+                    fn ($key) => is_string($key),
                     ARRAY_FILTER_USE_KEY
                 );
 
@@ -415,33 +315,33 @@ final class Router
     public function dispatchLegacy(string $method, string $uri): ?array
     {
         return $this->dispatch($method, $uri)->match(
-            fn(RouteMatch $match) => [
+            fn (RouteMatch $match) => [
                 'handler' => $match->handler,
                 'params' => $match->params,
                 'middleware' => $match->middleware,
             ],
-            fn() => null
+            fn () => null
         );
     }
 
     public function url(string $name, array $params = []): string
     {
         if (!isset($this->namedRoutes[$name])) {
-            throw new \InvalidArgumentException("Route '$name' not found");
+            throw new InvalidArgumentException("Route '$name' not found");
         }
 
         $path = $this->namedRoutes[$name];
 
         foreach ($params as $key => $value) {
             $path = preg_replace(
-                '/\{' . $key . '(?::[^}]+)?\}/',
-                (string) $value,
+                '/\{' . preg_quote($key, '/') . '(?::[^}]+)?\}/',
+                rawurlencode((string) $value),
                 $path
             );
         }
 
         if (preg_match('/\{(\w+)/', $path)) {
-            throw new \InvalidArgumentException("Missing required parameters for route '$name'");
+            throw new InvalidArgumentException("Missing required parameters for route '$name'");
         }
 
         return $path;
@@ -478,15 +378,177 @@ final class Router
 
         $dir = dirname($this->cacheFile);
 
-        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
+        if (!is_dir($dir) && !mkdir($dir, 0o750, true)) {
             return false;
         }
 
+        // Filter out routes that contain closures as they cannot be serialized by var_export
+        $serializableRoutes = [];
+        $serializableNames = [];
+
+        foreach ($this->routes as $method => $routes) {
+            foreach ($routes as $route) {
+                // Check if handler is a closure
+                if ($route['handler'] instanceof Closure) {
+                    continue;
+                }
+
+                // Check if any middleware is a closure
+                $hasClosureMiddleware = false;
+                foreach ($route['middleware'] as $m) {
+                    if ($m instanceof Closure) {
+                        $hasClosureMiddleware = true;
+                        break;
+                    }
+                }
+
+                if ($hasClosureMiddleware) {
+                    continue;
+                }
+
+                $serializableRoutes[$method][] = $route;
+            }
+        }
+
+        // Only include names for routes that were actually serialized
+        foreach ($this->namedRoutes as $name => $path) {
+            $isSerializable = false;
+            foreach ($serializableRoutes as $methodRoutes) {
+                foreach ($methodRoutes as $route) {
+                    if ($route['path'] === $path) {
+                        $isSerializable = true;
+                        break 2;
+                    }
+                }
+            }
+            if ($isSerializable) {
+                $serializableNames[$name] = $path;
+            }
+        }
+
         $content = "<?php\nreturn " . var_export([
-            'routes' => $this->routes,
-            'named' => $this->namedRoutes,
+            'routes' => $serializableRoutes,
+            'named' => $serializableNames,
         ], true) . ";\n";
 
         return file_put_contents($this->cacheFile, $content, LOCK_EX) !== false;
+    }
+
+    /**
+     * Add a route to the routing table.
+     *
+     * @param callable|array|string $handler Can be callable, [Controller, method], or Component class name
+     */
+    private function addRoute(string $method, string $path, callable|array|string $handler, ?string $name): self
+    {
+        $fullPath = $this->groupPrefix . '/' . trim($path, '/');
+        $fullPath = '/' . trim($fullPath, '/');
+
+        $pattern = $this->compilePattern($fullPath);
+
+        // Validate Component class if string handler
+        if (is_string($handler) && !is_callable($handler)) {
+            if (!class_exists($handler)) {
+                throw new InvalidArgumentException("Handler class '$handler' does not exist");
+            }
+            if (!is_subclass_of($handler, Component::class)) {
+                throw new InvalidArgumentException("Handler class '$handler' must extend " . Component::class);
+            }
+        }
+
+        $route = [
+            'method' => $method,
+            'path' => $fullPath,
+            'pattern' => $pattern,
+            'handler' => $handler,
+            'middleware' => $this->groupMiddleware,
+        ];
+
+        $this->routes[$method][] = $route;
+        $index = array_key_last($this->routes[$method]);
+
+        $this->pendingRoute = ['method' => $method, 'index' => $index];
+
+        if ($name !== null) {
+            $this->namedRoutes[$name] = $fullPath;
+        }
+
+        return $this;
+    }
+
+    private function compilePattern(string $path): string
+    {
+        $pattern = preg_replace_callback(
+            '/\{(\w+)(?::([^}]+))?\}/',
+            function (array $matches): string {
+                $name = $matches[1];
+                $constraint = $matches[2] ?? '[^/]+';
+
+                // Use safe preset if available
+                if (isset(self::SAFE_CONSTRAINTS[$constraint])) {
+                    $constraint = self::SAFE_CONSTRAINTS[$constraint];
+                } else {
+                    // Validate custom constraint for ReDoS safety
+                    $this->validateConstraint($constraint, $name);
+                }
+
+                return "(?P<$name>$constraint)";
+            },
+            $path
+        );
+
+        if ($pattern === null) {
+            throw new RuntimeException("Failed to compile route pattern for path: {$path}");
+        }
+
+        return '#^' . $pattern . '$#';
+    }
+
+    /**
+     * Validate a route constraint pattern for ReDoS safety.
+     *
+     * Uses a whitelist approach: only allows character classes, literal chars,
+     * and simple quantifiers. Rejects groups, backreferences, and any construct
+     * that could cause catastrophic backtracking.
+     *
+     * @throws InvalidArgumentException If pattern is potentially dangerous
+     */
+    private function validateConstraint(string $constraint, string $paramName): void
+    {
+        // Max length to prevent abuse
+        if (strlen($constraint) > 100) {
+            throw new InvalidArgumentException(
+                "Route constraint for '{$paramName}' is too long (max 100 characters). " .
+                "Use a predefined constraint: " . implode(', ', array_keys(self::SAFE_CONSTRAINTS))
+            );
+        }
+
+        // WHITELIST approach: only allow safe regex constructs.
+        // Allowed: character classes [a-z0-9], literal chars, quantifiers {n,m}/+/?/*,
+        //          dot (.), anchors, simple alternation without groups.
+        // Disallowed: parenthesized groups (prevents nested quantifiers entirely),
+        //             backreferences, lookahead/lookbehind, recursive patterns.
+        if (preg_match('/[()]/', $constraint)) {
+            throw new InvalidArgumentException(
+                "Route constraint for '{$paramName}' contains groups (parentheses) which are not allowed " .
+                "due to ReDoS risk. Use character classes instead (e.g. [a-z0-9]+). " .
+                "Predefined constraints: " . implode(', ', array_keys(self::SAFE_CONSTRAINTS))
+            );
+        }
+
+        // Reject backreferences and other advanced features
+        if (preg_match('/\\\\[1-9]|\\\\[pPkgG]/', $constraint)) {
+            throw new InvalidArgumentException(
+                "Route constraint for '{$paramName}' contains advanced regex features that are not allowed."
+            );
+        }
+
+        // Test compile the pattern to ensure it's valid regex
+        $testPattern = '#' . $constraint . '#';
+        if (@preg_match($testPattern, '') === false) {
+            throw new InvalidArgumentException(
+                "Route constraint for '{$paramName}' is not a valid regular expression: {$constraint}"
+            );
+        }
     }
 }

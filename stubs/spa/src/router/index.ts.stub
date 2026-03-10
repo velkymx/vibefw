@@ -1,0 +1,86 @@
+/**
+ * VibeFW SPA — Router Configuration
+ *
+ * Route structure:
+ *   /              — Public landing page (Home.vue)
+ *   /login         — Login form (guest-only: redirects to /dashboard if logged in)
+ *   /register      — Registration form (guest-only)
+ *   /dashboard     — Protected dashboard inside MainLayout (requires auth)
+ *   /*             — Catch-all 404 page
+ *
+ * Auth strategy:
+ *   - A Bearer token is stored in localStorage under the key "token".
+ *   - Routes with `meta: { auth: true }` require a token — unauthenticated
+ *     users are redirected to /login.
+ *   - Routes with `meta: { guest: true }` are for unauthenticated users only —
+ *     logged-in users are redirected to /dashboard.
+ *   - The navigation guard uses Vue Router 5's return-value style (no next()
+ *     callback). Returning a path string triggers a redirect; returning
+ *     nothing allows navigation to proceed.
+ *
+ * Adding new protected pages:
+ *   1. Create the component in src/views/
+ *   2. Add it as a child of the MainLayout route below
+ *   3. It automatically inherits `meta: { auth: true }` from the parent
+ */
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from '../views/Home.vue'
+import Login from '../views/auth/Login.vue'
+import Register from '../views/auth/Register.vue'
+import Dashboard from '../views/Dashboard.vue'
+import MainLayout from '../layouts/MainLayout.vue'
+import NotFound from '../views/errors/NotFound.vue'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    // -----------------------------------------------------------------------
+    // Public routes — accessible to everyone
+    // -----------------------------------------------------------------------
+    { path: '/', name: 'home', component: Home },
+
+    // -----------------------------------------------------------------------
+    // Guest-only routes — redirect to /dashboard if already authenticated
+    // -----------------------------------------------------------------------
+    { path: '/login', name: 'login', component: Login, meta: { guest: true } },
+    { path: '/register', name: 'register', component: Register, meta: { guest: true } },
+
+    // -----------------------------------------------------------------------
+    // Authenticated routes — wrapped in MainLayout (sidebar + topbar shell)
+    // All children inherit meta.auth = true from the parent.
+    // To add a new page: import your component and add a child route here.
+    // -----------------------------------------------------------------------
+    {
+      path: '/',
+      component: MainLayout,
+      meta: { auth: true },
+      children: [
+        { path: 'dashboard', name: 'dashboard', component: Dashboard },
+        // Example: { path: 'settings', name: 'settings', component: Settings },
+        { path: '', redirect: '/dashboard' }
+      ]
+    },
+
+    // -----------------------------------------------------------------------
+    // Catch-all 404
+    // -----------------------------------------------------------------------
+    { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFound }
+  ]
+})
+
+// ---------------------------------------------------------------------------
+// Navigation guard — runs before every route change
+// ---------------------------------------------------------------------------
+router.beforeEach((to) => {
+  const token = localStorage.getItem('token')
+
+  // Protected route but no token → redirect to login
+  if (to.meta.auth && !token) return '/login'
+
+  // Guest-only route but already authenticated → redirect to dashboard
+  if (to.meta.guest && token) return '/dashboard'
+
+  // Otherwise: allow navigation (no return = proceed)
+})
+
+export default router

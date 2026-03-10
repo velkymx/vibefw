@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Fw\Core;
 
+use Closure;
+use RuntimeException;
+
 /**
  * Configuration repository.
  *
@@ -73,28 +76,9 @@ final class Config
     }
 
     /**
-     * Load configuration from cache file.
-     */
-    private function loadFromCache(): bool
-    {
-        if ($this->cacheFile === null || !file_exists($this->cacheFile)) {
-            return false;
-        }
-
-        $cached = require $this->cacheFile;
-
-        if (!is_array($cached)) {
-            return false;
-        }
-
-        $this->config = $cached;
-        return true;
-    }
-
-    /**
      * Save current configuration to cache file.
      *
-     * @throws \RuntimeException If config contains non-serializable values (objects, resources)
+     * @throws RuntimeException If config contains non-serializable values (objects, resources)
      */
     public function saveCache(): bool
     {
@@ -107,7 +91,9 @@ final class Config
         $this->assertSafeForExport($this->config, 'config');
 
         $dir = dirname($this->cacheFile);
-        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
+        // Three-phase mkdir to handle race where another process creates the directory
+        // between the is_dir() check and mkdir() — a common source of false negatives.
+        if (!is_dir($dir) && !@mkdir($dir, 0o750, true) && !is_dir($dir)) {
             return false;
         }
 
@@ -122,54 +108,6 @@ final class Config
         }
 
         return $result !== false;
-    }
-
-    /**
-     * Recursively verify that a value contains only safe types for var_export.
-     *
-     * Safe types: null, bool, int, float, string, array (containing only safe types)
-     * Unsafe types: objects (can have __wakeup/__destruct), resources, closures
-     *
-     * @throws \RuntimeException If unsafe types are found
-     */
-    private function assertSafeForExport(mixed $value, string $path): void
-    {
-        if ($value === null || is_bool($value) || is_int($value) || is_float($value) || is_string($value)) {
-            return; // Safe scalar types
-        }
-
-        if (is_array($value)) {
-            foreach ($value as $key => $item) {
-                $this->assertSafeForExport($item, "{$path}.{$key}");
-            }
-            return;
-        }
-
-        if (is_object($value)) {
-            $class = get_class($value);
-            throw new \RuntimeException(
-                "Config cache security error: Object of class '{$class}' found at '{$path}'. " .
-                "Objects cannot be safely cached as they may execute arbitrary code on deserialization. " .
-                "Remove the object or convert it to an array/scalar."
-            );
-        }
-
-        if (is_resource($value)) {
-            throw new \RuntimeException(
-                "Config cache error: Resource found at '{$path}'. Resources cannot be cached."
-            );
-        }
-
-        // Closures are objects, but be explicit
-        if ($value instanceof \Closure) {
-            throw new \RuntimeException(
-                "Config cache error: Closure found at '{$path}'. Closures cannot be cached."
-            );
-        }
-
-        throw new \RuntimeException(
-            "Config cache error: Unknown type '" . gettype($value) . "' found at '{$path}'."
-        );
     }
 
     /**
@@ -196,43 +134,6 @@ final class Config
     public function isCached(): bool
     {
         return $this->cacheFile !== null && file_exists($this->cacheFile);
-    }
-
-    /**
-     * Load environment variables from .env file.
-     */
-    private function loadEnv(): void
-    {
-        $envFile = $this->basePath . '/.env';
-
-        if (file_exists($envFile)) {
-            Env::load($envFile);
-        }
-    }
-
-    /**
-     * Load configuration files from config directory.
-     */
-    private function loadConfigFiles(): void
-    {
-        $configPath = $this->basePath . '/config';
-
-        $configFiles = [
-            'app',
-            'database',
-            'queue',
-            'lifecycle',
-            'cache',
-            'mail',
-        ];
-
-        foreach ($configFiles as $file) {
-            $filePath = $configPath . '/' . $file . '.php';
-
-            if (file_exists($filePath)) {
-                $this->config[$file] = require $filePath;
-            }
-        }
     }
 
     /**
@@ -317,5 +218,109 @@ final class Config
     public function section(string $name): array
     {
         return $this->config[$name] ?? [];
+    }
+
+    /**
+     * Load configuration from cache file.
+     */
+    private function loadFromCache(): bool
+    {
+        if ($this->cacheFile === null || !file_exists($this->cacheFile)) {
+            return false;
+        }
+
+        $cached = require $this->cacheFile;
+
+        if (!is_array($cached)) {
+            return false;
+        }
+
+        $this->config = $cached;
+        return true;
+    }
+
+    /**
+     * Recursively verify that a value contains only safe types for var_export.
+     *
+     * Safe types: null, bool, int, float, string, array (containing only safe types)
+     * Unsafe types: objects (can have __wakeup/__destruct), resources, closures
+     *
+     * @throws RuntimeException If unsafe types are found
+     */
+    private function assertSafeForExport(mixed $value, string $path): void
+    {
+        if ($value === null || is_bool($value) || is_int($value) || is_float($value) || is_string($value)) {
+            return; // Safe scalar types
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $key => $item) {
+                $this->assertSafeForExport($item, "{$path}.{$key}");
+            }
+            return;
+        }
+
+        if (is_object($value)) {
+            $class = get_class($value);
+            throw new RuntimeException(
+                "Config cache security error: Object of class '{$class}' found at '{$path}'. " .
+                "Objects cannot be safely cached as they may execute arbitrary code on deserialization. " .
+                "Remove the object or convert it to an array/scalar."
+            );
+        }
+
+        if (is_resource($value)) {
+            throw new RuntimeException(
+                "Config cache error: Resource found at '{$path}'. Resources cannot be cached."
+            );
+        }
+
+        // Closures are objects, but be explicit
+        if ($value instanceof Closure) {
+            throw new RuntimeException(
+                "Config cache error: Closure found at '{$path}'. Closures cannot be cached."
+            );
+        }
+
+        throw new RuntimeException(
+            "Config cache error: Unknown type '" . gettype($value) . "' found at '{$path}'."
+        );
+    }
+
+    /**
+     * Load environment variables from .env file.
+     */
+    private function loadEnv(): void
+    {
+        $envFile = $this->basePath . '/.env';
+
+        if (file_exists($envFile)) {
+            Env::load($envFile);
+        }
+    }
+
+    /**
+     * Load configuration files from config directory.
+     */
+    private function loadConfigFiles(): void
+    {
+        $configPath = $this->basePath . '/config';
+
+        $configFiles = [
+            'app',
+            'database',
+            'queue',
+            'lifecycle',
+            'cache',
+            'mail',
+        ];
+
+        foreach ($configFiles as $file) {
+            $filePath = $configPath . '/' . $file . '.php';
+
+            if (file_exists($filePath)) {
+                $this->config[$file] = require $filePath;
+            }
+        }
     }
 }

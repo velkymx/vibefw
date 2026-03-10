@@ -13,6 +13,7 @@ namespace Fw\Cache;
 final class TaggedCache implements CacheInterface
 {
     private CacheInterface $cache;
+
     /** @var array<string> */
     private array $tags;
 
@@ -64,7 +65,7 @@ final class TaggedCache implements CacheInterface
 
     public function getMany(array $keys): array
     {
-        $taggedKeys = array_map(fn($k) => $this->taggedKey($k), $keys);
+        $taggedKeys = array_map(fn ($k) => $this->taggedKey($k), $keys);
         $values = $this->cache->getMany($taggedKeys);
 
         $results = [];
@@ -89,6 +90,11 @@ final class TaggedCache implements CacheInterface
     public function flush(): bool
     {
         return $this->clear();
+    }
+
+    public function increment(string $key, int $step = 1, ?int $ttl = null): int|false
+    {
+        return $this->cache->increment($this->taggedKey($key), $step, $ttl);
     }
 
     /**

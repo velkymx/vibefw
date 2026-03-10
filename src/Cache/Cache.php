@@ -13,7 +13,9 @@ namespace Fw\Cache;
 final class Cache implements CacheInterface
 {
     private MemoryCache $l1;
+
     private CacheInterface $l2;
+
     private bool $useL2;
 
     public function __construct(?CacheInterface $store = null, string $cachePath = '')
@@ -152,6 +154,21 @@ final class Cache implements CacheInterface
         }
 
         return true;
+    }
+
+    public function increment(string $key, int $step = 1, ?int $ttl = null): int|false
+    {
+        // Delegate to L2 for atomicity (L1 memory cache is per-process only)
+        if ($this->useL2) {
+            $result = $this->l2->increment($key, $step, $ttl);
+            if ($result !== false) {
+                // Update L1 to reflect the new value
+                $this->l1->set($key, $result, $ttl);
+            }
+            return $result;
+        }
+
+        return $this->l1->increment($key, $step, $ttl);
     }
 
     /**

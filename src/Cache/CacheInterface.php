@@ -50,4 +50,12 @@ interface CacheInterface
      * @param array<string, mixed> $values
      */
     public function setMany(array $values, ?int $ttl = null): bool;
+
+    /**
+     * Atomically increment a numeric value.
+     *
+     * If the key does not exist, it is initialised to 0 before incrementing.
+     * Returns the new value, or false on failure.
+     */
+    public function increment(string $key, int $step = 1, ?int $ttl = null): int|false;
 }

@@ -18,6 +18,7 @@ final class MemoryCache implements CacheInterface, ResettableInterface
     private array $store = [];
 
     private int $hits = 0;
+
     private int $misses = 0;
 
     /**
@@ -112,6 +113,33 @@ final class MemoryCache implements CacheInterface, ResettableInterface
             $this->set($key, $value, $ttl);
         }
         return true;
+    }
+
+    /**
+     * Atomically increment a numeric value.
+     *
+     * MemoryCache is single-process (per-request), so no locking is needed.
+     */
+    public function increment(string $key, int $step = 1, ?int $ttl = null): int|false
+    {
+        $item = $this->store[$key] ?? null;
+
+        $current = 0;
+        $expires = $ttl !== null ? time() + $ttl : null;
+
+        if ($item !== null) {
+            // Treat expired items as missing
+            if ($item['expires'] !== null && $item['expires'] < time()) {
+                unset($this->store[$key]);
+            } else {
+                $current = (int) $item['value'];
+                $expires = $item['expires']; // Preserve existing TTL
+            }
+        }
+
+        $newValue = $current + $step;
+        $this->store[$key] = ['value' => $newValue, 'expires' => $expires];
+        return $newValue;
     }
 
     /**

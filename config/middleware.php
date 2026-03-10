@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use Fw\Middleware\ApiAuthMiddleware;
 use Fw\Middleware\AuthMiddleware;
+use Fw\Middleware\CanMiddleware;
 use Fw\Middleware\CorsMiddleware;
 use Fw\Middleware\CsrfMiddleware;
 use Fw\Middleware\GuestMiddleware;
-use Fw\Middleware\CanMiddleware;
 use Fw\Middleware\RateLimitMiddleware;
 use Fw\Middleware\SecurityHeadersMiddleware;
 use Fw\Middleware\SpaAuthMiddleware;
@@ -60,6 +60,7 @@ return [
 
         // API authentication
         'api.auth' => ApiAuthMiddleware::class,
+        'auth:api' => ApiAuthMiddleware::class,
         'spa.auth' => SpaAuthMiddleware::class,
         'ability' => TokenAbilityMiddleware::class,
 

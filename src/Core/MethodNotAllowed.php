@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Fw\Core;
 
+use RuntimeException;
+
 /**
  * Exception thrown when a route exists but the HTTP method is not allowed.
  */
-final class MethodNotAllowed extends \RuntimeException
+final class MethodNotAllowed extends RuntimeException
 {
     /**
      * @param array<string> $allowedMethods

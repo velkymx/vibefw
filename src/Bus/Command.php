@@ -27,6 +27,4 @@ namespace Fw\Bus;
  *         ) {}
  *     }
  */
-interface Command
-{
-}
+interface Command {}

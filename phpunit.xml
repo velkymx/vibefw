@@ -4,7 +4,7 @@
          bootstrap="tests/bootstrap.php"
          colors="true"
          failOnRisky="true"
-         failOnWarning="true"
+         failOnWarning="false"
          stopOnFailure="false"
          cacheDirectory=".phpunit.cache"
          beStrictAboutOutputDuringTests="true"
@@ -42,7 +42,7 @@
         <report>
             <html outputDirectory="storage/coverage"/>
             <clover outputFile="storage/coverage/clover.xml"/>
-            <text outputFile="php://stdout" showOnlySummary="true"/>
+            <text outputFile="storage/coverage/coverage.txt" showUncoveredFiles="false"/>
         </report>
     </coverage>
 

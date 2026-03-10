@@ -7,6 +7,7 @@ namespace Fw\Lifecycle;
 use Fw\Async\Deferred;
 use Fw\Core\Application;
 use Fw\Core\Request;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -54,6 +55,7 @@ abstract class Component
 {
     /** @var Application|object Application instance (typed as object for testability) */
     protected object $app;
+
     protected Request $request;
 
     /** @var array<string, mixed> Data storage for component state */
@@ -330,10 +332,10 @@ abstract class Component
     /**
      * Abort the request with an error status.
      *
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     protected function abort(int $status, string $message = ''): never
     {
-        throw new \RuntimeException($message ?: "HTTP Error $status", $status);
+        throw new RuntimeException($message ?: "HTTP Error $status", $status);
     }
 }

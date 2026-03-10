@@ -22,7 +22,9 @@ final class StreamedResponse
 {
     /** @var callable */
     private $callback;
+
     private int $statusCode;
+
     /** @var array<string, string> */
     private array $headers;
 
@@ -41,6 +43,9 @@ final class StreamedResponse
         $this->headers = array_merge([
             'Content-Type' => 'text/html; charset=UTF-8',
             'X-Accel-Buffering' => 'no', // Disable nginx buffering
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'SAMEORIGIN',
+            'Referrer-Policy' => 'no-referrer-when-downgrade',
         ], $headers);
     }
 

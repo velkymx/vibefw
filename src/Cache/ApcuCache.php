@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Fw\Cache;
 
+use APCUIterator;
+use RuntimeException;
+
 /**
  * APCu cache driver.
  *
@@ -18,14 +21,22 @@ final class ApcuCache implements CacheInterface
     public function __construct(string $prefix = 'fw:')
     {
         if (!extension_loaded('apcu')) {
-            throw new \RuntimeException('APCu extension is not loaded');
+            throw new RuntimeException('APCu extension is not loaded');
         }
 
         if (!apcu_enabled()) {
-            throw new \RuntimeException('APCu is not enabled');
+            throw new RuntimeException('APCu is not enabled');
         }
 
         $this->prefix = $prefix;
+    }
+
+    /**
+     * Check if APCu is available.
+     */
+    public static function isAvailable(): bool
+    {
+        return extension_loaded('apcu') && apcu_enabled();
     }
 
     public function get(string $key, mixed $default = null): mixed
@@ -54,7 +65,7 @@ final class ApcuCache implements CacheInterface
     public function clear(): bool
     {
         // Clear only keys with our prefix
-        $iterator = new \APCUIterator('/^' . preg_quote($this->prefix, '/') . '/');
+        $iterator = new APCUIterator('/^' . preg_quote($this->prefix, '/') . '/');
         return apcu_delete($iterator);
     }
 
@@ -75,7 +86,7 @@ final class ApcuCache implements CacheInterface
 
     public function getMany(array $keys): array
     {
-        $prefixedKeys = array_map(fn($k) => $this->prefix . $k, $keys);
+        $prefixedKeys = array_map(fn ($k) => $this->prefix . $k, $keys);
         $values = apcu_fetch($prefixedKeys);
 
         $results = [];
@@ -96,11 +107,20 @@ final class ApcuCache implements CacheInterface
     }
 
     /**
-     * Increment a numeric value.
+     * Atomically increment a numeric value.
+     *
+     * APCu's apcu_inc is natively atomic, so no locking is needed.
      */
-    public function increment(string $key, int $step = 1): int|false
+    public function increment(string $key, int $step = 1, ?int $ttl = null): int|false
     {
-        return apcu_inc($this->prefix . $key, $step);
+        $prefixedKey = $this->prefix . $key;
+
+        // Initialise if missing so the first increment starts from $step
+        if (!apcu_exists($prefixedKey)) {
+            apcu_store($prefixedKey, 0, $ttl ?? 0);
+        }
+
+        return apcu_inc($prefixedKey, $step);
     }
 
     /**
@@ -126,13 +146,5 @@ final class ApcuCache implements CacheInterface
             'memory_size' => $info['mem_size'] ?? 0,
             'memory_available' => $sma['avail_mem'] ?? 0,
         ];
-    }
-
-    /**
-     * Check if APCu is available.
-     */
-    public static function isAvailable(): bool
-    {
-        return extension_loaded('apcu') && apcu_enabled();
     }
 }

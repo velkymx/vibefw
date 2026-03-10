@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Validation\Rules;
 
 use Attribute;
+use DateTimeImmutable;
 use Fw\Validation\Rule;
 
 /**
@@ -29,7 +30,7 @@ final class Date implements Rule
         }
 
         if ($this->format !== null) {
-            $date = \DateTimeImmutable::createFromFormat($this->format, $value);
+            $date = DateTimeImmutable::createFromFormat($this->format, $value);
             if ($date === false || $date->format($this->format) !== $value) {
                 return str_replace(':field', $field, $this->message);
             }

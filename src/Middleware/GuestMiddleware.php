@@ -21,7 +21,7 @@ final class GuestMiddleware implements MiddlewareInterface
     public function handle(Request $request, callable $next): Response|string|array
     {
         if (Auth::check()) {
-            $this->app->response->redirect('/dashboard');
+            return new Response()->redirect('/dashboard');
         }
 
         return $next($request);

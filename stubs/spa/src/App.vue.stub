@@ -1,0 +1,31 @@
+<!--
+  App.vue — Root component
+
+  This is the top-level component mounted on #app. It imports the global
+  stylesheets and renders the current route via <router-view />.
+
+  Stylesheet load order matters:
+    1. Bootstrap SCSS   — base framework styles
+    2. Bootstrap Icons  — icon font for <VibeIcon> components
+    3. VibeUI           — component library styles
+    4. Quill            — WYSIWYG editor styles (used by VibeFormWysiwyg)
+-->
+<script setup lang="ts">
+</script>
+
+<template>
+  <div id="app-root">
+    <router-view />
+  </div>
+</template>
+
+<style lang="scss">
+@import "bootstrap/scss/bootstrap";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+@import "@velkymx/vibeui/dist/style.css";
+@import "quill/dist/quill.snow.css";
+
+#app-root {
+  min-height: 100vh;
+}
+</style>

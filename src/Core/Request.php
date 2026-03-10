@@ -5,16 +5,30 @@ declare(strict_types=1);
 namespace Fw\Core;
 
 use Fw\Security\Sanitizer;
+use RuntimeException;
 
 final class Request
 {
+    private static int $maxBodySize = 10 * 1024 * 1024;
+
+    private static array $trustedProxies = [];
+
+    private static int $readTimeout = 30;
+
     public readonly string $method;
+
     public readonly string $uri;
+
     public readonly string $fullUri;
+
     public readonly array $query;
+
     public readonly array $post;
+
     public readonly array $server;
+
     public readonly array $files;
+
     public readonly array $headers;
 
     public function __construct(
@@ -51,24 +65,29 @@ final class Request
         return new self();
     }
 
-    private static int $maxBodySize = 10 * 1024 * 1024;
-
-    private function resolveMethod(): string
+    /**
+     * Set the list of trusted proxy IP addresses.
+     *
+     * @param array<string> $proxies
+     */
+    public static function setTrustedProxies(array $proxies): void
     {
-        $method = strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
-        if ($method === 'POST' && isset($this->post['_method'])) {
-            $spoofed = strtoupper($this->post['_method']);
-            if (in_array($spoofed, ['PUT', 'PATCH', 'DELETE'], true)) {
-                return $spoofed;
+        // Warn about wildcard trusted proxies — any client can spoof X-Forwarded-For
+        if (in_array('*', $proxies, true)) {
+            $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
+            if ($env === 'production') {
+                error_log(
+                    'WARNING: Trusted proxies set to wildcard (*). Any client can spoof their IP address. ' .
+                    'Use explicit proxy IPs (e.g. [\'10.0.0.1\', \'10.0.0.2\']) in production.'
+                );
             }
         }
-        return $method;
+        self::$trustedProxies = $proxies;
     }
 
-    private function parseUri(string $uri): string
+    public static function setReadTimeout(int $seconds): void
     {
-        $path = parse_url($uri, PHP_URL_PATH) ?: '/';
-        return '/' . trim($path, '/');
+        self::$readTimeout = $seconds;
     }
 
     private static function parseHeadersFromGlobals(array $server): array
@@ -80,8 +99,12 @@ final class Request
                 $headers[strtolower($name)] = (string) $value;
             }
         }
-        if (isset($server['CONTENT_TYPE'])) $headers['content-type'] = (string) $server['CONTENT_TYPE'];
-        if (isset($server['CONTENT_LENGTH'])) $headers['content-length'] = (string) $server['CONTENT_LENGTH'];
+        if (isset($server['CONTENT_TYPE'])) {
+            $headers['content-type'] = (string) $server['CONTENT_TYPE'];
+        }
+        if (isset($server['CONTENT_LENGTH'])) {
+            $headers['content-length'] = (string) $server['CONTENT_LENGTH'];
+        }
         return $headers;
     }
 
@@ -157,16 +180,40 @@ final class Request
 
     public function ip(): string
     {
-        if (isset($this->server['HTTP_X_FORWARDED_FOR'])) {
-            $forwardedFor = explode(',', $this->server['HTTP_X_FORWARDED_FOR']);
-            $clientIp = trim($forwardedFor[0]);
-            if (filter_var($clientIp, FILTER_VALIDATE_IP)) return $clientIp;
+        $remoteAddr = $this->server['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        // Only trust X-Forwarded-For and Client-IP if the remote address is a trusted proxy
+        // Or if trusted proxies is set to '*' (all proxies trusted - use with caution)
+        $isTrusted = in_array($remoteAddr, self::$trustedProxies, true) ||
+                     in_array('*', self::$trustedProxies, true);
+
+        if ($isTrusted) {
+            if (isset($this->server['HTTP_X_FORWARDED_FOR'])) {
+                $ips = array_reverse(explode(',', $this->server['HTTP_X_FORWARDED_FOR']));
+                foreach ($ips as $ip) {
+                    $ip = trim($ip);
+                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                        // If this IP is NOT a trusted proxy, it's the real client IP
+                        if (!in_array($ip, self::$trustedProxies, true) && !in_array('*', self::$trustedProxies, true)) {
+                            return $ip;
+                        }
+                    }
+                }
+                // If all IPs in X-Forwarded-For are trusted proxies, the first one is the client
+                $firstIp = trim(explode(',', $this->server['HTTP_X_FORWARDED_FOR'])[0]);
+                if (filter_var($firstIp, FILTER_VALIDATE_IP)) {
+                    return $firstIp;
+                }
+            }
+            if (isset($this->server['HTTP_CLIENT_IP'])) {
+                $clientIp = trim($this->server['HTTP_CLIENT_IP']);
+                if (filter_var($clientIp, FILTER_VALIDATE_IP)) {
+                    return $clientIp;
+                }
+            }
         }
-        if (isset($this->server['HTTP_CLIENT_IP'])) {
-            $clientIp = trim($this->server['HTTP_CLIENT_IP']);
-            if (filter_var($clientIp, FILTER_VALIDATE_IP)) return $clientIp;
-        }
-        return $this->server['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        return $remoteAddr;
     }
 
     public function userAgent(): string
@@ -176,8 +223,19 @@ final class Request
 
     public function isSecure(): bool
     {
-        if (($this->server['HTTPS'] ?? '') === 'on') return true;
-        return ($this->server['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+        if (($this->server['HTTPS'] ?? '') === 'on') {
+            return true;
+        }
+
+        $remoteAddr = $this->server['REMOTE_ADDR'] ?? '0.0.0.0';
+        $isTrusted = in_array($remoteAddr, self::$trustedProxies, true) ||
+                     in_array('*', self::$trustedProxies, true);
+
+        if ($isTrusted && isset($this->server['HTTP_X_FORWARDED_PROTO'])) {
+            return strtolower($this->server['HTTP_X_FORWARDED_PROTO']) === 'https';
+        }
+
+        return false;
     }
 
     public function isAjax(): bool
@@ -193,43 +251,65 @@ final class Request
     public function expectsJson(): bool
     {
         $accept = $this->header('accept', '');
-        return str_contains($accept, 'application/json') || str_contains($accept, '*/*');
+
+        // Always true when JSON is explicitly requested
+        if (str_contains($accept, 'application/json')) {
+            return true;
+        }
+
+        // Bare */* is sent by browsers alongside text/html — do NOT treat that
+        // as a JSON request, or HTML page visits break error handling.
+        // Only accept */* when there is no explicit text/html preference.
+        return (bool) (str_contains($accept, '*/*') && !str_contains($accept, 'text/html'))
+
+        ;
     }
 
     public function wantsJson(): bool
     {
-        return $this->expectsJson() || $this->isAjax() || str_starts_with($this->uri, '/api');
+        // URI-prefix heuristic ('/api') removed: it matches /api-docs, /apiary, etc.
+        // and returns JSON errors for browser HTML requests on those routes.
+        // Rely solely on Accept header and X-Requested-With for content negotiation.
+        return $this->expectsJson() || $this->isAjax();
     }
 
     public function json(): ?array
     {
-        if (!$this->isJson()) return null;
+        if (!$this->isJson()) {
+            return null;
+        }
         $data = json_decode($this->rawBody(), true);
         return is_array($data) ? $data : null;
     }
 
-    private static int $readTimeout = 30;
-    public static function setReadTimeout(int $seconds): void
-    {
-        self::$readTimeout = $seconds;
-    }
-
     public function rawBody(): string
     {
-        if ($this->rawBody !== null) return $this->rawBody;
+        if ($this->rawBody !== null) {
+            return $this->rawBody;
+        }
         $stream = fopen('php://input', 'rb');
-        if ($stream === false) return $this->rawBody = '';
+        if ($stream === false) {
+            return $this->rawBody = '';
+        }
         stream_set_timeout($stream, self::$readTimeout);
         $body = '';
         $startTime = microtime(true);
         try {
             while (!feof($stream)) {
-                if (microtime(true) - $startTime > (float) self::$readTimeout) throw new \RuntimeException('Request body read timeout');
+                if (microtime(true) - $startTime > (float) self::$readTimeout) {
+                    throw new RuntimeException('Request body read timeout');
+                }
                 $chunk = fread($stream, 8192);
-                if (stream_get_meta_data($stream)['timed_out']) throw new \RuntimeException('Request body read timeout');
-                if ($chunk === false) break;
+                if (stream_get_meta_data($stream)['timed_out']) {
+                    throw new RuntimeException('Request body read timeout');
+                }
+                if ($chunk === false) {
+                    break;
+                }
                 $body .= $chunk;
-                if (strlen($body) > self::$maxBodySize) throw new \RuntimeException('Request body too large');
+                if (strlen($body) >= self::$maxBodySize) {
+                    throw new RuntimeException('Request body too large');
+                }
             }
         } finally {
             fclose($stream);
@@ -247,5 +327,23 @@ final class Request
     {
         $value = $this->input($key, $default);
         return is_string($value) ? Sanitizer::html($value) : $value;
+    }
+
+    private function resolveMethod(): string
+    {
+        $method = strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
+        if ($method === 'POST' && isset($this->post['_method'])) {
+            $spoofed = strtoupper($this->post['_method']);
+            if (in_array($spoofed, ['PUT', 'PATCH', 'DELETE'], true)) {
+                return $spoofed;
+            }
+        }
+        return $method;
+    }
+
+    private function parseUri(string $uri): string
+    {
+        $path = parse_url($uri, PHP_URL_PATH) ?: '/';
+        return '/' . trim($path, '/');
     }
 }

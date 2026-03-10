@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Queue;
 
+use Throwable;
+
 interface JobInterface
 {
     /**
@@ -29,5 +31,5 @@ interface JobInterface
     /**
      * Handle a job failure.
      */
-    public function failed(\Throwable $exception): void;
+    public function failed(Throwable $exception): void;
 }

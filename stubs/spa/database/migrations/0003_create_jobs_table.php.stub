@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+use Fw\Database\Migration\Blueprint;
+use Fw\Database\Migration\Migration;
+
+final class CreateJobsTable extends Migration
+{
+    public function up(): void
+    {
+        $this->createTable('jobs', function (Blueprint $table): void {
+            $table->string('id', 32);
+            $table->string('queue')->default('default');
+            $table->text('payload');
+            $table->integer('attempts')->default(0);
+            $table->integer('available_at');
+            $table->integer('reserved_at')->nullable();
+            $table->integer('created_at');
+
+            $table->index(['queue', 'available_at'], 'idx_jobs_queue_available');
+            $table->index('reserved_at', 'idx_jobs_reserved');
+        });
+
+        // Set primary key separately for SQLite compatibility
+        if ($this->db->driver !== 'sqlite') {
+            $this->execute('ALTER TABLE ' . $this->quote('jobs') . ' ADD PRIMARY KEY (' . $this->quote('id') . ')');
+        }
+    }
+
+    public function down(): void
+    {
+        $this->dropTable('jobs');
+    }
+}

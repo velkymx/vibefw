@@ -1,0 +1,176 @@
+# VibeFW SPA Frontend
+
+Vue 3 + TypeScript + Vite single-page application scaffolded by `php fw make:spa`.
+
+## Tech Stack
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| Vue 3 | ^3.x | Reactive UI framework |
+| Vue Router | ^5.x | Client-side routing with auth guards |
+| Pinia | ^3.x | Global state management |
+| Vite | ^7.x | Dev server and build tool |
+| TypeScript | ^5.x | Type safety |
+| Axios | ^1.x | HTTP client for API calls |
+| @velkymx/vibeui | latest | Bootstrap 5 component library |
+| Vitest | latest | Unit testing |
+| Playwright | latest | End-to-end testing |
+
+## Quick Start
+
+```bash
+# Install dependencies (already done by make:spa)
+npm install
+
+# Start the dev server (hot-reload on http://localhost:5173)
+npm run dev
+
+# Build for production (outputs to ../public/spa/)
+npm run build
+
+# Run unit tests
+npx vitest run
+
+# Run e2e tests (requires the PHP backend to be running)
+npx playwright test
+```
+
+## Project Structure
+
+```
+frontend/
+├── src/
+│   ├── main.ts                 # App entry — plugins, axios interceptor
+│   ├── App.vue                 # Root component, global styles
+│   ├── router/
+│   │   └── index.ts            # Routes + auth navigation guards
+│   ├── layouts/
+│   │   └── MainLayout.vue      # Authenticated shell (sidebar + topbar)
+│   ├── views/
+│   │   ├── Home.vue            # Public landing page
+│   │   ├── Dashboard.vue       # Protected dashboard (stats)
+│   │   ├── auth/
+│   │   │   ├── Login.vue       # Login form
+│   │   │   └── Register.vue    # Registration form
+│   │   └── errors/
+│   │       └── NotFound.vue    # 404 catch-all
+│   ├── types/
+│   │   └── api.ts              # TypeScript interfaces for API responses
+│   └── tests/
+│       └── Dashboard.test.ts   # Example unit test
+├── e2e/
+│   └── example.spec.ts         # Example Playwright test
+├── index.html                  # HTML entry point
+├── vite.config.ts              # Vite configuration
+├── tsconfig.json               # TypeScript configuration
+└── package.json                # Dependencies and scripts
+```
+
+## Authentication Flow
+
+1. **Login/Register** → POST to `/api/auth/login` or `/api/auth/register`
+2. **Token storage** → Bearer token saved to `localStorage` under key `"token"`
+3. **API requests** → Include `Authorization: Bearer <token>` header
+4. **Route guards** → `router/index.ts` checks for token presence:
+   - `meta: { auth: true }` → redirects to `/login` if no token
+   - `meta: { guest: true }` → redirects to `/dashboard` if token exists
+5. **Token expiration** → Global axios interceptor in `main.ts` catches 401 responses, clears the token, and redirects to `/login`
+
+## API Endpoints
+
+These endpoints are created by `make:spa` in your PHP backend:
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/login` | No | Authenticate and receive token |
+| POST | `/api/auth/register` | No | Create account and receive token |
+| POST | `/api/auth/logout` | Yes | Invalidate token |
+| GET | `/api/user` | Yes | Get authenticated user |
+| GET | `/api/dashboard/stats` | Yes | Dashboard statistics (users, uptime, perf) |
+
+### Validation Errors (422)
+
+All endpoints return validation errors in this format:
+
+```json
+{
+  "message": "Validation failed",
+  "errors": {
+    "email": "The email field is required.",
+    "password": "The password must be at least 8 characters."
+  }
+}
+```
+
+Map these to VibeUI form components:
+
+```vue
+<VibeFormInput
+  v-model="form.email"
+  :validation-state="errors.email ? 'invalid' : null"
+  :validation-message="errors.email"
+/>
+```
+
+## VibeUI Components
+
+All VibeUI components are registered globally — **no imports needed**.
+
+```vue
+<!-- Just use them in any template -->
+<VibeButton variant="primary" :loading="saving">Save</VibeButton>
+<VibeCard title="My Card"><template #body>Content</template></VibeCard>
+<VibeIcon icon="house" size="2x" />
+<VibeFormInput v-model="name" label="Name" />
+<VibeAlert v-model="show" variant="success" message="Done!" />
+```
+
+**Important:** `validators` and `useFormValidation` must be imported:
+```ts
+import { validators, useFormValidation } from '@velkymx/vibeui'
+```
+
+Full component docs: https://github.com/velkymx/vibeui/blob/main/docs/README.md
+
+## Dark Mode
+
+Dark mode is handled automatically by Bootstrap 5.3. The toggle in `MainLayout.vue` sets `data-bs-theme="dark"` on the `<html>` element. Use Bootstrap CSS variables for colors:
+
+```css
+/* DO: uses CSS variables — adapts to dark mode */
+color: var(--bs-body-color);
+background-color: var(--bs-body-bg);
+
+/* DON'T: hardcoded colors break in dark mode */
+color: #212529;
+background-color: #ffffff;
+```
+
+## Adding New Pages
+
+1. Create `src/views/MyPage.vue`
+2. Add a route in `src/router/index.ts` as a child of the MainLayout route:
+   ```ts
+   children: [
+     { path: 'dashboard', name: 'dashboard', component: Dashboard },
+     { path: 'my-page', name: 'my-page', component: MyPage },  // ← add here
+   ]
+   ```
+3. Add a sidebar link in `src/layouts/MainLayout.vue`:
+   ```vue
+   <router-link to="/my-page" class="nav-link py-2 px-3 rounded mb-1" active-class="active">
+     <VibeIcon icon="file-text" custom-class="me-2" /> My Page
+   </router-link>
+   ```
+
+## Running the Full Stack
+
+```bash
+# Terminal 1: PHP backend
+php fw serve
+
+# Terminal 2: Vite dev server (proxies API calls to PHP)
+cd frontend && npm run dev
+```
+
+For production, `npm run build` outputs to `public/spa/` which is served by PHP directly.

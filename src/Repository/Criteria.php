@@ -28,14 +28,13 @@ final class Criteria
     private array $orderBy = [];
 
     private ?int $limit = null;
+
     private ?int $offset = null;
 
     /** @var array<string> */
     private array $includes = [];
 
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     /**
      * Create a new Criteria instance.

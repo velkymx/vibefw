@@ -6,9 +6,10 @@ namespace Fw\Console\Commands;
 
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Fw\Core\Env;
 use Fw\Database\Connection;
 use Fw\Database\Migration\Migrator;
-use Fw\Core\Env;
+use Throwable;
 
 /**
  * Rollback the last database migration.
@@ -19,9 +20,10 @@ final class MigrateRollbackCommand extends Command
 
     protected string $description = 'Rollback the last database migration batch';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -67,7 +69,7 @@ final class MigrateRollbackCommand extends Command
             $this->info(count($rolled) . ' migration(s) rolled back.');
 
             return 0;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error('Rollback failed: ' . $e->getMessage());
             return 1;
         }

@@ -99,6 +99,48 @@ final readonly class Result
     }
 
     /**
+     * Combine multiple Results, returning first error or all successes.
+     *
+     * @template U
+     * @param array<Result<U, E>> $results
+     * @return Result<array<U>, E>
+     */
+    public static function all(array $results): self
+    {
+        $values = [];
+
+        foreach ($results as $result) {
+            if ($result->isErr()) {
+                return $result;
+            }
+            $values[] = $result->value;
+        }
+
+        return self::ok($values);
+    }
+
+    /**
+     * Return first success Result, or last error if all fail.
+     *
+     * @template U
+     * @param array<Result<U, E>> $results
+     * @return Result<U, E>
+     */
+    public static function any(array $results): self
+    {
+        $lastErr = null;
+
+        foreach ($results as $result) {
+            if ($result->isOk()) {
+                return $result;
+            }
+            $lastErr = $result;
+        }
+
+        return $lastErr ?? self::err('No results provided');
+    }
+
+    /**
      * Check if this is a success result.
      */
     public function isOk(): bool
@@ -338,47 +380,5 @@ final readonly class Result
     public function toOption(): Option
     {
         return $this->success ? Option::some($this->value) : Option::none();
-    }
-
-    /**
-     * Combine multiple Results, returning first error or all successes.
-     *
-     * @template U
-     * @param array<Result<U, E>> $results
-     * @return Result<array<U>, E>
-     */
-    public static function all(array $results): self
-    {
-        $values = [];
-
-        foreach ($results as $result) {
-            if ($result->isErr()) {
-                return $result;
-            }
-            $values[] = $result->value;
-        }
-
-        return self::ok($values);
-    }
-
-    /**
-     * Return first success Result, or last error if all fail.
-     *
-     * @template U
-     * @param array<Result<U, E>> $results
-     * @return Result<U, E>
-     */
-    public static function any(array $results): self
-    {
-        $lastErr = null;
-
-        foreach ($results as $result) {
-            if ($result->isOk()) {
-                return $result;
-            }
-            $lastErr = $result;
-        }
-
-        return $lastErr ?? self::err('No results provided');
     }
 }

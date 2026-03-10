@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Fw\Cache;
 
+use FilesystemIterator;
+use InvalidArgumentException;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+
 /**
  * OPcache-backed data cache.
  *
@@ -14,6 +19,7 @@ namespace Fw\Cache;
 final class OpcacheCache implements CacheInterface
 {
     private string $path;
+
     private int $defaultTtl;
 
     public function __construct(string $path, int $defaultTtl = 3600)
@@ -22,7 +28,7 @@ final class OpcacheCache implements CacheInterface
         $this->defaultTtl = $defaultTtl;
 
         if (!is_dir($this->path)) {
-            mkdir($this->path, 0755, true);
+            mkdir($this->path, 0o750, true);
         }
     }
 
@@ -40,7 +46,7 @@ final class OpcacheCache implements CacheInterface
             return $default;
         }
 
-        if ($data['expires'] < time()) {
+        if ($data['expires'] !== null && $data['expires'] < time()) {
             $this->delete($key);
             return $default;
         }
@@ -57,10 +63,11 @@ final class OpcacheCache implements CacheInterface
         $dir = dirname($file);
 
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0o750, true);
         }
 
-        $expires = time() + ($ttl ?? $this->defaultTtl);
+        // PSR-16: null TTL means "store indefinitely". A non-null TTL of 0 expires immediately.
+        $expires = $ttl !== null ? time() + $ttl : null;
 
         $data = [
             'expires' => $expires,
@@ -127,7 +134,7 @@ final class OpcacheCache implements CacheInterface
     public function clear(): bool
     {
         $this->deleteDirectory($this->path);
-        mkdir($this->path, 0755, true);
+        mkdir($this->path, 0o750, true);
         return true;
     }
 
@@ -161,6 +168,80 @@ final class OpcacheCache implements CacheInterface
         return true;
     }
 
+    /**
+     * Increment a numeric value.
+     *
+     * Uses a sidecar lock file for atomicity (same pattern as FileCache).
+     * For high-concurrency counters, prefer ApcuCache which uses apcu_inc().
+     */
+    public function increment(string $key, int $step = 1, ?int $ttl = null): int|false
+    {
+        $file = $this->getFilePath($key);
+        $lockFile = $file . '.lock';
+        $dir = dirname($file);
+
+        if (!is_dir($dir) && !@mkdir($dir, 0o750, true) && !is_dir($dir)) {
+            return false;
+        }
+
+        $lockFh = fopen($lockFile, 'c');
+        if ($lockFh === false) {
+            return false;
+        }
+
+        if (!flock($lockFh, LOCK_EX)) {
+            fclose($lockFh);
+            return false;
+        }
+
+        try {
+            $current = 0;
+            $expires = $ttl !== null ? time() + $ttl : null;
+
+            if (file_exists($file)) {
+                $data = @include $file;
+                if (is_array($data) && isset($data['value'])) {
+                    if ($data['expires'] !== null && $data['expires'] < time()) {
+                        // Expired — start fresh
+                    } else {
+                        $current = (int) $data['value'];
+                        // Preserve existing expiry if no new TTL given
+                        if ($ttl === null && isset($data['expires'])) {
+                            $expires = $data['expires'];
+                        }
+                    }
+                }
+            }
+
+            $newValue = $current + $step;
+            $this->assertSafeForExport($newValue);
+
+            $content = '<?php return ' . var_export(['expires' => $expires, 'value' => $newValue], true) . ';';
+
+            $temp = tempnam($dir, 'opc_');
+            if ($temp === false) {
+                return false;
+            }
+
+            file_put_contents($temp, $content, LOCK_EX);
+
+            if (PHP_OS_FAMILY === 'Windows' && file_exists($file)) {
+                @unlink($file);
+            }
+
+            rename($temp, $file);
+
+            if (function_exists('opcache_invalidate')) {
+                opcache_invalidate($file, true);
+            }
+
+            return $newValue;
+        } finally {
+            flock($lockFh, LOCK_UN);
+            fclose($lockFh);
+        }
+    }
+
     private function getFilePath(string $key): string
     {
         $hash = hash('sha256', $key);
@@ -174,9 +255,9 @@ final class OpcacheCache implements CacheInterface
             return;
         }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
         );
 
         foreach ($iterator as $file) {
@@ -200,7 +281,7 @@ final class OpcacheCache implements CacheInterface
      * __set_state() methods, potentially enabling code injection.
      * Only allow scalar values, arrays, and null.
      *
-     * @throws \InvalidArgumentException If value contains unsafe types
+     * @throws InvalidArgumentException If value contains unsafe types
      */
     private function assertSafeForExport(mixed $value, string $path = 'value'): void
     {
@@ -215,7 +296,7 @@ final class OpcacheCache implements CacheInterface
             return;
         }
 
-        throw new \InvalidArgumentException(
+        throw new InvalidArgumentException(
             "Cannot cache value at {$path}: only scalar values, arrays, and null are allowed. " .
             "Got " . get_debug_type($value) . ". Use FileCache or Redis for complex types."
         );

@@ -1,0 +1,26 @@
+<?php
+
+declare(strict_types=1);
+
+use Fw\Database\Migration\Blueprint;
+use Fw\Database\Migration\Migration;
+
+final class CreateEmailVerificationsTable extends Migration
+{
+    public function up(): void
+    {
+        $this->createTable('email_verifications', function (Blueprint $table): void {
+            $table->string('email');
+            $table->string('token');
+            $table->datetime('created_at');
+
+            $table->index('email');
+            $table->index('token');
+        });
+    }
+
+    public function down(): void
+    {
+        $this->dropTable('email_verifications');
+    }
+}

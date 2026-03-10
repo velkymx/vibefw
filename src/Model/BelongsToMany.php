@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Model;
 
+use RuntimeException;
+
 /**
  * Belongs-to-many (many-to-many) relationship.
  *
@@ -82,11 +84,18 @@ final class BelongsToMany extends Relation
 
         // Fetch all related models with pivot info
         $connection = Model::getConnection();
+        $qRelated = $connection->quoteIdentifier($relatedTable);
+        $qRelKey = $connection->quoteIdentifier($relatedKey);
+        $qPivot = $connection->quoteIdentifier($this->table);
+        $qForeign = $connection->quoteIdentifier($this->foreignPivotKey);
+        $qRelPivot = $connection->quoteIdentifier($this->relatedPivotKey);
+        $placeholders = implode(',', array_fill(0, count($keys), '?'));
+
         $rows = $connection->select(
-            "SELECT {$relatedTable}.*, {$this->table}.{$this->foreignPivotKey} as pivot_foreign_key
-             FROM {$relatedTable}
-             INNER JOIN {$this->table} ON {$relatedTable}.{$relatedKey} = {$this->table}.{$this->relatedPivotKey}
-             WHERE {$this->table}.{$this->foreignPivotKey} IN (" . implode(',', array_fill(0, count($keys), '?')) . ")",
+            "SELECT {$qRelated}.*, {$qPivot}.{$qForeign} as pivot_foreign_key
+             FROM {$qRelated}
+             INNER JOIN {$qPivot} ON {$qRelated}.{$qRelKey} = {$qPivot}.{$qRelPivot}
+             WHERE {$qPivot}.{$qForeign} IN ({$placeholders})",
             $keys
         );
 
@@ -116,7 +125,7 @@ final class BelongsToMany extends Relation
         $parentKey = $this->parent->getKey();
 
         if ($parentKey === null) {
-            throw new \RuntimeException('Cannot attach to unsaved model');
+            throw new RuntimeException('Cannot attach to unsaved model');
         }
 
         $connection = Model::getConnection();
@@ -166,10 +175,18 @@ final class BelongsToMany extends Relation
                 $ids = [$ids];
             }
 
+            // Empty array means nothing to detach
+            if (empty($ids)) {
+                return 0;
+            }
+
             // Build query with IN clause
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $qPivot = $connection->quoteIdentifier($this->table);
+            $qForeign = $connection->quoteIdentifier($this->foreignPivotKey);
+            $qRelated = $connection->quoteIdentifier($this->relatedPivotKey);
             return $connection->query(
-                "DELETE FROM {$this->table} WHERE {$this->foreignPivotKey} = ? AND {$this->relatedPivotKey} IN ({$placeholders})",
+                "DELETE FROM {$qPivot} WHERE {$qForeign} = ? AND {$qRelated} IN ({$placeholders})",
                 array_merge([$parentKey], $ids)
             )->rowCount();
         }
@@ -246,8 +263,11 @@ final class BelongsToMany extends Relation
         }
 
         $connection = Model::getConnection();
+        $qRelated = $connection->quoteIdentifier($this->relatedPivotKey);
+        $qPivot = $connection->quoteIdentifier($this->table);
+        $qForeign = $connection->quoteIdentifier($this->foreignPivotKey);
         $rows = $connection->select(
-            "SELECT {$this->relatedPivotKey} FROM {$this->table} WHERE {$this->foreignPivotKey} = ?",
+            "SELECT {$qRelated} FROM {$qPivot} WHERE {$qForeign} = ?",
             [$parentKey]
         );
 
@@ -259,7 +279,7 @@ final class BelongsToMany extends Relation
      */
     public function contains(mixed $id): bool
     {
-        return in_array($id, $this->pluck(), false);
+        return in_array($id, $this->pluck(), true);
     }
 
     /**

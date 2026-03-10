@@ -1,7 +1,7 @@
 {
     "name": "velkymx/vibefw",
     "description": "VibeFW: A high-performance, security-focused PHP 8.4+ MVC framework",
-    "type": "library",
+    "type": "project",
     "license": "MIT",
     "keywords": [
         "framework",
@@ -40,22 +40,25 @@
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^11.0"
     },
-                "autoload": {
-                    "psr-4": {
-                        "Fw\\": "src/"
-                    },
-                    "files": [
-                        "src/Queue/helpers.php"
-                    ]
-                },
-                "autoload-dev": {
-                    "psr-4": {
-                        "Fw\\Tests\\": "tests/",
-                        "App\\": "app/",
-                        "Database\\Seeders\\": "database/seeders/"
-                    }
-                },    "scripts": {
-        "test": "phpunit",
+    "autoload": {
+        "psr-4": {
+            "Fw\\": "src/",
+            "App\\": "app/",
+            "Database\\Seeders\\": "database/seeders/"
+        },
+        "files": [
+            "src/Queue/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fw\\Tests\\": "tests/"
+        }
+    },    "scripts": {
+        "post-create-project-cmd": [
+            "@php scripts/setup.php"
+        ],
+        "test": "phpunit --no-coverage",
         "test:unit": "phpunit --testsuite=unit",
         "test:feature": "phpunit --testsuite=feature",
         "test:architecture": "phpunit --testsuite=architecture",

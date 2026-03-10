@@ -1,6 +1,6 @@
-# Contributing to Fw Framework
+# Contributing to VibeFW
 
-Thank you for your interest in contributing to Fw Framework! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to VibeFW! This document provides guidelines and information for contributors.
 
 ## Code of Conduct
 
@@ -33,11 +33,12 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/framework.git
-cd framework
+git clone https://github.com/YOUR_USERNAME/vibefw.git
+cd vibefw
 
-# Install dependencies
+# Install dependencies and set up the project
 composer install
+php fw setup
 
 # Run tests
 composer test
@@ -48,6 +49,8 @@ composer lint
 # Run static analysis
 composer analyse
 ```
+
+> **Starting fresh?** `composer create-project velkymx/vibefw my-app` handles setup automatically.
 
 ## Coding Standards
 
@@ -167,7 +170,7 @@ Releases follow [Semantic Versioning](https://semver.org/):
 
 ## Questions?
 
-- Open a [GitHub Discussion](https://github.com/fw-php/framework/discussions)
-- Check existing [issues](https://github.com/fw-php/framework/issues)
+- Open a [GitHub Discussion](https://github.com/velkymx/vibefw/discussions)
+- Check existing [issues](https://github.com/velkymx/vibefw/issues)
 
 Thank you for contributing!

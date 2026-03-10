@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Fw\Console;
 
+use Throwable;
+
 /**
  * Console application - registers and runs commands.
  */
 final class Application
 {
-    private const VERSION = '1.0.0';
+    private const VERSION = '2.1.0';
 
     /** @var array<string, Command> */
     private array $commands = [];
@@ -97,7 +99,7 @@ final class Application
 
         try {
             return $command->handle();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->output->error($e->getMessage());
             if (getenv('APP_DEBUG') === 'true') {
                 $this->output->newLine();
@@ -297,6 +299,7 @@ final class Application
             Commands\MakeSeederCommand::class,
             Commands\MakeCommandCommand::class,
             Commands\MakeQueryCommand::class,
+            Commands\ScaffoldSpaCommand::class,
 
             // Database
             Commands\MigrateCommand::class,
@@ -318,7 +321,11 @@ final class Application
             Commands\CacheClearCommand::class,
             Commands\OptimizeCommand::class,
             Commands\OptimizeClearCommand::class,
+            Commands\SyncEnvCommand::class,
+            Commands\SecurityCheckCommand::class,
+            Commands\SetupCommand::class,
             Commands\ServeCommand::class,
+            Commands\DevCommand::class,
 
             // Validation
             Commands\ValidateSecurityCommand::class,

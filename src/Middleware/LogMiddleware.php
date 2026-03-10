@@ -11,6 +11,7 @@ use Fw\Core\Response;
 final class LogMiddleware implements MiddlewareInterface
 {
     private Application $app;
+
     private ?string $logFile;
 
     public function __construct(Application $app)
@@ -56,7 +57,7 @@ final class LogMiddleware implements MiddlewareInterface
             $dir = dirname($this->logFile);
 
             if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
+                mkdir($dir, 0o750, true);
             }
 
             file_put_contents($this->logFile, $entry, FILE_APPEND | LOCK_EX);

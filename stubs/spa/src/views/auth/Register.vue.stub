@@ -1,0 +1,141 @@
+<script setup lang="ts">
+/**
+ * Register View — Creates a new user account via the VibeFW API
+ *
+ * API contract:
+ *   POST /api/auth/register
+ *   Body:    { name: string, email: string, password: string, password_confirmation: string }
+ *   Success: { user: User, token: string }         → 201
+ *   Invalid: { message: string, errors: object }   → 422 (validation)
+ *
+ * On success, the user is logged in immediately (token stored in
+ * localStorage) and redirected to /dashboard.
+ *
+ * Server-side validation rules (see RegisterController.php):
+ *   - name:     required, min:2
+ *   - email:    required, email, unique:users
+ *   - password: required, min:8, confirmed (must match password_confirmation)
+ */
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+
+const router = useRouter()
+
+// Form state — password_confirmation is required by the "confirmed" rule
+const form = ref({ name: '', email: '', password: '', password_confirmation: '' })
+const loading = ref(false)
+
+// Per-field validation errors from the server (422 response)
+const errors = ref<Record<string, string>>({})
+
+// General error alert (non-field errors)
+const alertMessage = ref('')
+const showAlert = ref(false)
+
+const handleRegister = async () => {
+  loading.value = true
+  errors.value = {}
+  alertMessage.value = ''
+  showAlert.value = false
+
+  try {
+    const response = await axios.post('/api/auth/register', form.value)
+
+    // Store the Bearer token — user is now authenticated
+    localStorage.setItem('token', response.data.token)
+
+    // Navigate to the protected dashboard
+    router.push('/dashboard')
+  } catch (error: any) {
+    if (error.response?.status === 422) {
+      // Map server validation errors to form fields
+      errors.value = error.response.data.errors ?? {}
+    } else {
+      alertMessage.value = error.response?.data?.message ?? 'Registration failed. Please try again.'
+      showAlert.value = true
+    }
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="auth-container d-flex align-items-center justify-content-center">
+    <div class="auth-card">
+      <VibeCard class="shadow-sm">
+        <template #body>
+          <h4 class="fw-bold mb-1">Create Account</h4>
+          <p class="text-muted mb-4">Join the platform today</p>
+
+          <!-- General error alert -->
+          <VibeAlert v-model="showAlert" variant="danger" :message="alertMessage" dismissable />
+
+          <form @submit.prevent="handleRegister">
+            <VibeFormGroup label="Full Name">
+              <VibeFormInput
+                v-model="form.name"
+                placeholder="John Doe"
+                :validation-state="errors.name ? 'invalid' : null"
+                :validation-message="errors.name"
+              />
+            </VibeFormGroup>
+
+            <VibeFormGroup label="Email Address" class="mt-3">
+              <VibeFormInput
+                v-model="form.email"
+                type="email"
+                placeholder="you@example.com"
+                :validation-state="errors.email ? 'invalid' : null"
+                :validation-message="errors.email"
+              />
+            </VibeFormGroup>
+
+            <VibeFormGroup label="Password" class="mt-3">
+              <VibeFormInput
+                v-model="form.password"
+                type="password"
+                placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                :validation-state="errors.password ? 'invalid' : null"
+                :validation-message="errors.password"
+              />
+            </VibeFormGroup>
+
+            <VibeFormGroup label="Confirm Password" class="mt-3">
+              <VibeFormInput
+                v-model="form.password_confirmation"
+                type="password"
+                placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+                :validation-state="errors.password_confirmation ? 'invalid' : null"
+                :validation-message="errors.password_confirmation"
+              />
+            </VibeFormGroup>
+
+            <!-- :loading shows a spinner and disables the button during submission -->
+            <VibeButton type="submit" variant="primary" class="w-100 mt-4" :loading="loading">
+              Register
+            </VibeButton>
+
+            <div class="mt-3 text-center">
+              <router-link to="/login" class="text-decoration-none small">
+                Already have an account? Log in here
+              </router-link>
+            </div>
+          </form>
+        </template>
+      </VibeCard>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.auth-container {
+  min-height: 100vh;
+  background-color: var(--bs-body-bg);
+}
+.auth-card {
+  width: 100%;
+  max-width: 450px;
+}
+</style>

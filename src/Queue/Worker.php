@@ -6,17 +6,26 @@ namespace Fw\Queue;
 
 use Fw\Core\Container;
 use Fw\Core\RequestContext;
+use Throwable;
 
 final class Worker
 {
     private Queue $queue;
+
     private Container $container;
+
     private bool $shouldStop = false;
+
     private int $sleep = 3;
+
     private int $maxJobs = 0;
+
     private int $maxTime = 0;
+
     private int $memory = 128;
+
     private int $processedJobs = 0;
+
     private float $startTime;
 
     /** @var callable|null */
@@ -93,6 +102,7 @@ final class Worker
             }
         }
 
+        $this->restoreSignalHandlers();
         $this->output("Worker stopped. Processed {$this->processedJobs} jobs.");
     }
 
@@ -118,7 +128,7 @@ final class Worker
         // Flush Fiber-local instances (even though worker doesn't use Fibers currently,
         // it ensures any state keyed to 'global' or current execution is cleared).
         $this->container->flush();
-        
+
         // Ensure RequestContext is clear
         RequestContext::clear();
     }
@@ -142,12 +152,12 @@ final class Worker
             $this->output("Job completed in {$duration}ms");
 
             $this->queue->delete($jobId);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->handleFailedJob($job, $jobId, $attempts, $e);
         }
     }
 
-    private function handleFailedJob(JobInterface $job, string $jobId, int $attempts, \Throwable $e): void
+    private function handleFailedJob(JobInterface $job, string $jobId, int $attempts, Throwable $e): void
     {
         $this->output("Job failed: " . $e->getMessage());
 
@@ -160,7 +170,7 @@ final class Worker
 
             try {
                 $job->failed($e);
-            } catch (\Throwable $failException) {
+            } catch (Throwable $failException) {
                 $this->output("Failed handler threw exception: " . $failException->getMessage());
             }
 
@@ -169,15 +179,18 @@ final class Worker
         }
     }
 
-    private function logFailedJob(JobInterface $job, \Throwable $e): void
+    private function logFailedJob(JobInterface $job, Throwable $e): void
     {
         $logFile = BASE_PATH . '/storage/logs/failed_jobs.log';
         $dir = dirname($logFile);
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0o750, true);
         }
 
-        $sanitizedTrace = $this->sanitizeStackTrace($e->getTrace());
+        // Rotate log file if it exceeds 10MB to prevent unbounded growth
+        $this->rotateLogIfNeeded($logFile, 10 * 1024 * 1024);
+
+        $sanitizedTrace = $this->sanitizeStackTrace(array_slice($e->getTrace(), 0, 30));
 
         $entry = sprintf(
             "[%s] %s: %s\nStack trace:\n%s\n\n",
@@ -188,6 +201,25 @@ final class Worker
         );
 
         file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
+    }
+
+    private function rotateLogIfNeeded(string $logFile, int $maxSize): void
+    {
+        if (!file_exists($logFile)) {
+            return;
+        }
+
+        $size = @filesize($logFile);
+        if ($size === false || $size < $maxSize) {
+            return;
+        }
+
+        // Keep one backup file
+        $backup = $logFile . '.1';
+        if (file_exists($backup)) {
+            @unlink($backup);
+        }
+        @rename($logFile, $backup);
     }
 
     private function sanitizeStackTrace(array $trace): string
@@ -232,8 +264,17 @@ final class Worker
             return;
         }
         pcntl_async_signals(true);
-        pcntl_signal(SIGTERM, fn() => $this->stop());
-        pcntl_signal(SIGINT, fn() => $this->stop());
+        pcntl_signal(SIGTERM, fn () => $this->stop());
+        pcntl_signal(SIGINT, fn () => $this->stop());
+    }
+
+    private function restoreSignalHandlers(): void
+    {
+        if (!extension_loaded('pcntl')) {
+            return;
+        }
+        pcntl_signal(SIGTERM, SIG_DFL);
+        pcntl_signal(SIGINT, SIG_DFL);
     }
 
     private function output(string $message): void

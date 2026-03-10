@@ -8,9 +8,11 @@ use Fw\Async\AsyncDatabase;
 use Fw\Async\Deferred;
 use Fw\Database\Connection;
 use Fw\Domain\Id;
-use Fw\Support\Arr;
 use Fw\Support\Option;
 use Fw\Support\Str;
+use ReflectionObject;
+use ReflectionProperty;
+use RuntimeException;
 
 /**
  * Async-aware database repository base class.
@@ -56,6 +58,7 @@ abstract class AsyncRepository implements Repository
 
     /** Timestamps columns (null to disable) */
     protected ?string $createdAt = 'created_at';
+
     protected ?string $updatedAt = 'updated_at';
 
     public function __construct(Connection $connection)
@@ -78,7 +81,7 @@ abstract class AsyncRepository implements Repository
             )
             ->await();
 
-        return Option::fromNullable($row)->map(fn($data) => $this->hydrate($data));
+        return Option::fromNullable($row)->map(fn ($data) => $this->hydrate($data));
     }
 
     /**
@@ -91,7 +94,7 @@ abstract class AsyncRepository implements Repository
     public function findOrFail(Id $id): mixed
     {
         return $this->find($id)->unwrapOrElse(
-            fn() => throw EntityNotFoundException::for($this->entityClass, $id)
+            fn () => throw EntityNotFoundException::for($this->entityClass, $id)
         );
     }
 
@@ -165,7 +168,7 @@ abstract class AsyncRepository implements Repository
             ->fetchAll("SELECT * FROM {$this->table}")
             ->await();
 
-        return array_map(fn($row) => $this->hydrate($row), $rows);
+        return array_map(fn ($row) => $this->hydrate($row), $rows);
     }
 
     /**
@@ -179,7 +182,7 @@ abstract class AsyncRepository implements Repository
 
         $rows = $this->db->fetchAll($sql, $params)->await();
 
-        return array_map(fn($row) => $this->hydrate($row), $rows);
+        return array_map(fn ($row) => $this->hydrate($row), $rows);
     }
 
     /**
@@ -352,7 +355,7 @@ abstract class AsyncRepository implements Repository
             return $entity->id;
         }
 
-        throw new \RuntimeException('Entity must have an id property');
+        throw new RuntimeException('Entity must have an id property');
     }
 
     /**
@@ -396,9 +399,9 @@ abstract class AsyncRepository implements Repository
 
         // Default: get public properties
         $data = [];
-        $reflection = new \ReflectionObject($entity);
+        $reflection = new ReflectionObject($entity);
 
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
             $value = $prop->getValue($entity);
 
             // Convert Value Objects to their primitive values

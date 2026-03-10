@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Fw\Core;
 
+use Fiber;
 use Fw\Support\Option;
+use stdClass;
+use WeakMap;
 
 /**
  * Request-scoped data sharing between services.
@@ -31,8 +34,13 @@ use Fw\Support\Option;
  */
 final class RequestContext
 {
-    /** @var \WeakMap<object, RequestContext> */
-    private static ?\WeakMap $instances = null;
+    /** @var WeakMap<object, RequestContext> */
+    private static ?WeakMap $instances = null;
+
+    /**
+     * Static object used as a key for the global (non-fiber) context.
+     */
+    private static ?object $globalKey = null;
 
     /**
      * @var array<string, mixed>
@@ -81,11 +89,11 @@ final class RequestContext
     /**
      * Internal helper to get the instances WeakMap.
      *
-     * @return \WeakMap<object, RequestContext>
+     * @return WeakMap<object, RequestContext>
      */
-    private static function getInstances(): \WeakMap
+    private static function getInstances(): WeakMap
     {
-        return self::$instances ??= new \WeakMap();
+        return self::$instances ??= new WeakMap();
     }
 
     /**
@@ -93,17 +101,12 @@ final class RequestContext
      */
     private static function getCurrentKey(): object
     {
-        return \Fiber::getCurrent() ?? self::getGlobalKey();
+        return Fiber::getCurrent() ?? self::getGlobalKey();
     }
-
-    /**
-     * Static object used as a key for the global (non-fiber) context.
-     */
-    private static ?object $globalKey = null;
 
     private static function getGlobalKey(): object
     {
-        return self::$globalKey ??= new \stdClass();
+        return self::$globalKey ??= new stdClass();
     }
 
     /**
@@ -208,16 +211,6 @@ final class RequestContext
     }
 
     /**
-     * Generate and store a correlation ID.
-     */
-    private function generateCorrelationId(): string
-    {
-        $id = bin2hex(random_bytes(16));
-        $this->set('correlation_id', $id);
-        return $id;
-    }
-
-    /**
      * Get the current locale.
      */
     public function locale(): string
@@ -297,7 +290,17 @@ final class RequestContext
     public function routeParams(): array
     {
         return $this->routeMatch()
-            ->map(fn(RouteMatch $m) => $m->params)
+            ->map(fn (RouteMatch $m) => $m->params)
             ->unwrapOr([]);
+    }
+
+    /**
+     * Generate and store a correlation ID.
+     */
+    private function generateCorrelationId(): string
+    {
+        $id = bin2hex(random_bytes(16));
+        $this->set('correlation_id', $id);
+        return $id;
     }
 }

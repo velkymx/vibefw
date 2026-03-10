@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Support;
 
 use ArrayAccess;
+use Closure;
 use Countable;
 use JsonSerializable;
 use Stringable as BaseStringable;
@@ -35,6 +36,14 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
     public function __construct(string $value = '')
     {
         $this->value = $value;
+    }
+
+    /**
+     * Get the raw string value.
+     */
+    public function __toString(): string
+    {
+        return $this->value;
     }
 
     /**
@@ -82,7 +91,7 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
      */
     public function after(string $search): static
     {
-        return new static(Str::after($this->value, $search));
+        return new self(Str::after($this->value, $search));
     }
 
     /**
@@ -422,7 +431,7 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
     /**
      * Get the plural form of an English word.
      */
-    public function plural(int|array|\Countable $count = 2): static
+    public function plural(int|array|Countable $count = 2): static
     {
         return new static(Str::plural($this->value, $count));
     }
@@ -726,7 +735,7 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
      */
     public function when(mixed $value, callable $callback, ?callable $default = null): static
     {
-        $value = $value instanceof \Closure ? $value($this) : $value;
+        $value = $value instanceof Closure ? $value($this) : $value;
 
         if ($value) {
             return $callback($this, $value) ?? $this;
@@ -744,7 +753,7 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
      */
     public function unless(mixed $value, callable $callback, ?callable $default = null): static
     {
-        $value = $value instanceof \Closure ? $value($this) : $value;
+        $value = $value instanceof Closure ? $value($this) : $value;
 
         if (!$value) {
             return $callback($this, $value) ?? $this;
@@ -792,9 +801,9 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
     /**
      * Dump the string.
      */
-    public function dump(): static
+    public function dump(): static // @nosecurity
     {
-        var_dump($this->value);
+        var_dump($this->value); // @nosecurity
 
         return $this;
     }
@@ -802,9 +811,9 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
     /**
      * Dump the string and die.
      */
-    public function dd(): never
+    public function dd(): never // @nosecurity
     {
-        $this->dump();
+        $this->dump(); // @nosecurity
 
         exit(1);
     }
@@ -855,13 +864,5 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
     public function count(): int
     {
         return $this->length();
-    }
-
-    /**
-     * Get the raw string value.
-     */
-    public function __toString(): string
-    {
-        return $this->value;
     }
 }

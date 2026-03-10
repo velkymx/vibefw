@@ -31,7 +31,9 @@ use Fw\Core\Response;
 final class CanMiddleware implements MiddlewareInterface
 {
     private Application $app;
+
     private string $ability;
+
     private string $model;
 
     public function __construct(Application $app, string $ability = '', string $model = '')
@@ -113,7 +115,7 @@ final class CanMiddleware implements MiddlewareInterface
 
         // Validate intended URL before storing to prevent open redirect
         $this->storeIntendedUrl($request->uri);
-        $this->app->response->redirect('/login');
+        return $this->app->response->redirect('/login');
     }
 
     private function forbidden(): Response
@@ -162,10 +164,8 @@ final class CanMiddleware implements MiddlewareInterface
         }
 
         // If it has a host, it's external - not safe
-        if (isset($parsed['host'])) {
-            return false;
-        }
+        return ! (isset($parsed['host']))
 
-        return true;
+        ;
     }
 }

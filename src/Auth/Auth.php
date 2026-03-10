@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Fw\Auth;
 
-use App\Models\User;
 use Fw\Core\RequestContext;
+use Fw\Model\Model;
+use RuntimeException;
 
 /**
  * Authentication manager.
  *
  * Uses RequestContext for request-scoped user state to prevent
  * authentication leaking between concurrent requests in worker mode.
+ *
+ * Configure the user model class via Auth::setUserModel() if not
+ * using the default App\Models\User.
  */
 final class Auth
 {
@@ -35,6 +39,28 @@ final class Auth
     private const string DUMMY_SHA256_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
     /**
+     * Minimum required length for APP_KEY (32 bytes = 64 hex chars or 44 base64 chars).
+     */
+    private const int MIN_KEY_LENGTH = 32;
+
+    /**
+     * The user model class. Must have findByEmail() and verifyPassword() methods.
+     *
+     * @var class-string<Model>
+     */
+    private static string $userModel = 'App\\Models\\User';
+
+    /**
+     * Set the user model class used for authentication.
+     *
+     * @param class-string<Model> $modelClass
+     */
+    public static function setUserModel(string $modelClass): void
+    {
+        self::$userModel = $modelClass;
+    }
+
+    /**
      * Attempt to authenticate a user with credentials.
      *
      * Uses constant-time comparison even when user doesn't exist
@@ -42,7 +68,7 @@ final class Auth
      */
     public static function attempt(string $email, string $password, bool $remember = false): bool
     {
-        $userOption = User::findByEmail($email);
+        $userOption = (self::$userModel)::findByEmail($email);
 
         if ($userOption->isNone()) {
             // Timing attack mitigation: always perform password verification
@@ -69,7 +95,7 @@ final class Auth
      * Regenerates both session ID and CSRF token to prevent
      * session fixation and CSRF token fixation attacks.
      */
-    public static function login(User $user, bool $remember = false): void
+    public static function login(Model $user, bool $remember = false): void
     {
         session_regenerate_id(true);
 
@@ -86,30 +112,19 @@ final class Auth
     }
 
     /**
-     * Regenerate the CSRF token.
-     *
-     * Called on login to prevent CSRF token fixation attacks.
-     */
-    private static function regenerateCsrfToken(): void
-    {
-        // Generate new CSRF token - this invalidates any pre-auth CSRF tokens
-        $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
-    }
-
-    /**
      * Log out the current user.
      */
     public static function logout(): void
     {
-        self::clearContextUser();
-
-        unset($_SESSION[self::SESSION_KEY]);
-
+        // Clear remember token BEFORE clearing the context user — clearRememberToken()
+        // calls self::user() internally and will return null if context is gone first.
         if (isset($_COOKIE[self::REMEMBER_COOKIE])) {
             self::clearRememberToken();
-            setcookie(self::REMEMBER_COOKIE, '', time() - 3600, '/', '', false, true);
+            setcookie(self::REMEMBER_COOKIE, '', time() - 3600, '/', '', self::isHttps(), true);
         }
 
+        self::clearContextUser();
+        unset($_SESSION[self::SESSION_KEY]);
         session_regenerate_id(true);
     }
 
@@ -135,7 +150,7 @@ final class Auth
      * Uses RequestContext for request-scoped storage to prevent
      * user state from leaking between concurrent requests.
      */
-    public static function user(): ?User
+    public static function user(): ?Model
     {
         // Check RequestContext first (request-scoped cache)
         $contextUser = self::getContextUser();
@@ -147,14 +162,19 @@ final class Auth
         if (isset($_SESSION[self::SESSION_KEY])) {
             $sessionUserId = $_SESSION[self::SESSION_KEY];
 
-            // Validate session user ID is a positive integer
-            if (!is_int($sessionUserId) || $sessionUserId <= 0) {
+            // Validate session user ID is a non-empty integer or string (UUID support)
+            if (is_int($sessionUserId)) {
+                if ($sessionUserId <= 0) {
+                    unset($_SESSION[self::SESSION_KEY]);
+                    return null;
+                }
+            } elseif (!is_string($sessionUserId) || $sessionUserId === '') {
                 unset($_SESSION[self::SESSION_KEY]);
                 return null;
             }
 
-            $userFromSession = User::find($sessionUserId)->unwrapOr(null);
-            if ($userFromSession instanceof User) {
+            $userFromSession = (self::$userModel)::find($sessionUserId)->unwrapOr(null);
+            if ($userFromSession instanceof Model) {
                 self::setContextUser($userFromSession);
                 return $userFromSession;
             }
@@ -165,7 +185,7 @@ final class Auth
         if (isset($_COOKIE[self::REMEMBER_COOKIE])) {
             $userFromCookie = self::getUserFromRememberToken($_COOKIE[self::REMEMBER_COOKIE]);
 
-            if ($userFromCookie instanceof User) {
+            if ($userFromCookie instanceof Model) {
                 self::setContextUser($userFromCookie);
                 $_SESSION[self::SESSION_KEY] = $userFromCookie->id;
                 return $userFromCookie;
@@ -178,7 +198,7 @@ final class Auth
     /**
      * Get the authenticated user's ID.
      */
-    public static function id(): ?int
+    public static function id(): string|int|null
     {
         $user = self::user();
         return $user?->id;
@@ -195,9 +215,20 @@ final class Auth
     }
 
     /**
+     * Regenerate the CSRF token.
+     *
+     * Called on login to prevent CSRF token fixation attacks.
+     */
+    private static function regenerateCsrfToken(): void
+    {
+        // Generate new CSRF token - this invalidates any pre-auth CSRF tokens
+        $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    /**
      * Get user from RequestContext (request-scoped).
      */
-    private static function getContextUser(): ?User
+    private static function getContextUser(): ?Model
     {
         $context = RequestContext::current();
         if ($context === null) {
@@ -205,13 +236,13 @@ final class Auth
         }
 
         $user = $context->get(self::CONTEXT_USER_KEY)->unwrapOr(null);
-        return $user instanceof User ? $user : null;
+        return $user instanceof Model ? $user : null;
     }
 
     /**
      * Set user in RequestContext (request-scoped).
      */
-    private static function setContextUser(User $user): void
+    private static function setContextUser(Model $user): void
     {
         RequestContext::current()?->set(self::CONTEXT_USER_KEY, $user);
     }
@@ -225,28 +256,23 @@ final class Auth
     }
 
     /**
-     * Minimum required length for APP_KEY (32 bytes = 64 hex chars or 44 base64 chars).
-     */
-    private const int MIN_KEY_LENGTH = 32;
-
-    /**
      * Get the secret key for cookie signing.
      *
-     * @throws \RuntimeException If APP_KEY is missing or has insufficient entropy
+     * @throws RuntimeException If APP_KEY is missing or has insufficient entropy
      */
     private static function getCookieSecret(): string
     {
         $secret = $_ENV['APP_KEY'] ?? getenv('APP_KEY');
 
         if ($secret === false || $secret === '') {
-            throw new \RuntimeException('APP_KEY environment variable must be set for cookie signing');
+            throw new RuntimeException('APP_KEY environment variable must be set for cookie signing');
         }
 
         // Validate key has sufficient entropy
         // A proper key should be at least 32 bytes (64 hex chars or 44 base64 chars)
         $keyLength = strlen($secret);
         if ($keyLength < self::MIN_KEY_LENGTH) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "APP_KEY is too short ({$keyLength} chars). " .
                 "Must be at least " . self::MIN_KEY_LENGTH . " characters. " .
                 "Generate with: php -r \"echo bin2hex(random_bytes(32));\""
@@ -278,7 +304,7 @@ final class Auth
         return $secret;
     }
 
-    private static function setRememberToken(User $user): void
+    private static function setRememberToken(Model $user): void
     {
         $token = bin2hex(random_bytes(32));
         $hashedToken = hash('sha256', $token);
@@ -297,12 +323,12 @@ final class Auth
             time() + self::REMEMBER_DURATION,
             '/',
             '',
-            false,
+            self::isHttps(),
             true
         );
     }
 
-    private static function getUserFromRememberToken(string $cookie): ?User
+    private static function getUserFromRememberToken(string $cookie): ?Model
     {
         // Parse signed cookie: signature.userId|token
         $signatureParts = explode('.', $cookie, 2);
@@ -316,7 +342,7 @@ final class Auth
         // Verify HMAC signature
         try {
             $expectedSignature = hash_hmac('sha256', $cookieValue, self::getCookieSecret());
-        } catch (\RuntimeException) {
+        } catch (RuntimeException) {
             return null;
         }
 
@@ -333,7 +359,17 @@ final class Auth
 
         [$userId, $token] = $parts;
         $hashedToken = hash('sha256', $token);
-        $userOption = User::find((int) $userId);
+
+        // Reject non-numeric or non-positive user IDs before casting to prevent
+        // integer overflow tricks on 32-bit environments and reject garbage cookies.
+        if (!ctype_digit($userId) || $userId === '0') {
+            // Still do the dummy comparison so timing is constant
+            // @phpstan-ignore function.resultUnused
+            $_ = hash_equals(self::DUMMY_SHA256_HASH, $hashedToken);
+            return null;
+        }
+
+        $userOption = (self::$userModel)::find((int) $userId);
 
         if ($userOption->isNone()) {
             // Timing attack mitigation: always perform hash comparison
@@ -352,7 +388,25 @@ final class Auth
             return null;
         }
 
+        // Rotate the remember token after successful use to prevent replay attacks.
+        // The old token is invalidated and a fresh one is issued.
+        self::setRememberToken($user);
+
         return $user;
+    }
+
+    private static function isHttps(): bool
+    {
+        // Prefer the Request object when available — it honours trusted-proxy
+        // config and checks HTTP_X_FORWARDED_PROTO for SSL-terminating load balancers.
+        $ctx = RequestContext::current();
+        if ($ctx !== null) {
+            return $ctx->getRequest()->isSecure();
+        }
+
+        // Fallback for CLI / non-HTTP contexts (e.g. queue workers running Auth).
+        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
     }
 
     private static function clearRememberToken(): void

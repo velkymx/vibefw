@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace Fw\Model;
 
-use Fw\Database\Connection;
-use Fw\Database\QueryBuilder;
+use DateTimeImmutable;
+use DateTimeInterface;
+use Fiber;
 use Fw\Core\Container;
-use Fw\Support\Arr;
+use Fw\Database\Connection;
 use Fw\Support\Option;
 use Fw\Support\Str;
-use Fw\Model\MassAssignmentException;
+use JsonSerializable;
+use ReflectionClass;
+use ReflectionProperty;
+use RuntimeException;
+use stdClass;
 
 /**
  * Base Model class with Active Record pattern.
@@ -37,7 +42,7 @@ use Fw\Model\MassAssignmentException;
  *     $users = User::where('active', true)->get();
  *     $user = User::create(['email' => 'a@b.com', 'name' => 'Test']);
  */
-abstract class Model implements \JsonSerializable
+abstract class Model implements JsonSerializable
 {
     /**
      * The database connection instance.
@@ -90,21 +95,30 @@ abstract class Model implements \JsonSerializable
     protected static array $guarded = ['id'];
 
     /**
+     * Attributes that should be hidden from toArray() and JSON serialisation.
+     *
+     * @example protected static array $hidden = ['password', 'remember_token'];
+     */
+    protected static array $hidden = [];
+
+    /**
      * Require explicit $fillable definition (strict mode).
      * When true, models without $fillable will reject all mass assignment.
      */
     protected static bool $strictFillable = false;
 
     /**
-     * Global strict mode for all models (set during bootstrap).
-     */
-    private static bool $globalStrictMode = true;
-
-    /**
      * Attribute casting rules. Maps column => class or type.
      * If empty, auto-detected from property types.
      */
     protected static array $casts = [];
+
+    /**
+     * Global strict mode for all models (set during bootstrap).
+     * Defaults to true. Reset to true between requests via resetStrictMode()
+     * to prevent accidental leaks in worker mode.
+     */
+    private static bool $globalStrictMode = true;
 
     /**
      * Cached model metadata (per class).
@@ -118,6 +132,64 @@ abstract class Model implements \JsonSerializable
      * @var array<class-string, int>
      */
     private static array $metadataInitializing = [];
+
+    /**
+     * Indicates if the model exists in the database.
+     */
+    public private(set) bool $exists = false;
+
+    /**
+     * The model's original attributes (from database).
+     * @var array<string, mixed>
+     */
+    protected array $original = [];
+
+    /**
+     * The model's current attributes.
+     * @var array<string, mixed>
+     */
+    protected array $attributes = [];
+
+    /**
+     * Loaded relationships.
+     * @var array<string, mixed>
+     */
+    protected array $relations = [];
+
+    /**
+     * Create a new model instance.
+     *
+     * @param array<string, mixed> $attributes
+     */
+    public function __construct(array $attributes = [])
+    {
+        $this->fill($attributes);
+    }
+
+    // ========================================
+    // MAGIC METHODS
+    // ========================================
+
+    public function __get(string $name): mixed
+    {
+        return $this->getAttribute($name);
+    }
+
+    public function __set(string $name, mixed $value): void
+    {
+        $this->setAttribute($name, $value);
+    }
+
+    public function __isset(string $name): bool
+    {
+        return $this->getAttribute($name) !== null;
+    }
+
+    public function __unset(string $name): void
+    {
+        $key = Str::snake($name);
+        unset($this->attributes[$key], $this->relations[$name]);
+    }
 
     /**
      * Clear the metadata cache.
@@ -161,44 +233,20 @@ abstract class Model implements \JsonSerializable
     }
 
     /**
+     * Reset strict mode to default (true) between requests in worker mode.
+     * Called by HttpKernel::resetState().
+     */
+    public static function resetStrictMode(): void
+    {
+        self::$globalStrictMode = true;
+    }
+
+    /**
      * Check if strict mode is enabled.
      */
     public static function isStrictMode(): bool
     {
         return self::$globalStrictMode;
-    }
-
-    /**
-     * The model's original attributes (from database).
-     * @var array<string, mixed>
-     */
-    protected array $original = [];
-
-    /**
-     * The model's current attributes.
-     * @var array<string, mixed>
-     */
-    protected array $attributes = [];
-
-    /**
-     * Indicates if the model exists in the database.
-     */
-    public private(set) bool $exists = false;
-
-    /**
-     * Loaded relationships.
-     * @var array<string, mixed>
-     */
-    protected array $relations = [];
-
-    /**
-     * Create a new model instance.
-     *
-     * @param array<string, mixed> $attributes
-     */
-    public function __construct(array $attributes = [])
-    {
-        $this->fill($attributes);
     }
 
     // ========================================
@@ -219,23 +267,10 @@ abstract class Model implements \JsonSerializable
     public static function getConnection(): Connection
     {
         if (static::$connection === null) {
-            throw new \RuntimeException('No database connection set. Call Model::setConnection() first.');
+            throw new RuntimeException('No database connection set. Call Model::setConnection() first.');
         }
 
         return static::$connection;
-    }
-
-    /**
-     * Resolve connection - uses Container for fiber-safe resolution.
-     */
-    protected static function resolveConnection(): Connection
-    {
-        if (static::$connection !== null) {
-            return static::$connection;
-        }
-
-        // Try to get from Container (which is now fiber-safe)
-        return Container::getInstance()->get(Connection::class);
     }
 
     // ========================================
@@ -252,98 +287,8 @@ abstract class Model implements \JsonSerializable
         }
 
         // Derive from class name: User -> users, BlogPost -> blog_posts
-        $class = (new \ReflectionClass(static::class))->getShortName();
+        $class = new ReflectionClass(static::class)->getShortName();
         return Str::snake(Str::plural($class));
-    }
-
-    /**
-     * Get model metadata (cached).
-     *
-     * Thread-safe for Fiber concurrency using atomic initialization pattern.
-     * If multiple Fibers attempt to initialize simultaneously, the operation
-     * is idempotent - the second initialization simply overwrites with
-     * identical data, which is safe.
-     */
-    protected static function metadata(): ModelMetadata
-    {
-        $class = static::class;
-
-        // Fast path: already cached (most common case)
-        if (isset(self::$metadataCache[$class])) {
-            return self::$metadataCache[$class];
-        }
-
-        // Atomic claim: try to mark this class as initializing
-        // Use a unique token to detect if WE are the initializer
-        $initToken = spl_object_id(new \stdClass());
-
-        // If already being initialized by another Fiber, wait for it
-        $spinCount = 0;
-        $maxSpins = 1000;
-
-        while (true) {
-            // Check cache first (another Fiber may have finished)
-            if (isset(self::$metadataCache[$class])) {
-                return self::$metadataCache[$class];
-            }
-
-            // Try to claim initialization
-            if (!isset(self::$metadataInitializing[$class])) {
-                // Claim it with our token
-                self::$metadataInitializing[$class] = $initToken;
-                break;
-            }
-
-            // Another Fiber is initializing - wait
-            if (++$spinCount > $maxSpins) {
-                // Timeout: force proceed (initialization is idempotent anyway)
-                // This handles edge cases like a Fiber dying mid-initialization
-                self::$metadataInitializing[$class] = $initToken;
-                break;
-            }
-
-            // Yield to other Fibers
-            if (\Fiber::getCurrent() !== null) {
-                \Fiber::suspend();
-            } else {
-                // Not in a Fiber, just a tight loop - add small delay
-                usleep(100);
-            }
-        }
-
-        try {
-            // Verify we still own the initialization (another Fiber didn't steal it)
-            // If cache is now set, another Fiber beat us - use their result
-            if (isset(self::$metadataCache[$class])) {
-                return self::$metadataCache[$class];
-            }
-
-            // We own initialization - create metadata
-            // This is idempotent: if two Fibers both reach here, they produce identical results
-            $metadata = new ModelMetadata(
-                class: $class,
-                table: static::getTable(),
-                primaryKey: static::$primaryKey,
-                incrementing: static::$incrementing,
-                keyType: static::$keyType,
-                timestamps: static::$timestamps,
-                createdAtColumn: static::$createdAtColumn,
-                updatedAtColumn: static::$updatedAtColumn,
-                fillable: static::$fillable,
-                guarded: static::$guarded,
-                casts: static::$casts,
-            );
-
-            // Store in cache
-            self::$metadataCache[$class] = $metadata;
-
-            return $metadata;
-        } finally {
-            // Only clear the flag if we set it (check our token)
-            if ((self::$metadataInitializing[$class] ?? null) === $initToken) {
-                unset(self::$metadataInitializing[$class]);
-            }
-        }
     }
 
     // ========================================
@@ -380,7 +325,7 @@ abstract class Model implements \JsonSerializable
     public static function findOrFail(mixed $id): static
     {
         return static::find($id)->unwrapOrElse(
-            fn() => throw ModelNotFoundException::forModel(static::class, $id)
+            fn () => throw ModelNotFoundException::forModel(static::class, $id)
         );
     }
 
@@ -576,6 +521,163 @@ abstract class Model implements \JsonSerializable
             ->delete();
     }
 
+    /**
+     * Get the primary key column name.
+     */
+    public static function getKeyName(): string
+    {
+        return static::$primaryKey;
+    }
+
+    // ========================================
+    // HYDRATION
+    // ========================================
+
+    /**
+     * Create a model instance from database row.
+     *
+     * @param array<string, mixed> $attributes
+     */
+    public static function hydrate(array $attributes): static
+    {
+        $model = new static();
+        $model->exists = true;
+
+        foreach ($attributes as $key => $value) {
+            $model->attributes[$key] = $model->castAttribute($key, $value);
+        }
+
+        $model->original = $model->attributes;
+
+        // Set public properties from attributes
+        $reflection = new ReflectionClass($model);
+        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
+            $propName = $prop->getName();
+            if (array_key_exists($propName, $model->attributes)) {
+                $model->{$propName} = $model->attributes[$propName];
+            }
+        }
+
+        return $model;
+    }
+
+    /**
+     * Create collection of models from database rows.
+     *
+     * @param array<array<string, mixed>> $rows
+     * @return Collection<static>
+     */
+    public static function hydrateMany(array $rows): Collection
+    {
+        return new Collection(array_map(
+            fn ($row) => static::hydrate($row),
+            $rows
+        ));
+    }
+
+    /**
+     * Resolve connection - uses Container for fiber-safe resolution.
+     */
+    protected static function resolveConnection(): Connection
+    {
+        if (static::$connection !== null) {
+            return static::$connection;
+        }
+
+        // Try to get from Container (which is now fiber-safe)
+        return Container::getInstance()->get(Connection::class);
+    }
+
+    /**
+     * Get model metadata (cached).
+     *
+     * Thread-safe for Fiber concurrency using atomic initialization pattern.
+     * If multiple Fibers attempt to initialize simultaneously, the operation
+     * is idempotent - the second initialization simply overwrites with
+     * identical data, which is safe.
+     */
+    protected static function metadata(): ModelMetadata
+    {
+        $class = static::class;
+
+        // Fast path: already cached (most common case)
+        if (isset(self::$metadataCache[$class])) {
+            return self::$metadataCache[$class];
+        }
+
+        // Atomic claim: try to mark this class as initializing
+        // Use a unique token to detect if WE are the initializer
+        $initToken = spl_object_id(new stdClass());
+
+        // If already being initialized by another Fiber, wait for it
+        $spinCount = 0;
+        $maxSpins = 1000;
+
+        while (true) {
+            // Check cache first (another Fiber may have finished)
+            if (isset(self::$metadataCache[$class])) {
+                return self::$metadataCache[$class];
+            }
+
+            // Try to claim initialization
+            if (!isset(self::$metadataInitializing[$class])) {
+                // Claim it with our token
+                self::$metadataInitializing[$class] = $initToken;
+                break;
+            }
+
+            // Another Fiber is initializing - wait
+            if (++$spinCount > $maxSpins) {
+                // Timeout: force proceed (initialization is idempotent anyway)
+                // This handles edge cases like a Fiber dying mid-initialization
+                self::$metadataInitializing[$class] = $initToken;
+                break;
+            }
+
+            // Yield to other Fibers
+            if (Fiber::getCurrent() !== null) {
+                Fiber::suspend();
+            } else {
+                // Not in a Fiber, just a tight loop - add small delay
+                usleep(100);
+            }
+        }
+
+        try {
+            // Verify we still own the initialization (another Fiber didn't steal it)
+            // If cache is now set, another Fiber beat us - use their result
+            if (isset(self::$metadataCache[$class])) {
+                return self::$metadataCache[$class];
+            }
+
+            // We own initialization - create metadata
+            // This is idempotent: if two Fibers both reach here, they produce identical results
+            $metadata = new ModelMetadata(
+                class: $class,
+                table: static::getTable(),
+                primaryKey: static::$primaryKey,
+                incrementing: static::$incrementing,
+                keyType: static::$keyType,
+                timestamps: static::$timestamps,
+                createdAtColumn: static::$createdAtColumn,
+                updatedAtColumn: static::$updatedAtColumn,
+                fillable: static::$fillable,
+                guarded: static::$guarded,
+                casts: static::$casts,
+            );
+
+            // Store in cache
+            self::$metadataCache[$class] = $metadata;
+
+            return $metadata;
+        } finally {
+            // Only clear the flag if we set it (check our token)
+            if ((self::$metadataInitializing[$class] ?? null) === $initToken) {
+                unset(self::$metadataInitializing[$class]);
+            }
+        }
+    }
+
     // ========================================
     // INSTANCE METHODS
     // ========================================
@@ -638,20 +740,6 @@ abstract class Model implements \JsonSerializable
     }
 
     /**
-     * Check if strict fillable should be enforced for this model.
-     */
-    protected function shouldEnforceStrictFillable(): bool
-    {
-        // Model-level strict mode takes precedence
-        if (static::$strictFillable) {
-            return true;
-        }
-
-        // Global strict mode
-        return self::$globalStrictMode;
-    }
-
-    /**
      * Set an attribute value.
      */
     public function setAttribute(string $key, mixed $value): static
@@ -691,116 +779,6 @@ abstract class Model implements \JsonSerializable
         }
 
         return null;
-    }
-
-    /**
-     * Cast an attribute to the appropriate type.
-     */
-    protected function castAttribute(string $key, mixed $value): mixed
-    {
-        $metadata = static::metadata();
-        $castType = $metadata->getCastType($key);
-
-        if ($value === null) {
-            // For array cast, return empty array instead of null
-            if ($castType === 'array') {
-                return [];
-            }
-            return null;
-        }
-
-        if ($castType === null) {
-            return $value;
-        }
-
-        // Handle built-in types
-        if (is_string($castType)) {
-            return match ($castType) {
-                'int', 'integer' => (int) $value,
-                'float', 'double', 'real' => (float) $value,
-                'string' => (string) $value,
-                'bool', 'boolean' => (bool) $value,
-                'array' => is_array($value) ? $value : json_decode($value, true),
-                'json', 'object' => is_string($value) ? json_decode($value, true) : $value,
-                'datetime', 'date' => $value instanceof \DateTimeInterface ? $value : new \DateTimeImmutable($value),
-                default => $this->castToClass($castType, $value),
-            };
-        }
-
-        return $value;
-    }
-
-    /**
-     * Cast a value to a class instance.
-     */
-    protected function castToClass(string $class, mixed $value): mixed
-    {
-        if ($value instanceof $class) {
-            return $value;
-        }
-
-        // Try static wrap() method (Value Objects)
-        if (method_exists($class, 'wrap')) {
-            return $class::wrap($value);
-        }
-
-        // Try static from() method
-        if (method_exists($class, 'from')) {
-            return $class::from($value);
-        }
-
-        // Try static fromTrusted() method
-        if (method_exists($class, 'fromTrusted')) {
-            return $class::fromTrusted($value);
-        }
-
-        // Try constructor
-        return new $class($value);
-    }
-
-    /**
-     * Dehydrate an attribute for storage.
-     */
-    protected function dehydrateAttribute(string $key, mixed $value): mixed
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        // Value objects with value property
-        if (is_object($value) && property_exists($value, 'value')) {
-            return $value->value;
-        }
-
-        // Objects with __toString
-        if (is_object($value) && method_exists($value, '__toString')) {
-            return (string) $value;
-        }
-
-        // DateTimeInterface
-        if ($value instanceof \DateTimeInterface) {
-            return $value->format('Y-m-d H:i:s');
-        }
-
-        // Arrays/objects to JSON
-        if (is_array($value) || is_object($value)) {
-            $metadata = static::metadata();
-            $castType = $metadata->getCastType($key);
-
-            if (in_array($castType, ['array', 'json', 'object'])) {
-                return json_encode($value);
-            }
-        }
-
-        return $value;
-    }
-
-    /**
-     * Get the primary key column name.
-     */
-    public static function getKeyName(): string
-    {
-        return static::$primaryKey;
     }
 
     /**
@@ -854,6 +832,268 @@ abstract class Model implements \JsonSerializable
         }
 
         return $this->performInsert($connection);
+    }
+
+    /**
+     * Delete the model from the database.
+     */
+    public function delete(): bool
+    {
+        if (!$this->exists) {
+            return false;
+        }
+
+        $connection = static::resolveConnection();
+        $metadata = static::metadata();
+
+        $connection->delete(
+            $metadata->table,
+            [$metadata->primaryKey => $this->dehydrateAttribute($metadata->primaryKey, $this->getKey())]
+        );
+
+        $this->exists = false;
+
+        return true;
+    }
+
+    /**
+     * Refresh the model from the database.
+     */
+    public function refresh(): static
+    {
+        if (!$this->exists) {
+            return $this;
+        }
+
+        $fresh = static::find($this->getKey());
+
+        if ($fresh->isSome()) {
+            $this->attributes = $fresh->unwrap()->attributes;
+            $this->original = $this->attributes;
+            $this->relations = [];
+        }
+
+        return $this;
+    }
+
+    /**
+     * Create a fresh copy with new attributes.
+     *
+     * @param array<string, mixed> $attributes
+     */
+    public function replicate(array $attributes = []): static
+    {
+        $clone = new static($this->attributes);
+        unset($clone->attributes[static::$primaryKey]);
+        $clone->exists = false;
+        $clone->fill($attributes);
+
+        return $clone;
+    }
+
+    /**
+     * Set a loaded relationship.
+     */
+    public function setRelation(string $name, mixed $value): static
+    {
+        $this->relations[$name] = $value;
+        return $this;
+    }
+
+    // ========================================
+    // ARRAY / JSON
+    // ========================================
+
+    /**
+     * Convert model to array.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        $array = [];
+        $hidden = static::$hidden;
+
+        foreach ($this->attributes as $key => $value) {
+            if (!in_array($key, $hidden, true)) {
+                $array[$key] = $this->dehydrateAttribute($key, $value);
+            }
+        }
+
+        // Include loaded relations, skipping hidden ones
+        foreach ($this->relations as $key => $value) {
+            if (in_array($key, $hidden, true)) {
+                continue;
+            }
+
+            if ($value instanceof Collection) {
+                $array[$key] = $value->toArray();
+            } elseif ($value instanceof Model) {
+                $array[$key] = $value->toArray();
+            } else {
+                $array[$key] = $value;
+            }
+        }
+
+        return $array;
+    }
+
+    /**
+     * Convert model to JSON.
+     */
+    public function toJson(int $options = 0): string
+    {
+        return json_encode($this->toArray(), $options | JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Specify data which should be serialized to JSON.
+     *
+     * Allows json_encode($model) to produce the same output as toArray(),
+     * fixing silent wrong output when models are passed to json_encode directly.
+     *
+     * @return array<string, mixed>
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
+    }
+
+    /**
+     * Check if strict fillable should be enforced for this model.
+     */
+    protected function shouldEnforceStrictFillable(): bool
+    {
+        // Model-level strict mode takes precedence
+        if (static::$strictFillable) {
+            return true;
+        }
+
+        // Global strict mode
+        return self::$globalStrictMode;
+    }
+
+    /**
+     * Cast an attribute to the appropriate type.
+     */
+    protected function castAttribute(string $key, mixed $value): mixed
+    {
+        $metadata = static::metadata();
+        $castType = $metadata->getCastType($key);
+
+        if ($value === null) {
+            // For array/json casts, return empty array instead of null
+            if ($castType === 'array' || $castType === 'json') {
+                return [];
+            }
+            return null;
+        }
+
+        if ($castType === null) {
+            return $value;
+        }
+
+        // Handle built-in types
+        if (is_string($castType)) {
+            return match ($castType) {
+                'int', 'integer' => (int) $value,
+                'float', 'double', 'real' => (float) $value,
+                'string' => (string) $value,
+                'bool', 'boolean' => (bool) $value,
+                'array' => is_array($value) ? $value : json_decode($value, true, 512, JSON_THROW_ON_ERROR),
+                'json', 'object' => is_string($value) ? json_decode($value, true, 512, JSON_THROW_ON_ERROR) : $value,
+                'datetime', 'date' => $value instanceof DateTimeInterface ? $value : new DateTimeImmutable($value),
+                default => $this->castToClass($castType, $value),
+            };
+        }
+
+        return $value;
+    }
+
+    /**
+     * Cast a value to a class instance.
+     *
+     * Only instantiates classes that have a recognized factory method (wrap, from,
+     * fromTrusted) or are backed enums. Falls back to constructor only if the class
+     * is in a known-safe namespace (Fw\Domain\, App\).
+     */
+    protected function castToClass(string $class, mixed $value): mixed
+    {
+        if ($value instanceof $class) {
+            return $value;
+        }
+
+        if (!class_exists($class) && !enum_exists($class)) {
+            throw new RuntimeException("Cast class does not exist: {$class}");
+        }
+
+        // Backed enums
+        if (enum_exists($class) && method_exists($class, 'from')) {
+            return $class::from($value);
+        }
+
+        // Try static wrap() method (Value Objects)
+        if (method_exists($class, 'wrap')) {
+            return $class::wrap($value);
+        }
+
+        // Try static from() method
+        if (method_exists($class, 'from')) {
+            return $class::from($value);
+        }
+
+        // Try static fromTrusted() method
+        if (method_exists($class, 'fromTrusted')) {
+            return $class::fromTrusted($value);
+        }
+
+        // Constructor fallback — only for framework and application classes
+        // to prevent arbitrary class instantiation from database values.
+        if (str_starts_with($class, 'Fw\\') || str_starts_with($class, 'App\\')) {
+            return new $class($value);
+        }
+
+        throw new RuntimeException(
+            "Cannot cast to {$class}: class has no wrap/from/fromTrusted method " .
+            "and is not in an allowed namespace (Fw\\, App\\)."
+        );
+    }
+
+    /**
+     * Dehydrate an attribute for storage.
+     */
+    protected function dehydrateAttribute(string $key, mixed $value): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Value objects with value property
+        if (is_object($value) && property_exists($value, 'value')) {
+            return $value->value;
+        }
+
+        // Objects with __toString
+        if (is_object($value) && method_exists($value, '__toString')) {
+            return (string) $value;
+        }
+
+        // DateTimeInterface
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+
+        // Arrays/objects to JSON
+        if (is_array($value) || is_object($value)) {
+            $metadata = static::metadata();
+            $castType = $metadata->getCastType($key);
+
+            if (in_array($castType, ['array', 'json', 'object'], true)) {
+                return json_encode($value);
+            }
+        }
+
+        return $value;
     }
 
     /**
@@ -938,63 +1178,6 @@ abstract class Model implements \JsonSerializable
         return true;
     }
 
-    /**
-     * Delete the model from the database.
-     */
-    public function delete(): bool
-    {
-        if (!$this->exists) {
-            return false;
-        }
-
-        $connection = static::resolveConnection();
-        $metadata = static::metadata();
-
-        $connection->delete(
-            $metadata->table,
-            [$metadata->primaryKey => $this->dehydrateAttribute($metadata->primaryKey, $this->getKey())]
-        );
-
-        $this->exists = false;
-
-        return true;
-    }
-
-    /**
-     * Refresh the model from the database.
-     */
-    public function refresh(): static
-    {
-        if (!$this->exists) {
-            return $this;
-        }
-
-        $fresh = static::find($this->getKey());
-
-        if ($fresh->isSome()) {
-            $this->attributes = $fresh->unwrap()->attributes;
-            $this->original = $this->attributes;
-            $this->relations = [];
-        }
-
-        return $this;
-    }
-
-    /**
-     * Create a fresh copy with new attributes.
-     *
-     * @param array<string, mixed> $attributes
-     */
-    public function replicate(array $attributes = []): static
-    {
-        $clone = new static($this->attributes);
-        unset($clone->attributes[static::$primaryKey]);
-        $clone->exists = false;
-        $clone->fill($attributes);
-
-        return $clone;
-    }
-
     // ========================================
     // RELATIONSHIPS
     // ========================================
@@ -1006,7 +1189,7 @@ abstract class Model implements \JsonSerializable
      */
     protected function hasOne(string $related, ?string $foreignKey = null, ?string $localKey = null): HasOne
     {
-        $foreignKey ??= Str::snake((new \ReflectionClass($this))->getShortName()) . '_id';
+        $foreignKey ??= Str::snake(new ReflectionClass($this)->getShortName()) . '_id';
         $localKey ??= static::$primaryKey;
 
         return new HasOne($this, $related, $foreignKey, $localKey);
@@ -1019,7 +1202,7 @@ abstract class Model implements \JsonSerializable
      */
     protected function hasMany(string $related, ?string $foreignKey = null, ?string $localKey = null): HasMany
     {
-        $foreignKey ??= Str::snake((new \ReflectionClass($this))->getShortName()) . '_id';
+        $foreignKey ??= Str::snake(new ReflectionClass($this)->getShortName()) . '_id';
         $localKey ??= static::$primaryKey;
 
         return new HasMany($this, $related, $foreignKey, $localKey);
@@ -1032,7 +1215,7 @@ abstract class Model implements \JsonSerializable
      */
     protected function belongsTo(string $related, ?string $foreignKey = null, ?string $ownerKey = null): BelongsTo
     {
-        $foreignKey ??= Str::snake((new \ReflectionClass($related))->getShortName()) . '_id';
+        $foreignKey ??= Str::snake(new ReflectionClass($related)->getShortName()) . '_id';
         $ownerKey ??= $related::$primaryKey;
 
         return new BelongsTo($this, $related, $foreignKey, $ownerKey);
@@ -1052,21 +1235,24 @@ abstract class Model implements \JsonSerializable
         // Derive table name from model names (alphabetically)
         if ($table === null) {
             $models = [
-                Str::snake((new \ReflectionClass($this))->getShortName()),
-                Str::snake((new \ReflectionClass($related))->getShortName()),
+                Str::snake(new ReflectionClass($this)->getShortName()),
+                Str::snake(new ReflectionClass($related)->getShortName()),
             ];
             sort($models);
             $table = implode('_', $models);
         }
 
-        $foreignPivotKey ??= Str::snake((new \ReflectionClass($this))->getShortName()) . '_id';
-        $relatedPivotKey ??= Str::snake((new \ReflectionClass($related))->getShortName()) . '_id';
+        $foreignPivotKey ??= Str::snake(new ReflectionClass($this)->getShortName()) . '_id';
+        $relatedPivotKey ??= Str::snake(new ReflectionClass($related)->getShortName()) . '_id';
 
         return new BelongsToMany($this, $related, $table, $foreignPivotKey, $relatedPivotKey);
     }
 
     /**
-     * Get a loaded relationship or load it.
+     * Get a loaded relationship or lazy-load it.
+     *
+     * In debug mode, logs a warning about potential N+1 queries when a
+     * relationship is lazy-loaded. Use ->with('relation') for eager loading.
      */
     protected function getRelation(string $name): mixed
     {
@@ -1078,143 +1264,24 @@ abstract class Model implements \JsonSerializable
             $relation = $this->$name();
 
             if ($relation instanceof Relation) {
+                // Warn about lazy loading in debug mode (potential N+1)
+                $debug = filter_var(
+                    $_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?: false,
+                    FILTER_VALIDATE_BOOLEAN
+                );
+                if ($debug) {
+                    $class = static::class;
+                    error_log(
+                        "N+1 WARNING: Lazy-loading relationship '{$name}' on {$class}. " .
+                        "Use ->with('{$name}') to eager-load and avoid N+1 queries."
+                    );
+                }
+
                 $this->relations[$name] = $relation->get();
                 return $this->relations[$name];
             }
         }
 
         return null;
-    }
-
-    /**
-     * Set a loaded relationship.
-     */
-    public function setRelation(string $name, mixed $value): static
-    {
-        $this->relations[$name] = $value;
-        return $this;
-    }
-
-    // ========================================
-    // HYDRATION
-    // ========================================
-
-    /**
-     * Create a model instance from database row.
-     *
-     * @param array<string, mixed> $attributes
-     */
-    public static function hydrate(array $attributes): static
-    {
-        $model = new static();
-        $model->exists = true;
-
-        foreach ($attributes as $key => $value) {
-            $model->attributes[$key] = $model->castAttribute($key, $value);
-        }
-
-        $model->original = $model->attributes;
-
-        // Set public properties from attributes
-        $reflection = new \ReflectionClass($model);
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
-            $propName = $prop->getName();
-            if (array_key_exists($propName, $model->attributes)) {
-                $model->{$propName} = $model->attributes[$propName];
-            }
-        }
-
-        return $model;
-    }
-
-    /**
-     * Create collection of models from database rows.
-     *
-     * @param array<array<string, mixed>> $rows
-     * @return Collection<static>
-     */
-    public static function hydrateMany(array $rows): Collection
-    {
-        return new Collection(array_map(
-            fn($row) => static::hydrate($row),
-            $rows
-        ));
-    }
-
-    // ========================================
-    // ARRAY / JSON
-    // ========================================
-
-    /**
-     * Convert model to array.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(): array
-    {
-        $array = [];
-
-        foreach ($this->attributes as $key => $value) {
-            $array[$key] = $this->dehydrateAttribute($key, $value);
-        }
-
-        // Include loaded relations
-        foreach ($this->relations as $key => $value) {
-            if ($value instanceof Collection) {
-                $array[$key] = $value->toArray();
-            } elseif ($value instanceof Model) {
-                $array[$key] = $value->toArray();
-            } else {
-                $array[$key] = $value;
-            }
-        }
-
-        return $array;
-    }
-
-    /**
-     * Convert model to JSON.
-     */
-    public function toJson(int $options = 0): string
-    {
-        return json_encode($this->toArray(), $options | JSON_THROW_ON_ERROR);
-    }
-
-    /**
-     * Specify data which should be serialized to JSON.
-     *
-     * Allows json_encode($model) to produce the same output as toArray(),
-     * fixing silent wrong output when models are passed to json_encode directly.
-     *
-     * @return array<string, mixed>
-     */
-    public function jsonSerialize(): array
-    {
-        return $this->toArray();
-    }
-
-    // ========================================
-    // MAGIC METHODS
-    // ========================================
-
-    public function __get(string $name): mixed
-    {
-        return $this->getAttribute($name);
-    }
-
-    public function __set(string $name, mixed $value): void
-    {
-        $this->setAttribute($name, $value);
-    }
-
-    public function __isset(string $name): bool
-    {
-        return $this->getAttribute($name) !== null;
-    }
-
-    public function __unset(string $name): void
-    {
-        $key = Str::snake($name);
-        unset($this->attributes[$key], $this->relations[$name]);
     }
 }

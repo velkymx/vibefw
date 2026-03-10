@@ -23,6 +23,7 @@ use Fw\Http\ApiResponse;
 final class TokenAbilityMiddleware implements MiddlewareInterface
 {
     private Application $app;
+
     private string $abilities;
 
     public function __construct(Application $app, string $abilities = '')
@@ -74,18 +75,9 @@ final class TokenAbilityMiddleware implements MiddlewareInterface
     /**
      * Return a 403 Forbidden JSON response.
      */
-    private function forbidden(string $detail): array
+    private function forbidden(string $detail): Response
     {
         $api = new ApiResponse($this->app->response);
-
-        $response = $api->forbidden($detail, $this->app->request->uri);
-
-        $this->app->response->setStatus($api->getStatus());
-
-        foreach ($api->getHeaders() as $name => $value) {
-            $this->app->response->header($name, $value);
-        }
-
-        return $response;
+        return $api->forbidden($detail, $this->app->request->uri);
     }
 }

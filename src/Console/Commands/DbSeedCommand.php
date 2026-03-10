@@ -7,6 +7,7 @@ namespace Fw\Console\Commands;
 use Fw\Console\Application;
 use Fw\Console\Command;
 use Fw\Database\Connection;
+use Throwable;
 
 /**
  * Run database seeders.
@@ -17,9 +18,10 @@ final class DbSeedCommand extends Command
 
     protected string $description = 'Seed the database with records';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -84,7 +86,7 @@ final class DbSeedCommand extends Command
             $seeder = new $className($db);
             $seeder->run();
             $this->success("Seeded: $shortName");
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error("Error seeding $shortName: " . $e->getMessage());
             return 1;
         }
@@ -108,7 +110,7 @@ final class DbSeedCommand extends Command
 
         try {
             return new Connection($config);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }

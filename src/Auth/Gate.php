@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Fw\Auth;
 
-use App\Models\User;
+use Fw\Model\Model;
+use RuntimeException;
 
 /**
  * Authorization Gate.
  *
  * The ONLY way to check permissions in this framework.
  *
- * Policies are classes in App\Policies named {Model}Policy.
- * Policy methods receive the User and optionally a model instance.
+ * Policies are classes named {Model}Policy in a configurable namespace
+ * (defaults to App\Policies).
+ * Policy methods receive the authenticated user and optionally a model instance.
  * Policy methods MUST return bool.
  *
  * Usage:
@@ -23,10 +25,24 @@ use App\Models\User;
  * Policy resolution:
  *   Gate::allows('edit', $post)        -> PostPolicy::edit(User, Post)
  *   Gate::allows('create', Post::class) -> PostPolicy::create(User)
+ *
+ * Configuration:
+ *   Gate::setPolicyNamespace('App\\Policies');
  */
 final class Gate
 {
+    private static string $policyNamespace = 'App\\Policies';
+
     private static array $policyCache = [];
+
+    /**
+     * Set the namespace where policy classes are resolved from.
+     */
+    public static function setPolicyNamespace(string $namespace): void
+    {
+        self::$policyNamespace = rtrim($namespace, '\\');
+        self::$policyCache = [];
+    }
 
     /**
      * Check if the current user is allowed to perform an action.
@@ -58,6 +74,9 @@ final class Gate
     public static function authorize(string $action, object|string $target): void
     {
         if (self::denies($action, $target)) {
+            $targetClass = is_object($target) ? get_class($target) : $target;
+            $userId = Auth::id() ?? 'guest';
+            error_log("Authorization denied: user={$userId} action={$action} target={$targetClass}");
             throw new ForbiddenException();
         }
     }
@@ -65,7 +84,7 @@ final class Gate
     /**
      * Check authorization for a specific user (used internally and for testing).
      */
-    public static function check(User $user, string $action, object|string $target): bool
+    public static function check(Model $user, string $action, object|string $target): bool
     {
         $policy = self::resolvePolicy($target);
 
@@ -90,6 +109,14 @@ final class Gate
     }
 
     /**
+     * Clear the policy cache (for testing).
+     */
+    public static function flushCache(): void
+    {
+        self::$policyCache = [];
+    }
+
+    /**
      * Resolve the policy class for a given target.
      */
     private static function resolvePolicy(object|string $target): ?Policy
@@ -101,7 +128,7 @@ final class Gate
         }
 
         $modelName = self::classBasename($class);
-        $policyClass = "App\\Policies\\{$modelName}Policy";
+        $policyClass = self::$policyNamespace . "\\{$modelName}Policy";
 
         if (!class_exists($policyClass)) {
             return null;
@@ -110,7 +137,7 @@ final class Gate
         $policy = new $policyClass();
 
         if (!$policy instanceof Policy) {
-            throw new \RuntimeException("$policyClass must extend " . Policy::class);
+            throw new RuntimeException("$policyClass must extend " . Policy::class);
         }
 
         return self::$policyCache[$class] = $policy;
@@ -119,13 +146,5 @@ final class Gate
     private static function classBasename(string $class): string
     {
         return basename(str_replace('\\', '/', $class));
-    }
-
-    /**
-     * Clear the policy cache (for testing).
-     */
-    public static function flushCache(): void
-    {
-        self::$policyCache = [];
     }
 }

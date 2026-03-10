@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Fw\Console\Commands;
 
+use FilesystemIterator;
 use Fw\Console\Application;
 use Fw\Console\Command;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 
 /**
  * Run all validation checks.
@@ -16,9 +19,10 @@ final class ValidateAllCommand extends Command
 
     protected string $description = 'Run all validation checks (config, security, style, static analysis)';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -124,8 +128,8 @@ final class ValidateAllCommand extends Command
                 continue;
             }
 
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)
             );
 
             foreach ($iterator as $file) {

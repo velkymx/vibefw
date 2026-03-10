@@ -6,6 +6,7 @@ namespace Fw\Testing;
 
 use Fw\Model\Model;
 use Fw\Support\Str;
+use ReflectionClass;
 
 /**
  * Base Factory class for generating test data.
@@ -38,6 +39,11 @@ use Fw\Support\Str;
  */
 abstract class Factory
 {
+    /**
+     * Sequence counter for unique values.
+     */
+    private static int $sequence = 0;
+
     /**
      * The model class to generate.
      * @var class-string<TModel>
@@ -76,22 +82,10 @@ abstract class Factory
      */
     protected FakerGenerator $faker;
 
-    /**
-     * Sequence counter for unique values.
-     */
-    private static int $sequence = 0;
-
     public function __construct()
     {
         $this->faker = new FakerGenerator();
     }
-
-    /**
-     * Define the default model attributes.
-     *
-     * @return array<string, mixed>
-     */
-    abstract public function definition(): array;
 
     /**
      * Create a new factory instance.
@@ -102,6 +96,21 @@ abstract class Factory
     {
         return new static();
     }
+
+    /**
+     * Reset the sequence counter.
+     */
+    public static function resetSequence(): void
+    {
+        self::$sequence = 0;
+    }
+
+    /**
+     * Define the default model attributes.
+     *
+     * @return array<string, mixed>
+     */
+    abstract public function definition(): array;
 
     /**
      * Set the number of models to create.
@@ -162,24 +171,6 @@ abstract class Factory
     }
 
     /**
-     * Create a single model instance.
-     *
-     * @param array<string, mixed> $attributes
-     * @return TModel
-     */
-    protected function createOne(array $attributes = []): Model
-    {
-        $data = $this->makeAttributes($attributes);
-
-        /** @var TModel $model */
-        $model = new $this->model();
-        $model->forceFill($data);
-        $model->save();
-
-        return $model;
-    }
-
-    /**
      * Make model(s) without persisting.
      *
      * @param array<string, mixed> $attributes
@@ -197,6 +188,24 @@ abstract class Factory
         }
 
         return $models;
+    }
+
+    /**
+     * Create a single model instance.
+     *
+     * @param array<string, mixed> $attributes
+     * @return TModel
+     */
+    protected function createOne(array $attributes = []): Model
+    {
+        $data = $this->makeAttributes($attributes);
+
+        /** @var TModel $model */
+        $model = new $this->model();
+        $model->forceFill($data);
+        $model->save();
+
+        return $model;
     }
 
     /**
@@ -263,7 +272,7 @@ abstract class Factory
             return 'parent_id';
         }
 
-        $class = (new \ReflectionClass($this->for))->getShortName();
+        $class = new ReflectionClass($this->for)->getShortName();
         return Str::snake($class) . '_id';
     }
 
@@ -273,13 +282,5 @@ abstract class Factory
     protected function sequence(): int
     {
         return ++self::$sequence;
-    }
-
-    /**
-     * Reset the sequence counter.
-     */
-    public static function resetSequence(): void
-    {
-        self::$sequence = 0;
     }
 }

@@ -26,6 +26,11 @@ abstract readonly class Id implements ValueObject
         $this->value = $id;
     }
 
+    public function __toString(): string
+    {
+        return $this->value;
+    }
+
     /**
      * Generate a new ID (UUID v4).
      */
@@ -92,10 +97,5 @@ abstract readonly class Id implements ValueObject
     public function equals(ValueObject $other): bool
     {
         return $other instanceof static && $this->value === $other->value;
-    }
-
-    public function __toString(): string
-    {
-        return $this->value;
     }
 }

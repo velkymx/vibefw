@@ -38,6 +38,7 @@ namespace Fw\Core;
 abstract class ServiceProvider
 {
     protected Container $container;
+
     protected Application $app;
 
     public function __construct(Application $app, Container $container)

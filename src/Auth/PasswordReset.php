@@ -5,11 +5,18 @@ declare(strict_types=1);
 namespace Fw\Auth;
 
 use Fw\Database\Connection;
+use RuntimeException;
 
 final class PasswordReset
 {
     private const string TABLE = 'password_resets';
     private const int TOKEN_EXPIRY = 3600; // 1 hour
+
+    /**
+     * Dummy hash for constant-time comparison when no token is found.
+     * Prevents token enumeration via timing side-channels.
+     */
+    private const string DUMMY_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
     /**
      * The database connection (set during bootstrap via setConnection()).
@@ -24,6 +31,15 @@ final class PasswordReset
         self::$connection = $connection;
     }
 
+    /**
+     * Reset the static connection reference between requests in worker mode.
+     * Called by HttpKernel::resetState().
+     */
+    public static function resetConnection(): void
+    {
+        self::$connection = null;
+    }
+
     public static function createToken(string $email): string
     {
         $token = bin2hex(random_bytes(32));
@@ -33,7 +49,7 @@ final class PasswordReset
 
         // Delete any existing tokens for this email
         $db->query(
-            "DELETE FROM \"" . self::TABLE . "\" WHERE email = ?",
+            'DELETE FROM ' . self::TABLE . ' WHERE email = ?',
             [$email]
         );
 
@@ -52,9 +68,15 @@ final class PasswordReset
         $hashedToken = hash('sha256', $token);
 
         $result = self::db()->selectOne(
-            "SELECT * FROM \"" . self::TABLE . "\" WHERE token = ?",
+            'SELECT * FROM ' . self::TABLE . ' WHERE token = ?',
             [$hashedToken]
         );
+
+        // TIMING ATTACK MITIGATION: perform the same work regardless of
+        // whether the token was found, so response timing doesn't reveal
+        // whether a valid token exists in the database.
+        $storedHash = $result['token'] ?? self::DUMMY_HASH;
+        $_ = hash_equals($storedHash, $hashedToken);
 
         if ($result === null) {
             return null;
@@ -76,7 +98,7 @@ final class PasswordReset
         $hashedToken = hash('sha256', $token);
 
         self::db()->query(
-            "DELETE FROM \"" . self::TABLE . "\" WHERE token = ?",
+            'DELETE FROM ' . self::TABLE . ' WHERE token = ?',
             [$hashedToken]
         );
     }
@@ -86,7 +108,7 @@ final class PasswordReset
         $expiry = date('Y-m-d H:i:s', time() - self::TOKEN_EXPIRY);
 
         return self::db()->query(
-            "DELETE FROM \"" . self::TABLE . "\" WHERE created_at < ?",
+            'DELETE FROM ' . self::TABLE . ' WHERE created_at < ?',
             [$expiry]
         )->rowCount();
     }
@@ -94,7 +116,7 @@ final class PasswordReset
     private static function db(): Connection
     {
         return self::$connection
-            ?? throw new \RuntimeException(
+            ?? throw new RuntimeException(
                 'No database connection set. Call PasswordReset::setConnection() during application bootstrap.'
             );
     }

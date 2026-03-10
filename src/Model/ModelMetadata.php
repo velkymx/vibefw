@@ -49,6 +49,44 @@ final class ModelMetadata
     }
 
     /**
+     * Check if an attribute is fillable.
+     */
+    public function isFillable(string $key): bool
+    {
+        $key = Str::snake($key);
+
+        // If fillable is defined and non-empty, key must be in it
+        if (!empty($this->fillable)) {
+            return in_array($key, $this->fillable, true);
+        }
+
+        // Otherwise, check if it's not guarded
+        return !in_array($key, $this->guarded, true);
+    }
+
+    /**
+     * Get the cast type for an attribute.
+     */
+    public function getCastType(string $key): ?string
+    {
+        $key = Str::snake($key);
+        return $this->allCasts[$key] ?? null;
+    }
+
+    /**
+     * Get all attribute names (from properties and casts).
+     *
+     * @return array<string>
+     */
+    public function getAttributeNames(): array
+    {
+        return array_unique(array_merge(
+            array_keys($this->propertyTypes),
+            array_keys($this->casts)
+        ));
+    }
+
+    /**
      * Detect property types from class reflection.
      *
      * @return array<string, string|null>
@@ -89,50 +127,12 @@ final class ModelMetadata
         foreach ($this->propertyTypes as $key => $type) {
             if (!isset($merged[$key]) && $type !== null) {
                 // Only add non-built-in types (Value Objects)
-                if (!in_array($type, ['int', 'float', 'string', 'bool', 'array', 'mixed'])) {
+                if (!in_array($type, ['int', 'float', 'string', 'bool', 'array', 'mixed'], true)) {
                     $merged[$key] = $type;
                 }
             }
         }
 
         return $merged;
-    }
-
-    /**
-     * Check if an attribute is fillable.
-     */
-    public function isFillable(string $key): bool
-    {
-        $key = Str::snake($key);
-
-        // If fillable is defined and non-empty, key must be in it
-        if (!empty($this->fillable)) {
-            return in_array($key, $this->fillable);
-        }
-
-        // Otherwise, check if it's not guarded
-        return !in_array($key, $this->guarded);
-    }
-
-    /**
-     * Get the cast type for an attribute.
-     */
-    public function getCastType(string $key): ?string
-    {
-        $key = Str::snake($key);
-        return $this->allCasts[$key] ?? null;
-    }
-
-    /**
-     * Get all attribute names (from properties and casts).
-     *
-     * @return array<string>
-     */
-    public function getAttributeNames(): array
-    {
-        return array_unique(array_merge(
-            array_keys($this->propertyTypes),
-            array_keys($this->casts)
-        ));
     }
 }

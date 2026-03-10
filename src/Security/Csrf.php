@@ -5,17 +5,10 @@ declare(strict_types=1);
 namespace Fw\Security;
 
 use Closure;
+use RuntimeException;
 
 final class Csrf
 {
-    private const string SESSION_KEY = '_csrf_token';
-
-    /**
-     * Number of random bytes for token generation.
-     * Results in 64-character hex string (256 bits of entropy).
-     */
-    private const int TOKEN_BYTES = 32;
-
     /**
      * The form field name for CSRF tokens.
      * Use this constant when manually checking for tokens.
@@ -26,6 +19,13 @@ final class Csrf
      * The header name for CSRF tokens (lowercase).
      */
     public const string HEADER_NAME = 'x-csrf-token';
+    private const string SESSION_KEY = '_csrf_token';
+
+    /**
+     * Number of random bytes for token generation.
+     * Results in 64-character hex string (256 bits of entropy).
+     */
+    private const int TOKEN_BYTES = 32;
 
     /**
      * Callable that initializes the session when needed.
@@ -39,21 +39,6 @@ final class Csrf
     public function __construct(Closure $sessionInitializer)
     {
         $this->sessionInitializer = $sessionInitializer;
-    }
-
-    private function ensureSession(): void
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            if (headers_sent($file, $line)) {
-                // Log the failure for debugging - CSRF will fail silently
-                error_log(
-                    "CSRF Warning: Cannot initialize session - headers already sent " .
-                    "(output started at {$file}:{$line}). CSRF validation will fail."
-                );
-                return;
-            }
-            ($this->sessionInitializer)();
-        }
     }
 
     public function getToken(): string
@@ -114,11 +99,6 @@ final class Csrf
         return $this->validate($token);
     }
 
-    private function generateToken(): string
-    {
-        return bin2hex(random_bytes(self::TOKEN_BYTES));
-    }
-
     public function formField(): string
     {
         $token = htmlspecialchars($this->getToken(), ENT_QUOTES, 'UTF-8');
@@ -129,5 +109,26 @@ final class Csrf
     {
         $token = htmlspecialchars($this->getToken(), ENT_QUOTES, 'UTF-8');
         return '<meta name="csrf-token" content="' . $token . '">';
+    }
+
+    private function ensureSession(): void
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            if (headers_sent($file, $line)) {
+                // Throwing here surfaces the real problem (premature output) immediately.
+                // Returning silently would cause CSRF token mismatches on every request
+                // with no indication of why, making it impossible to debug.
+                throw new RuntimeException(
+                    "Cannot start session for CSRF: headers already sent at {$file}:{$line}. " .
+                    'Ensure no output is emitted before the middleware runs.'
+                );
+            }
+            ($this->sessionInitializer)();
+        }
+    }
+
+    private function generateToken(): string
+    {
+        return bin2hex(random_bytes(self::TOKEN_BYTES));
     }
 }

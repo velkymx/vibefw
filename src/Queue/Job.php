@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace Fw\Queue;
 
+use Throwable;
+
 abstract class Job implements JobInterface
 {
-    protected string $queue = 'default';
-    protected int $maxAttempts = 3;
-    protected int $retryAfter = 60;
-    protected int $delay = 0;
-
     public private(set) int $attempts = 0;
+
     public private(set) ?string $jobId = null;
+
+    protected string $queue = 'default';
+
+    protected int $maxAttempts = 3;
+
+    protected int $retryAfter = 60;
+
+    protected int $delay = 0;
 
     public function getQueue(): string
     {
@@ -62,7 +68,7 @@ abstract class Job implements JobInterface
         $this->jobId = $id;
     }
 
-    public function failed(\Throwable $exception): void
+    public function failed(Throwable $exception): void
     {
         // Override in child classes to handle failures
     }

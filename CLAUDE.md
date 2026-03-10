@@ -1,110 +1,57 @@
-# Fw Framework - AI Assistant Rules
+# Fw Framework - Maintenance & Development Rules
 
-This document defines strict rules for AI assistants working with the Fw PHP framework.
+This document defines the rules for AI assistants working as **maintainers** of the Fw PHP framework.
 
 ---
 
-## CRITICAL: Framework Usage Rules
+## Core Mandate: Framework Evolution
 
-### DO NOT MODIFY THE FRAMEWORK
+As maintainers, we have full authority to modify the `src/` core, enhance framework features, and refactor internals to improve performance or developer experience.
 
-The `src/` directory contains the framework core. **NEVER modify, improve, or refactor any file in `src/`**.
-
-```
-src/                    # READONLY - DO NOT MODIFY
-├── Core/               # ❌ Never touch
-├── Database/           # ❌ Never touch
-├── Model/              # ❌ Never touch
-├── Auth/               # ❌ Never touch
-├── Cache/              # ❌ Never touch
-├── Queue/              # ❌ Never touch
-├── Middleware/         # ❌ Never touch
-├── Security/           # ❌ Never touch
-├── Console/            # ❌ Never touch
-├── Async/              # ❌ Never touch
-├── Validation/         # ❌ Never touch
-├── Support/            # ❌ Never touch
-├── Testing/            # ❌ Never touch
-├── Events/             # ❌ Never touch
-├── Lifecycle/          # ❌ Never touch
-└── Types/              # ❌ Never touch
-```
-
-**If you think the framework has a bug or could be improved:**
-1. DO NOT fix it yourself
-2. Report it to the user
-3. Let them decide whether to open an issue
-
-### ONLY WORK IN APPLICATION DIRECTORIES
-
-All application code goes in these directories:
+### Framework Directories (Maintainer Access)
 
 ```
-app/                    # ✅ YOUR APPLICATION CODE
-├── Controllers/        # ✅ HTTP request handlers
-├── Models/             # ✅ Database models (extend Fw\Model\Model)
-├── Views/              # ✅ PHP templates
-│   └── layouts/        # ✅ Layout templates
-├── Middleware/         # ✅ Custom middleware
-├── Providers/          # ✅ Service providers
-├── Commands/           # ✅ Custom CLI commands
-├── Jobs/               # ✅ Queue jobs
-└── Services/           # ✅ Business logic services
-
-config/                 # ✅ CONFIGURATION FILES
-├── app.php             # ✅ Application settings
-├── database.php        # ✅ Database connections
-├── routes.php          # ✅ Route definitions
-├── middleware.php      # ✅ Middleware aliases & groups
-└── providers.php       # ✅ Service provider registration
-
-database/               # ✅ DATABASE FILES
-├── migrations/         # ✅ Database migrations
-├── seeders/            # ✅ Database seeders
-└── factories/          # ✅ Model factories for testing
-
-tests/                  # ✅ TEST FILES
-├── Unit/               # ✅ Unit tests
-├── Integration/        # ✅ Integration tests
-└── Feature/            # ✅ Feature/E2E tests
-
-public/                 # ✅ PUBLIC WEB ROOT
-├── index.php           # ✅ Application entry point
-├── css/                # ✅ Stylesheets
-├── js/                 # ✅ JavaScript
-└── images/             # ✅ Static images
-
-storage/                # ✅ RUNTIME STORAGE (gitignored)
-├── cache/              # Cache files
-├── logs/               # Log files
-├── queue/              # File-based queue storage
-└── views/              # Compiled view cache
+src/                    # FRAMEWORK CORE - FULL ACCESS
+├── Core/               # Kernel, Routing, Container
+├── Database/           # QueryBuilder, Migrations, Connections
+├── Model/              # ORM Logic
+├── Auth/               # Authentication & Authorization
+├── Console/            # CLI Commands & Scaffolding
+├── Async/              # Fiber & EventLoop management
+└── ...                 # All other framework components
 ```
 
-### FORBIDDEN ACTIONS
+### Application & Stubs
 
 ```
-❌ NEVER modify files in src/
-❌ NEVER "fix" or "improve" framework code
-❌ NEVER add features to the framework
-❌ NEVER refactor framework internals
-❌ NEVER create files in src/
-❌ NEVER suggest framework changes without explicit user request
+app/                    # Application code (Models ship; Controllers added by make:spa)
+config/                 # Default configuration templates
+stubs/                  # Code generation templates (CRITICAL for make:* commands)
+database/               # Base migrations and seeders
 ```
 
-### ALLOWED ACTIONS
+---
 
-```
-✅ Create controllers in app/Controllers/
-✅ Create models in app/Models/
-✅ Create views in app/Views/
-✅ Create middleware in app/Middleware/
-✅ Create migrations in database/migrations/
-✅ Create tests in tests/
-✅ Modify config files in config/
-✅ Use framework classes via imports
-✅ Extend framework base classes
-```
+## Technical Standards
+
+### 1. PHP 8.4+ Excellence
+- Use **Property Hooks** for computed properties in Models/DTOs.
+- Use **Asymmetric Visibility** (`public private(set)`) for read-only state.
+- Strictly adhere to `declare(strict_types=1);`.
+
+### 2. Async & Concurrency
+- Ensure all stateful services are **Fiber-safe**.
+- Use `RequestContext` for any data that must not leak between requests in worker mode.
+- Prefer non-blocking I/O via the built-in `EventLoop`.
+
+### 3. Error Handling (Monads)
+- Return `Result<T, E>` for operations that can fail (Database, API calls).
+- Return `Option<T>` for values that might be missing (Find by ID).
+- Avoid throwing exceptions for expected control flow.
+
+### 4. Code Generation (Stubs)
+- When adding a new scaffolding feature (like `make:spa`), always create high-quality stubs in `stubs/`.
+- Ensure stubs are clean, well-commented, and follow the framework's best practices.
 
 ---
 

@@ -42,6 +42,14 @@ final class Validator
     private static array $ruleCache = [];
 
     /**
+     * Clear the rule cache (useful for testing).
+     */
+    public static function clearCache(): void
+    {
+        self::$ruleCache = [];
+    }
+
+    /**
      * Validate data using rules defined as attributes on a class.
      *
      * @param array<string, mixed> $data
@@ -153,13 +161,5 @@ final class Validator
         $field = preg_replace('/[_-]/', ' ', $field);
         $field = preg_replace('/([a-z])([A-Z])/', '$1 $2', $field);
         return strtolower($field);
-    }
-
-    /**
-     * Clear the rule cache (useful for testing).
-     */
-    public static function clearCache(): void
-    {
-        self::$ruleCache = [];
     }
 }

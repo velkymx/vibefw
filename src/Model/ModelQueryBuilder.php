@@ -39,9 +39,18 @@ final class ModelQueryBuilder
         string $modelClass,
         ModelMetadata $metadata
     ) {
-        $this->query = (new QueryBuilder($connection))->table($metadata->table);
+        $this->query = new QueryBuilder($connection)->table($metadata->table);
         $this->modelClass = $modelClass;
         $this->metadata = $metadata;
+    }
+
+    // ========================================
+    // CLONING
+    // ========================================
+
+    public function __clone()
+    {
+        $this->query = clone $this->query;
     }
 
     // ========================================
@@ -238,7 +247,7 @@ final class ModelQueryBuilder
     public function firstOrFail(): Model
     {
         return $this->first()->unwrapOrElse(
-            fn() => throw ModelNotFoundException::forModel($this->modelClass)
+            fn () => throw ModelNotFoundException::forModel($this->modelClass)
         );
     }
 
@@ -260,7 +269,7 @@ final class ModelQueryBuilder
     public function findOrFail(mixed $id): Model
     {
         return $this->find($id)->unwrapOrElse(
-            fn() => throw ModelNotFoundException::forModel($this->modelClass, $id)
+            fn () => throw ModelNotFoundException::forModel($this->modelClass, $id)
         );
     }
 
@@ -410,6 +419,24 @@ final class ModelQueryBuilder
         } while ($results->count() === $count);
     }
 
+    /**
+     * Get the underlying query builder.
+     */
+    public function getQuery(): QueryBuilder
+    {
+        return $this->query;
+    }
+
+    /**
+     * Get the SQL and bindings.
+     *
+     * @return array{0: string, 1: array<mixed>}
+     */
+    public function toSql(): array
+    {
+        return $this->query->toSql();
+    }
+
     // ========================================
     // EAGER LOADING IMPLEMENTATION
     // ========================================
@@ -452,32 +479,5 @@ final class ModelQueryBuilder
 
         // Let the relation handle eager loading
         $relation->eagerLoad($models, $name);
-    }
-
-    // ========================================
-    // CLONING
-    // ========================================
-
-    public function __clone()
-    {
-        $this->query = clone $this->query;
-    }
-
-    /**
-     * Get the underlying query builder.
-     */
-    public function getQuery(): QueryBuilder
-    {
-        return $this->query;
-    }
-
-    /**
-     * Get the SQL and bindings.
-     *
-     * @return array{0: string, 1: array<mixed>}
-     */
-    public function toSql(): array
-    {
-        return $this->query->toSql();
     }
 }

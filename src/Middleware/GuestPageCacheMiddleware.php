@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Fw\Middleware;
 
+use Fw\Cache\CacheInterface;
 use Fw\Core\Request;
 use Fw\Core\Response;
-use Fw\Cache\CacheInterface;
 
 /**
  * Guest Page Cache Middleware
@@ -23,6 +23,7 @@ use Fw\Cache\CacheInterface;
 class GuestPageCacheMiddleware implements MiddlewareInterface
 {
     private CacheInterface $cache;
+
     private int $ttl;
 
     public function __construct(\Fw\Core\Application $app, int|string $ttl = 60)

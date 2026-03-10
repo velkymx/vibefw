@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Fw\Database;
 
+use ReflectionClass;
+use RuntimeException;
+
 /**
  * Legacy Model class - use Fw\Model\Model instead for new code.
  *
@@ -18,21 +21,18 @@ abstract class Model
     protected static ?Connection $connection = null;
 
     protected static string $table = '';
+
     protected static string $primaryKey = 'id';
+
     protected static bool $timestamps = true;
+
     protected static bool $softDeletes = false;
 
     protected array $attributes = [];
-    protected array $original = [];
-    protected bool $exists = false;
 
-    /**
-     * Set the database connection for all legacy models.
-     */
-    public static function setConnection(Connection $connection): void
-    {
-        static::$connection = $connection;
-    }
+    protected array $original = [];
+
+    protected bool $exists = false;
 
     public function __construct(array $attributes = [])
     {
@@ -53,6 +53,95 @@ abstract class Model
     public function __isset(string $name): bool
     {
         return isset($this->attributes[$name]);
+    }
+
+    /**
+     * Set the database connection for all legacy models.
+     */
+    public static function setConnection(Connection $connection): void
+    {
+        static::$connection = $connection;
+    }
+
+    public static function query(): QueryBuilder
+    {
+        $query = static::connection()->table(static::getTable());
+
+        if (static::$softDeletes) {
+            $query = $query->whereNull('deleted_at');
+        }
+
+        return $query;
+    }
+
+    public static function all(): array
+    {
+        $rows = static::query()->get();
+        return array_map(fn ($row) => static::hydrate($row), $rows);
+    }
+
+    public static function find(int|string $id): ?static
+    {
+        $row = static::query()->where(static::$primaryKey, $id)->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return static::hydrate($row);
+    }
+
+    public static function findOrFail(int|string $id): static
+    {
+        $model = static::find($id);
+
+        if ($model === null) {
+            throw new RuntimeException('Model not found');
+        }
+
+        return $model;
+    }
+
+    public static function where(string $column, mixed $operator = null, mixed $value = null): QueryBuilder
+    {
+        return static::query()->where($column, $operator, $value);
+    }
+
+    public static function create(array $attributes): static
+    {
+        $model = new static($attributes);
+        $model->save();
+        return $model;
+    }
+
+    protected static function getTable(): string
+    {
+        if (!empty(static::$table)) {
+            return static::$table;
+        }
+
+        $class = new ReflectionClass(static::class)->getShortName();
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $class)) . 's';
+    }
+
+    protected static function connection(): Connection
+    {
+        if (static::$connection === null) {
+            throw new RuntimeException(
+                'No database connection set. Call Model::setConnection() during application bootstrap.'
+            );
+        }
+
+        return static::$connection;
+    }
+
+    protected static function hydrate(array $attributes): static
+    {
+        $model = new static();
+        $model->attributes = $attributes;
+        $model->exists = true;
+        $model->original = $attributes;
+        return $model;
     }
 
     public function getAttribute(string $name): mixed
@@ -113,87 +202,6 @@ abstract class Model
         return $dirty;
     }
 
-    protected static function getTable(): string
-    {
-        if (!empty(static::$table)) {
-            return static::$table;
-        }
-
-        $class = (new \ReflectionClass(static::class))->getShortName();
-        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $class)) . 's';
-    }
-
-    protected static function connection(): Connection
-    {
-        if (static::$connection === null) {
-            throw new \RuntimeException(
-                'No database connection set. Call Model::setConnection() during application bootstrap.'
-            );
-        }
-
-        return static::$connection;
-    }
-
-    public static function query(): QueryBuilder
-    {
-        $query = static::connection()->table(static::getTable());
-
-        if (static::$softDeletes) {
-            $query = $query->whereNull('deleted_at');
-        }
-
-        return $query;
-    }
-
-    public static function all(): array
-    {
-        $rows = static::query()->get();
-        return array_map(fn($row) => static::hydrate($row), $rows);
-    }
-
-    public static function find(int|string $id): ?static
-    {
-        $row = static::query()->where(static::$primaryKey, $id)->first();
-
-        if ($row === null) {
-            return null;
-        }
-
-        return static::hydrate($row);
-    }
-
-    public static function findOrFail(int|string $id): static
-    {
-        $model = static::find($id);
-
-        if ($model === null) {
-            throw new \RuntimeException('Model not found');
-        }
-
-        return $model;
-    }
-
-    public static function where(string $column, mixed $operator = null, mixed $value = null): QueryBuilder
-    {
-        return static::query()->where($column, $operator, $value);
-    }
-
-    public static function create(array $attributes): static
-    {
-        $model = new static($attributes);
-        $model->save();
-        return $model;
-    }
-
-    protected static function hydrate(array $attributes): static
-    {
-        $model = new static();
-        $model->attributes = $attributes;
-        $model->exists = true;
-        $model->original = $attributes;
-        return $model;
-    }
-
     public function save(): bool
     {
         if ($this->exists) {
@@ -201,54 +209,6 @@ abstract class Model
         }
 
         return $this->performInsert();
-    }
-
-    protected function performInsert(): bool
-    {
-        $attributes = $this->attributes;
-
-        if (static::$timestamps) {
-            $now = date('Y-m-d H:i:s');
-            $attributes['created_at'] = $now;
-            $attributes['updated_at'] = $now;
-            $this->attributes['created_at'] = $now;
-            $this->attributes['updated_at'] = $now;
-        }
-
-        $id = static::connection()->insert(static::getTable(), $attributes);
-
-        if ($id > 0) {
-            $this->attributes[static::$primaryKey] = $id;
-        }
-
-        $this->exists = true;
-        $this->original = $this->attributes;
-
-        return true;
-    }
-
-    protected function performUpdate(): bool
-    {
-        $dirty = $this->getDirty();
-
-        if (empty($dirty)) {
-            return true;
-        }
-
-        if (static::$timestamps) {
-            $dirty['updated_at'] = date('Y-m-d H:i:s');
-            $this->attributes['updated_at'] = $dirty['updated_at'];
-        }
-
-        static::connection()->update(
-            static::getTable(),
-            $dirty,
-            [static::$primaryKey => $this->attributes[static::$primaryKey]]
-        );
-
-        $this->original = $this->attributes;
-
-        return true;
     }
 
     public function delete(): bool
@@ -326,6 +286,54 @@ abstract class Model
         }
 
         return $this;
+    }
+
+    protected function performInsert(): bool
+    {
+        $attributes = $this->attributes;
+
+        if (static::$timestamps) {
+            $now = date('Y-m-d H:i:s');
+            $attributes['created_at'] = $now;
+            $attributes['updated_at'] = $now;
+            $this->attributes['created_at'] = $now;
+            $this->attributes['updated_at'] = $now;
+        }
+
+        $id = static::connection()->insert(static::getTable(), $attributes);
+
+        if ($id > 0) {
+            $this->attributes[static::$primaryKey] = $id;
+        }
+
+        $this->exists = true;
+        $this->original = $this->attributes;
+
+        return true;
+    }
+
+    protected function performUpdate(): bool
+    {
+        $dirty = $this->getDirty();
+
+        if (empty($dirty)) {
+            return true;
+        }
+
+        if (static::$timestamps) {
+            $dirty['updated_at'] = date('Y-m-d H:i:s');
+            $this->attributes['updated_at'] = $dirty['updated_at'];
+        }
+
+        static::connection()->update(
+            static::getTable(),
+            $dirty,
+            [static::$primaryKey => $this->attributes[static::$primaryKey]]
+        );
+
+        $this->original = $this->attributes;
+
+        return true;
     }
 
     protected function studly(string $value): string

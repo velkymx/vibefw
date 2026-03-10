@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Fw\Auth;
 
-use App\Models\PersonalAccessToken;
-use App\Models\User;
 use Fw\Core\Request;
 use Fw\Core\RequestContext;
+use Fw\Model\Model;
 
 /**
  * Stateless token authentication guard.
@@ -28,7 +27,7 @@ final class TokenGuard
      *
      * Returns the authenticated user or null if authentication fails.
      */
-    public static function authenticate(Request $request): ?User
+    public static function authenticate(Request $request): ?Model
     {
         $token = $request->bearerToken();
 
@@ -42,7 +41,7 @@ final class TokenGuard
     /**
      * Authenticate using a plaintext token string.
      */
-    public static function authenticateToken(string $plainTextToken): ?User
+    public static function authenticateToken(string $plainTextToken): ?Model
     {
         $accessToken = ApiToken::find($plainTextToken);
 
@@ -78,7 +77,7 @@ final class TokenGuard
     /**
      * Get the currently authenticated user.
      */
-    public static function user(): ?User
+    public static function user(): ?Model
     {
         return self::getContextUser();
     }
@@ -86,7 +85,7 @@ final class TokenGuard
     /**
      * Get the current access token.
      */
-    public static function currentToken(): ?PersonalAccessToken
+    public static function currentToken(): ?Model
     {
         return self::getContextToken();
     }
@@ -99,6 +98,10 @@ final class TokenGuard
         $token = self::currentToken();
 
         if ($token === null) {
+            return false;
+        }
+
+        if (!method_exists($token, 'can')) {
             return false;
         }
 
@@ -124,7 +127,7 @@ final class TokenGuard
             return [];
         }
 
-        return $token->abilities;
+        return $token->abilities ?? [];
     }
 
     /**
@@ -149,7 +152,7 @@ final class TokenGuard
      *
      * Useful for testing or special authentication flows.
      */
-    public static function setUser(User $user, ?PersonalAccessToken $token = null): void
+    public static function setUser(Model $user, ?Model $token = null): void
     {
         self::setContextUser($user);
         if ($token !== null) {
@@ -171,7 +174,7 @@ final class TokenGuard
     /**
      * Get user from RequestContext (request-scoped).
      */
-    private static function getContextUser(): ?User
+    private static function getContextUser(): ?Model
     {
         $context = RequestContext::current();
         if ($context === null) {
@@ -179,13 +182,13 @@ final class TokenGuard
         }
 
         $user = $context->get(self::CONTEXT_USER_KEY)->unwrapOr(null);
-        return $user instanceof User ? $user : null;
+        return $user instanceof Model ? $user : null;
     }
 
     /**
      * Set user in RequestContext (request-scoped).
      */
-    private static function setContextUser(User $user): void
+    private static function setContextUser(Model $user): void
     {
         RequestContext::current()?->set(self::CONTEXT_USER_KEY, $user);
     }
@@ -201,7 +204,7 @@ final class TokenGuard
     /**
      * Get token from RequestContext (request-scoped).
      */
-    private static function getContextToken(): ?PersonalAccessToken
+    private static function getContextToken(): ?Model
     {
         $context = RequestContext::current();
         if ($context === null) {
@@ -209,13 +212,13 @@ final class TokenGuard
         }
 
         $token = $context->get(self::CONTEXT_TOKEN_KEY)->unwrapOr(null);
-        return $token instanceof PersonalAccessToken ? $token : null;
+        return $token instanceof Model ? $token : null;
     }
 
     /**
      * Set token in RequestContext (request-scoped).
      */
-    private static function setContextToken(PersonalAccessToken $token): void
+    private static function setContextToken(Model $token): void
     {
         RequestContext::current()?->set(self::CONTEXT_TOKEN_KEY, $token);
     }

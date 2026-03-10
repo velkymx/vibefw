@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Fw\Model;
 
-use Fw\Support\Option;
-
 /**
  * Base class for model relationships.
  *

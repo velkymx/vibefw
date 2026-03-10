@@ -1,0 +1,15 @@
+import { test, expect } from '@playwright/test';
+
+test('has title', async ({ page }) => {
+  await page.goto('/');
+
+  // Expect title to contain VibeFW
+  await expect(page).toHaveTitle(/VibeFW/);
+});
+
+test('redirects to login when unauthenticated', async ({ page }) => {
+  await page.goto('/dashboard');
+  
+  // Should redirect to login
+  await expect(page).toHaveURL(/\/login/);
+});

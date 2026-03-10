@@ -7,6 +7,7 @@ namespace Fw\Console\Commands;
 use Fw\Config\ConfigValidator;
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Throwable;
 
 /**
  * Validate configuration files against schemas.
@@ -17,9 +18,10 @@ final class ValidateConfigCommand extends Command
 
     protected string $description = 'Validate configuration files';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function handle(): int
     {
@@ -56,7 +58,7 @@ final class ValidateConfigCommand extends Command
                 }
                 $configs[$name] = $config;
                 $this->line("Loaded: config/$name.php");
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $loadErrors[] = "$name: " . $e->getMessage();
             }
         }

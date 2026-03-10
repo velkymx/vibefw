@@ -81,7 +81,7 @@ final class ConfigValidator
 
             // Enum validation
             if (isset($rules['enum']) && !in_array($value, $rules['enum'], true)) {
-                $allowed = implode(', ', array_map(fn($v) => var_export($v, true), $rules['enum']));
+                $allowed = implode(', ', array_map(fn ($v) => var_export($v, true), $rules['enum']));
                 $errors[] = "Invalid value for $name.$key. Allowed: $allowed";
             }
 
@@ -133,52 +133,6 @@ final class ConfigValidator
     }
 
     /**
-     * Validate a value's type.
-     */
-    private static function validateType(mixed $value, string $type, string $path): ?string
-    {
-        $actualType = gettype($value);
-
-        $valid = match ($type) {
-            'string' => is_string($value),
-            'int', 'integer' => is_int($value),
-            'float', 'double' => is_float($value) || is_int($value),
-            'bool', 'boolean' => is_bool($value),
-            'array' => is_array($value),
-            'null' => is_null($value),
-            'callable' => is_callable($value),
-            default => true, // Unknown type, skip validation
-        };
-
-        if (!$valid) {
-            return "$path must be of type $type, got $actualType";
-        }
-
-        return null;
-    }
-
-    /**
-     * Find similar key names for typo detection.
-     *
-     * @param array<string> $validKeys
-     */
-    private static function findSimilarKeys(string $input, array $validKeys): ?string
-    {
-        $minDistance = PHP_INT_MAX;
-        $closest = null;
-
-        foreach ($validKeys as $key) {
-            $distance = levenshtein($input, $key);
-            if ($distance < $minDistance && $distance <= 2) {
-                $minDistance = $distance;
-                $closest = $key;
-            }
-        }
-
-        return $closest;
-    }
-
-    /**
      * Get the default schemas for framework configs.
      */
     public static function registerDefaultSchemas(): void
@@ -224,5 +178,51 @@ final class ConfigValidator
             'retry_after' => ['type' => 'int', 'required' => false, 'min' => 0],
             'max_tries' => ['type' => 'int', 'required' => false, 'min' => 1],
         ]);
+    }
+
+    /**
+     * Validate a value's type.
+     */
+    private static function validateType(mixed $value, string $type, string $path): ?string
+    {
+        $actualType = gettype($value);
+
+        $valid = match ($type) {
+            'string' => is_string($value),
+            'int', 'integer' => is_int($value),
+            'float', 'double' => is_float($value) || is_int($value),
+            'bool', 'boolean' => is_bool($value),
+            'array' => is_array($value),
+            'null' => is_null($value),
+            'callable' => is_callable($value),
+            default => true, // Unknown type, skip validation
+        };
+
+        if (!$valid) {
+            return "$path must be of type $type, got $actualType";
+        }
+
+        return null;
+    }
+
+    /**
+     * Find similar key names for typo detection.
+     *
+     * @param array<string> $validKeys
+     */
+    private static function findSimilarKeys(string $input, array $validKeys): ?string
+    {
+        $minDistance = PHP_INT_MAX;
+        $closest = null;
+
+        foreach ($validKeys as $key) {
+            $distance = levenshtein($input, $key);
+            if ($distance < $minDistance && $distance <= 2) {
+                $minDistance = $distance;
+                $closest = $key;
+            }
+        }
+
+        return $closest;
     }
 }

@@ -6,9 +6,11 @@ namespace Fw\Console\Commands;
 
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Fw\Core\Env;
 use Fw\Database\Connection;
 use Fw\Database\Migration\Migrator;
-use Fw\Core\Env;
+use PDO;
+use Throwable;
 
 /**
  * Drop all tables and re-run all migrations.
@@ -19,9 +21,10 @@ final class MigrateFreshCommand extends Command
 
     protected string $description = 'Drop all tables and re-run all migrations';
 
-    public function __construct(
-        private Application $app,
-    ) {}
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+    }
 
     public function configure(): void
     {
@@ -99,7 +102,7 @@ final class MigrateFreshCommand extends Command
             }
 
             return 0;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error('Fresh migration failed: ' . $e->getMessage());
             return 1;
         }
@@ -118,7 +121,7 @@ final class MigrateFreshCommand extends Command
         switch ($db->driver) {
             case 'mysql':
                 $stmt = $pdo->query('SHOW TABLES');
-                while ($row = $stmt->fetch(\PDO::FETCH_NUM)) {
+                while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
                     $tables[] = $row[0];
                 }
                 break;
@@ -127,7 +130,7 @@ final class MigrateFreshCommand extends Command
                 $stmt = $pdo->query(
                     "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
                 );
-                while ($row = $stmt->fetch(\PDO::FETCH_NUM)) {
+                while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
                     $tables[] = $row[0];
                 }
                 break;
@@ -136,7 +139,7 @@ final class MigrateFreshCommand extends Command
                 $stmt = $pdo->query(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
                 );
-                while ($row = $stmt->fetch(\PDO::FETCH_NUM)) {
+                while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
                     $tables[] = $row[0];
                 }
                 break;

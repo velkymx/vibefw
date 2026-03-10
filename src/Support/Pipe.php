@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Fw\Support;
 
 use Closure;
+use RuntimeException;
+use Throwable;
 
 /**
  * Pipe-friendly helper functions for PHP 8.5's pipe operator (|>).
@@ -30,7 +32,7 @@ final class Pipe
      */
     public static function map(callable $fn): Closure
     {
-        return fn(mixed $value) => $fn($value);
+        return fn (mixed $value) => $fn($value);
     }
 
     /**
@@ -43,7 +45,7 @@ final class Pipe
      */
     public static function filter(callable $predicate): Closure
     {
-        return fn(mixed $value) => $predicate($value) ? $value : null;
+        return fn (mixed $value) => $predicate($value) ? $value : null;
     }
 
     /**
@@ -70,7 +72,7 @@ final class Pipe
      */
     public static function orElse(mixed $default): Closure
     {
-        return fn(mixed $value) => $value ?? $default;
+        return fn (mixed $value) => $value ?? $default;
     }
 
     /**
@@ -83,7 +85,7 @@ final class Pipe
      */
     public static function mapNullable(callable $fn): Closure
     {
-        return fn(mixed $value) => $value !== null ? $fn($value) : null;
+        return fn (mixed $value) => $value !== null ? $fn($value) : null;
     }
 
     /**
@@ -94,7 +96,7 @@ final class Pipe
      */
     public static function toOption(): Closure
     {
-        return fn(mixed $value) => Option::fromNullable($value);
+        return fn (mixed $value) => Option::fromNullable($value);
     }
 
     /**
@@ -105,7 +107,7 @@ final class Pipe
      */
     public static function toOk(): Closure
     {
-        return fn(mixed $value) => Result::ok($value);
+        return fn (mixed $value) => Result::ok($value);
     }
 
     /**
@@ -116,7 +118,7 @@ final class Pipe
      */
     public static function collect(): Closure
     {
-        return fn(array $items) => new \Fw\Model\Collection($items);
+        return fn (array $items) => new \Fw\Model\Collection($items);
     }
 
     /**
@@ -144,8 +146,8 @@ final class Pipe
      */
     public static function pluck(string $key): Closure
     {
-        return fn(array $items) => array_map(
-            fn($item) => is_array($item) ? ($item[$key] ?? null) : ($item->$key ?? null),
+        return fn (array $items) => array_map(
+            fn ($item) => is_array($item) ? ($item[$key] ?? null) : ($item->$key ?? null),
             $items
         );
     }
@@ -158,7 +160,7 @@ final class Pipe
      */
     public static function filterArray(callable $predicate): Closure
     {
-        return fn(array $items) => array_values(array_filter($items, $predicate));
+        return fn (array $items) => array_values(array_filter($items, $predicate));
     }
 
     /**
@@ -186,7 +188,7 @@ final class Pipe
      */
     public static function take(int $count): Closure
     {
-        return fn(array $items) => array_slice($items, 0, $count);
+        return fn (array $items) => array_slice($items, 0, $count);
     }
 
     /**
@@ -262,7 +264,7 @@ final class Pipe
             if ($label) {
                 echo "[{$label}] ";
             }
-            var_dump($value);
+            var_dump($value); // @nosecurity
             return $value;
         };
     }
@@ -291,15 +293,15 @@ final class Pipe
      * Throw an exception if condition is met.
      *
      * @param callable(mixed): bool $predicate
-     * @param string|\Throwable $exception
+     * @param string|Throwable $exception
      * @return Closure(mixed): mixed
      */
-    public static function throwIf(callable $predicate, string|\Throwable $exception): Closure
+    public static function throwIf(callable $predicate, string|Throwable $exception): Closure
     {
         return function (mixed $value) use ($predicate, $exception) {
             if ($predicate($value)) {
                 if (is_string($exception)) {
-                    throw new \RuntimeException($exception);
+                    throw new RuntimeException($exception);
                 }
                 throw $exception;
             }

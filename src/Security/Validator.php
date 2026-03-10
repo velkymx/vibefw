@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace Fw\Security;
 
+use DateTimeImmutable;
+use Exception;
+use ValueError;
+
 final class Validator
 {
-    private array $data;
-    private array $rules;
-    private array $errors = [];
-    private array $validated = [];
-    private bool $throwOnFailure = false;
-
     private const array MESSAGES = [
         'required' => 'The :field field is required.',
         'email' => 'The :field field must be a valid email address.',
@@ -41,6 +39,16 @@ final class Validator
         'mimes' => 'The :field field must be a file of type: :param.',
         'size' => 'The :field field must be :param kilobytes.',
     ];
+
+    private array $data;
+
+    private array $rules;
+
+    private array $errors = [];
+
+    private array $validated = [];
+
+    private bool $throwOnFailure = false;
 
     public function __construct(array $data, array $rules)
     {
@@ -98,6 +106,45 @@ final class Validator
     public function passes(): bool
     {
         return $this->validate();
+    }
+
+    public function errors(): array
+    {
+        return $this->errors;
+    }
+
+    public function firstError(?string $field = null): ?string
+    {
+        if ($field !== null) {
+            return $this->errors[$field][0] ?? null;
+        }
+
+        foreach ($this->errors as $errors) {
+            return $errors[0] ?? null;
+        }
+
+        return null;
+    }
+
+    public function allErrors(): array
+    {
+        $all = [];
+
+        foreach ($this->errors as $errors) {
+            $all = array_merge($all, $errors);
+        }
+
+        return $all;
+    }
+
+    public function validated(): array
+    {
+        return $this->validated;
+    }
+
+    public function hasError(string $field): bool
+    {
+        return isset($this->errors[$field]);
     }
 
     private function validateField(string $field, string|array $rules): void
@@ -178,11 +225,9 @@ final class Validator
             return false;
         }
 
-        if (is_array($value) && empty($value)) {
-            return false;
-        }
+        return ! (is_array($value) && empty($value))
 
-        return true;
+        ;
     }
 
     private function validateEmail(mixed $value): bool
@@ -192,7 +237,7 @@ final class Validator
             try {
                 filter_var($value, FILTER_VALIDATE_EMAIL, FILTER_FLAG_THROW_ON_FAILURE);
                 return true;
-            } catch (\ValueError) {
+            } catch (ValueError) {
                 return false;
             }
         }
@@ -207,7 +252,7 @@ final class Validator
             try {
                 filter_var($value, FILTER_VALIDATE_URL, FILTER_FLAG_THROW_ON_FAILURE);
                 return true;
-            } catch (\ValueError) {
+            } catch (ValueError) {
                 return false;
             }
         }
@@ -281,7 +326,7 @@ final class Validator
             try {
                 filter_var($value, FILTER_VALIDATE_INT, FILTER_FLAG_THROW_ON_FAILURE);
                 return true;
-            } catch (\ValueError) {
+            } catch (ValueError) {
                 return false;
             }
         }
@@ -291,12 +336,13 @@ final class Validator
 
     private function validateAlpha(mixed $value): bool
     {
-        return is_string($value) && preg_match('/^[\pL\pM]+$/u', $value);
+        // Length guard prevents ReDoS with malformed UTF-8 sequences
+        return is_string($value) && strlen($value) <= 65535 && preg_match('/^[\pL\pM]+$/u', $value) === 1;
     }
 
     private function validateAlphanumeric(mixed $value): bool
     {
-        return is_string($value) && preg_match('/^[\pL\pM\pN]+$/u', $value);
+        return is_string($value) && strlen($value) <= 65535 && preg_match('/^[\pL\pM\pN]+$/u', $value) === 1;
     }
 
     private function validateRegex(mixed $value, ?string $param): bool
@@ -305,7 +351,15 @@ final class Validator
             return false;
         }
 
-        return preg_match($param, $value) > 0;
+        // Validate the pattern itself before applying it.
+        // Suppress warnings from invalid regex and check for PCRE errors.
+        $result = @preg_match($param, $value);
+        if ($result === false) {
+            // Invalid regex pattern — treat as validation failure
+            return false;
+        }
+
+        return $result > 0;
     }
 
     private function validateIn(mixed $value, ?string $param): bool
@@ -365,7 +419,7 @@ final class Validator
      * Uses DateTimeImmutable instead of deprecated strtotime() for
      * better type safety and forward compatibility.
      */
-    private function parseDate(string $value): ?\DateTimeImmutable
+    private function parseDate(string $value): ?DateTimeImmutable
     {
         // Try common formats first for explicit parsing
         $formats = [
@@ -379,7 +433,7 @@ final class Validator
         ];
 
         foreach ($formats as $format) {
-            $date = \DateTimeImmutable::createFromFormat($format, $value);
+            $date = DateTimeImmutable::createFromFormat($format, $value);
             if ($date !== false) {
                 return $date;
             }
@@ -387,8 +441,8 @@ final class Validator
 
         // Fallback to natural language parsing
         try {
-            return new \DateTimeImmutable($value);
-        } catch (\Exception) {
+            return new DateTimeImmutable($value);
+        } catch (Exception) {
             return null;
         }
     }
@@ -411,44 +465,5 @@ final class Validator
     private function validateDifferent(mixed $value, ?string $param): bool
     {
         return $value !== ($this->data[$param] ?? null);
-    }
-
-    public function errors(): array
-    {
-        return $this->errors;
-    }
-
-    public function firstError(?string $field = null): ?string
-    {
-        if ($field !== null) {
-            return $this->errors[$field][0] ?? null;
-        }
-
-        foreach ($this->errors as $errors) {
-            return $errors[0] ?? null;
-        }
-
-        return null;
-    }
-
-    public function allErrors(): array
-    {
-        $all = [];
-
-        foreach ($this->errors as $errors) {
-            $all = array_merge($all, $errors);
-        }
-
-        return $all;
-    }
-
-    public function validated(): array
-    {
-        return $this->validated;
-    }
-
-    public function hasError(string $field): bool
-    {
-        return isset($this->errors[$field]);
     }
 }

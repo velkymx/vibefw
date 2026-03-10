@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Fw\Core;
 
+use RuntimeException;
+
 /**
  * Exception thrown when no route matches the request.
  */
-final class RouteNotFound extends \RuntimeException
+final class RouteNotFound extends RuntimeException
 {
     public function __construct(
         public readonly string $method,

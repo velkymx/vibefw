@@ -12,6 +12,85 @@ namespace Fw\Lifecycle;
  */
 enum Hook: string
 {
+    /**
+     * Get all hooks in lifecycle order.
+     *
+     * @return array<Hook>
+     */
+    public static function inOrder(): array
+    {
+        return [
+            self::BOOTING,
+            self::BOOTED,
+            self::BEFORE_REQUEST,
+            self::AFTER_REQUEST,
+            self::BEFORE_FETCH,
+            self::FETCH,
+            self::AFTER_FETCH,
+            self::BEFORE_RESPONSE,
+            self::AFTER_RESPONSE,
+        ];
+    }
+
+    /**
+     * Get the method name corresponding to this hook.
+     */
+    public function getMethodName(): string
+    {
+        return $this->value;
+    }
+
+    /**
+     * Check if this hook is in the initialization phase.
+     */
+    public function isInitializationHook(): bool
+    {
+        return match ($this) {
+            self::BOOTING, self::BOOTED => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Check if this hook is in the request phase.
+     */
+    public function isRequestHook(): bool
+    {
+        return match ($this) {
+            self::BEFORE_REQUEST, self::AFTER_REQUEST => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Check if this hook is in the data phase.
+     */
+    public function isDataHook(): bool
+    {
+        return match ($this) {
+            self::BEFORE_FETCH, self::FETCH, self::AFTER_FETCH => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Check if this hook is in the response phase.
+     */
+    public function isResponseHook(): bool
+    {
+        return match ($this) {
+            self::BEFORE_RESPONSE, self::AFTER_RESPONSE => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Check if this hook can cause Fiber suspension.
+     */
+    public function canSuspend(): bool
+    {
+        return $this === self::FETCH;
+    }
     // ========================================
     // INITIALIZATION HOOKS
     // ========================================
@@ -91,84 +170,4 @@ enum Hook: string
      * Called when an exception occurs during lifecycle.
      */
     case ERROR = 'error';
-
-    /**
-     * Get the method name corresponding to this hook.
-     */
-    public function getMethodName(): string
-    {
-        return $this->value;
-    }
-
-    /**
-     * Check if this hook is in the initialization phase.
-     */
-    public function isInitializationHook(): bool
-    {
-        return match ($this) {
-            self::BOOTING, self::BOOTED => true,
-            default => false,
-        };
-    }
-
-    /**
-     * Check if this hook is in the request phase.
-     */
-    public function isRequestHook(): bool
-    {
-        return match ($this) {
-            self::BEFORE_REQUEST, self::AFTER_REQUEST => true,
-            default => false,
-        };
-    }
-
-    /**
-     * Check if this hook is in the data phase.
-     */
-    public function isDataHook(): bool
-    {
-        return match ($this) {
-            self::BEFORE_FETCH, self::FETCH, self::AFTER_FETCH => true,
-            default => false,
-        };
-    }
-
-    /**
-     * Check if this hook is in the response phase.
-     */
-    public function isResponseHook(): bool
-    {
-        return match ($this) {
-            self::BEFORE_RESPONSE, self::AFTER_RESPONSE => true,
-            default => false,
-        };
-    }
-
-    /**
-     * Check if this hook can cause Fiber suspension.
-     */
-    public function canSuspend(): bool
-    {
-        return $this === self::FETCH;
-    }
-
-    /**
-     * Get all hooks in lifecycle order.
-     *
-     * @return array<Hook>
-     */
-    public static function inOrder(): array
-    {
-        return [
-            self::BOOTING,
-            self::BOOTED,
-            self::BEFORE_REQUEST,
-            self::AFTER_REQUEST,
-            self::BEFORE_FETCH,
-            self::FETCH,
-            self::AFTER_FETCH,
-            self::BEFORE_RESPONSE,
-            self::AFTER_RESPONSE,
-        ];
-    }
 }

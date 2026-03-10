@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Fw\Providers;
 
 use Fw\Core\ServiceProvider;
-use Fw\Queue\Queue;
-use Fw\Queue\Worker;
-use Fw\Queue\SyncDriver;
+use Fw\Database\Connection;
 use Fw\Queue\DatabaseDriver;
 use Fw\Queue\FileDriver;
-use Fw\Database\Connection;
+use Fw\Queue\Queue;
+use Fw\Queue\SyncDriver;
+use Fw\Queue\Worker;
+use InvalidArgumentException;
 
 final class QueueServiceProvider extends ServiceProvider
 {
@@ -27,7 +28,7 @@ final class QueueServiceProvider extends ServiceProvider
                     $config['table'] ?? 'jobs'
                 ),
                 'file' => new FileDriver($config['path'] ?? BASE_PATH . '/storage/queue'),
-                default => throw new \InvalidArgumentException("Unknown queue driver: $driverType"),
+                default => throw new InvalidArgumentException("Unknown queue driver: $driverType"),
             };
 
             return new Queue($driver);
