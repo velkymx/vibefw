@@ -38,13 +38,13 @@ final class Container
      * Uses WeakMap<Fiber, array> so instances are automatically GC'd when the
      * Fiber is collected, preventing spl_object_id reuse from leaking state
      * between fibers and avoiding memory accumulation in worker mode.
-     * @var WeakMap<Fiber, array<class-string, object>>|null
+     * @var WeakMap<object, array<string, object>>|null
      */
     private ?WeakMap $fiberInstances = null;
 
     /**
      * Singleton instances for the global (non-Fiber) context.
-     * @var array<class-string, object>
+     * @var array<string, object>
      */
     private array $mainInstances = [];
 
@@ -386,9 +386,6 @@ final class Container
         return fn (string $class) => $this->get($class);
     }
 
-    /**
-     * @param class-string $abstract
-     */
     private function getFiberInstance(string $abstract): ?object
     {
         $fiber = Fiber::getCurrent();
@@ -401,18 +398,19 @@ final class Container
         return $this->mainInstances[$abstract] ?? null;
     }
 
-    /**
-     * @param class-string $abstract
-     */
     private function setFiberInstance(string $abstract, object $instance): void
     {
         $fiber = Fiber::getCurrent();
         if ($fiber !== null) {
-            $this->fiberInstances ??= new WeakMap();
+            if ($this->fiberInstances === null) {
+                /** @var WeakMap<object, array<string, object>> $weakMap */
+                $weakMap = new WeakMap();
+                $this->fiberInstances = $weakMap;
+            }
             if (!isset($this->fiberInstances[$fiber])) {
                 $this->fiberInstances[$fiber] = [];
             }
-            /** @var array<class-string, object> $data */
+            /** @var array<string, object> $data */
             $data = $this->fiberInstances[$fiber];
             $data[$abstract] = $instance;
             $this->fiberInstances[$fiber] = $data;
@@ -421,9 +419,6 @@ final class Container
         }
     }
 
-    /**
-     * @param class-string $abstract
-     */
     private function hasFiberInstance(string $abstract): bool
     {
         return $this->getFiberInstance($abstract) !== null;
