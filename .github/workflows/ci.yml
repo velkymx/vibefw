@@ -104,6 +104,7 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: mbstring, pdo, pdo_mysql, pdo_sqlite, xdebug
           coverage: xdebug
+          ini-values: xdebug.mode=coverage
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
@@ -172,6 +173,7 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: mbstring, pdo, pdo_sqlite, xdebug
           coverage: xdebug
+          ini-values: xdebug.mode=coverage
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
