@@ -44,7 +44,7 @@ jobs:
         run: vendor/bin/phpstan analyse --error-format=github
 
       - name: Run PHP-CS-Fixer
-        run: vendor/bin/php-cs-fixer fix --dry-run --diff --format=github
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --format=txt
 
   # ============================================
   # Security Scan
