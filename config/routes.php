@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Fw\Core\Router;
+use Fw\Auth\Auth;
 use Fw\Core\Request;
 use Fw\Core\Response;
-use Fw\Auth\Auth;
+use Fw\Core\Router;
 
 return function (Router $router): void {
     $router->group('/api', function (Router $router): void {
@@ -17,7 +17,7 @@ return function (Router $router): void {
 
         // User (protected)
         $router->get('/user', function (Request $request): Response {
-            return (new Response(json_encode(Auth::user(), JSON_THROW_ON_ERROR), 200))
+            return new Response(json_encode(Auth::user(), JSON_THROW_ON_ERROR), 200)
                 ->header('Content-Type', 'application/json');
         })->middleware('auth:api');
 
