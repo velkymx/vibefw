@@ -264,7 +264,7 @@ final class Pipe
             if ($label) {
                 echo "[{$label}] ";
             }
-            var_dump($value);
+            var_dump($value); // @nosecurity
             return $value;
         };
     }

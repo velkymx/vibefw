@@ -58,7 +58,7 @@
         "post-create-project-cmd": [
             "@php scripts/setup.php"
         ],
-        "test": "phpunit",
+        "test": "phpunit --no-coverage",
         "test:unit": "phpunit --testsuite=unit",
         "test:feature": "phpunit --testsuite=feature",
         "test:architecture": "phpunit --testsuite=architecture",

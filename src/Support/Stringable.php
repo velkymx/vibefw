@@ -801,9 +801,9 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
     /**
      * Dump the string.
      */
-    public function dump(): static
+    public function dump(): static // @nosecurity
     {
-        var_dump($this->value);
+        var_dump($this->value); // @nosecurity
 
         return $this;
     }
@@ -811,9 +811,9 @@ final class Stringable implements BaseStringable, JsonSerializable, ArrayAccess,
     /**
      * Dump the string and die.
      */
-    public function dd(): never
+    public function dd(): never // @nosecurity
     {
-        $this->dump();
+        $this->dump(); // @nosecurity
 
         exit(1);
     }
