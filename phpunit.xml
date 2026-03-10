@@ -38,7 +38,7 @@
         </exclude>
     </source>
 
-    <coverage processUncoveredFiles="true">
+    <coverage>
         <report>
             <html outputDirectory="storage/coverage"/>
             <clover outputFile="storage/coverage/clover.xml"/>
