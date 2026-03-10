@@ -386,6 +386,9 @@ final class Container
         return fn (string $class) => $this->get($class);
     }
 
+    /**
+     * @param class-string $abstract
+     */
     private function getFiberInstance(string $abstract): ?object
     {
         $fiber = Fiber::getCurrent();
@@ -398,6 +401,9 @@ final class Container
         return $this->mainInstances[$abstract] ?? null;
     }
 
+    /**
+     * @param class-string $abstract
+     */
     private function setFiberInstance(string $abstract, object $instance): void
     {
         $fiber = Fiber::getCurrent();
@@ -406,6 +412,7 @@ final class Container
             if (!isset($this->fiberInstances[$fiber])) {
                 $this->fiberInstances[$fiber] = [];
             }
+            /** @var array<class-string, object> $data */
             $data = $this->fiberInstances[$fiber];
             $data[$abstract] = $instance;
             $this->fiberInstances[$fiber] = $data;
@@ -414,6 +421,9 @@ final class Container
         }
     }
 
+    /**
+     * @param class-string $abstract
+     */
     private function hasFiberInstance(string $abstract): bool
     {
         return $this->getFiberInstance($abstract) !== null;

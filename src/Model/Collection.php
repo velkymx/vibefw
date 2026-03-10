@@ -103,7 +103,12 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
 
         // PHP 8.5 has array_first(), fallback for earlier versions
         if (function_exists('array_first')) {
-            return Option::fromNullable(array_first($this->items));
+            /** @var T|null $first */
+            $first = array_first($this->items);
+            /** @var Option<T> $option */
+            $option = $first !== null ? Option::some($first) : Option::none();
+
+            return $option;
         }
 
         $items = array_values($this->items);
@@ -123,7 +128,12 @@ final class Collection implements ArrayAccess, Countable, IteratorAggregate, Jso
 
         // PHP 8.5 has array_last(), fallback for earlier versions
         if (function_exists('array_last')) {
-            return Option::fromNullable(array_last($this->items));
+            /** @var T|null $last */
+            $last = array_last($this->items);
+            /** @var Option<T> $option */
+            $option = $last !== null ? Option::some($last) : Option::none();
+
+            return $option;
         }
 
         $items = array_values($this->items);
