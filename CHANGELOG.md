@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.19] - 2026-03-09
+
+### Fixed (Static Analysis)
+
+- **`Container` PHPStan level 8 failures** — `WeakMap` generic annotation used `array<class-string, object>` for fiber-scoped instances, causing PHPStan to require `class-string` at all call sites. Changed to `array<string, object>` to correctly reflect that the container supports arbitrary string binding keys, not only class names.
+
+### Fixed (Security / CLI)
+
+- **`SecurityCheckCommand::fileperms()` called without `file_exists()` guard** — On fresh projects where `.env` doesn't yet exist, `fileperms()` returned `false`, producing a misleading permissions warning. Now skips the check gracefully with a warning.
+- **`SecurityCheckCommand::glob()` result not guarded against `false`** — `glob()` can return `false` on OS-level failure. Iterating over `false` throws a `TypeError` under `strict_types`. Guarded with `?: []`.
+- **`SecurityCheckCommand::file_get_contents()` result not checked** — Passing `false` to `preg_match()` under `strict_types` throws a `TypeError`. Unreadable config files are now skipped with `continue`.
+- **`DevCommand::passthru()` shell argument injection** — `$frontendDir` was interpolated directly into shell strings without `escapeshellarg()`. Paths with spaces or shell metacharacters would break or be exploitable. All `passthru()` calls now use `escapeshellarg()`.
+- **`DevCommand::die()` on fork failure** — `die("Could not fork")` bypassed the framework's error handling and killed the process abruptly. Replaced with `$this->error()` + `return`.
+- **`SyncEnvCommand` value not trimmed** — `.env` values were written to `frontend/.env.local` with trailing whitespace (including `\r` on Windows) and surrounding quotes intact (e.g. `APP_NAME="My App"` → `VITE_APP_NAME="My App"` with embedded quotes). Values are now fully trimmed and unquoted.
+- **`Command::ask()` called with hidden-input argument that doesn't exist** — `ScaffoldSpaCommand::setupDatabase()` passed a third `true` argument to `ask()` to suppress terminal echo for the database password, but `ask()` only accepts two parameters. Added a new `secret()` method to the `Command` base class that uses `stty -echo` on POSIX systems for true hidden input. `ScaffoldSpaCommand` now uses `secret()`.
+- **`make:spa` CORS not configured for Vite dev server** — `updateConfiguration()` read `config/middleware.php` into a variable but never wrote anything back, leaving CORS silently unconfigured. Now writes `CORS_ALLOWED_ORIGINS` to `.env` and `config/app.php` exposes a `cors.allowed_origins` array read from that variable. `CorsMiddleware` already reads `$app->config('cors')`, so no middleware changes were needed.
+- **`make:spa --test` incomplete verification** — `runVerification()` only checked 3 of the 6 migration stubs installed by `setupDatabase()`. Migrations `0003`, `0004`, and `0007` were installed but never verified, allowing `--test` to pass with missing files. All 6 are now checked.
+
+### Fixed (Correctness)
+
+- **`Hash::make()` hardcoded `PASSWORD_BCRYPT`** — Using `PASSWORD_DEFAULT` ensures the algorithm automatically upgrades as PHP evolves. Added optional `$options` array for cost tuning and a `needsRehash()` static method.
+
 ## [2.1.18] - 2026-03-09
 
 ### Changed (Architecture)
