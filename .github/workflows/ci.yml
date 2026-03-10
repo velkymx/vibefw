@@ -104,7 +104,7 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: mbstring, pdo, pdo_mysql, pdo_sqlite, xdebug
           coverage: xdebug
-          ini-values: xdebug.mode=coverage
+          ini-values: xdebug.mode=coverage,xdebug.enabled=1
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
@@ -117,7 +117,7 @@ jobs:
           mkdir -p storage/coverage
 
       - name: Run tests with coverage
-        run: vendor/bin/phpunit
+        run: vendor/bin/phpunit --coverage-clover=storage/coverage/clover.xml --coverage-text=storage/coverage/coverage.txt
         env:
           APP_ENV: testing
           XDEBUG_MODE: coverage
@@ -175,7 +175,7 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: mbstring, pdo, pdo_sqlite, xdebug
           coverage: xdebug
-          ini-values: xdebug.mode=coverage
+          ini-values: xdebug.mode=coverage,xdebug.enabled=1
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
