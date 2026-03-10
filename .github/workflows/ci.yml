@@ -43,11 +43,8 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --error-format=github
 
-      - name: Install cs2pr
-        run: curl -LSs https://cs2pr.staabm.de/setup/cs2pr.phar -o /usr/local/bin/cs2pr && chmod +x /usr/local/bin/cs2pr
-
       - name: Run PHP-CS-Fixer
-        run: vendor/bin/php-cs-fixer fix --dry-run --diff --format=checkstyle | cs2pr
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --format=github
 
   # ============================================
   # Security Scan
