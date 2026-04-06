@@ -25,7 +25,6 @@ final class ModelMetadata
     /**
      * @param class-string<Model> $class
      * @param array<string> $fillable
-     * @param array<string> $guarded
      * @param array<string, string> $casts
      */
     public function __construct(
@@ -38,7 +37,6 @@ final class ModelMetadata
         public readonly string $createdAtColumn,
         public readonly string $updatedAtColumn,
         public readonly array $fillable,
-        public readonly array $guarded,
         public readonly array $casts,
     ) {
         // Auto-detect property types via reflection
@@ -50,18 +48,14 @@ final class ModelMetadata
 
     /**
      * Check if an attribute is fillable.
+     *
+     * Only attributes explicitly listed in $fillable are mass-assignable.
      */
     public function isFillable(string $key): bool
     {
         $key = Str::snake($key);
 
-        // If fillable is defined and non-empty, key must be in it
-        if (!empty($this->fillable)) {
-            return in_array($key, $this->fillable, true);
-        }
-
-        // Otherwise, check if it's not guarded
-        return !in_array($key, $this->guarded, true);
+        return in_array($key, $this->fillable, true);
     }
 
     /**

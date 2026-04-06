@@ -14,7 +14,6 @@ use Fw\Events\EventDispatcher;
 use Fw\Lifecycle\Component;
 use Fw\Lifecycle\RequestFiber;
 use Fw\Middleware\Pipeline;
-use Fw\Model\Model;
 use RuntimeException;
 use Throwable;
 
@@ -117,8 +116,6 @@ final class HttpKernel
         ApiToken::resetConfig();
         EmailVerification::resetConnection();
         PasswordReset::resetConnection();
-        Model::resetStrictMode();
-
         // Also flush the fiber-local container instances to prevent memory accumulation
         $this->container->flush();
     }

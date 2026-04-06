@@ -90,11 +90,6 @@ abstract class Model implements JsonSerializable
     protected static array $fillable = [];
 
     /**
-     * The attributes that are NOT mass assignable.
-     */
-    protected static array $guarded = ['id'];
-
-    /**
      * Attributes that should be hidden from toArray() and JSON serialisation.
      *
      * @example protected static array $hidden = ['password', 'remember_token'];
@@ -102,23 +97,10 @@ abstract class Model implements JsonSerializable
     protected static array $hidden = [];
 
     /**
-     * Require explicit $fillable definition (strict mode).
-     * When true, models without $fillable will reject all mass assignment.
-     */
-    protected static bool $strictFillable = false;
-
-    /**
      * Attribute casting rules. Maps column => class or type.
      * If empty, auto-detected from property types.
      */
     protected static array $casts = [];
-
-    /**
-     * Global strict mode for all models (set during bootstrap).
-     * Defaults to true. Reset to true between requests via resetStrictMode()
-     * to prevent accidental leaks in worker mode.
-     */
-    private static bool $globalStrictMode = true;
 
     /**
      * Cached model metadata (per class).
@@ -208,45 +190,6 @@ abstract class Model implements JsonSerializable
             self::$metadataCache = [];
             self::$metadataInitializing = [];
         }
-    }
-
-    /**
-     * Enable strict fillable mode globally.
-     *
-     * In strict mode, models without explicit $fillable definition
-     * will reject ALL mass assignment attempts. This prevents
-     * accidental mass assignment vulnerabilities.
-     *
-     * Recommended: Enable in bootstrap for production.
-     */
-    public static function enableStrictMode(): void
-    {
-        self::$globalStrictMode = true;
-    }
-
-    /**
-     * Disable strict fillable mode globally.
-     */
-    public static function disableStrictMode(): void
-    {
-        self::$globalStrictMode = false;
-    }
-
-    /**
-     * Reset strict mode to default (true) between requests in worker mode.
-     * Called by HttpKernel::resetState().
-     */
-    public static function resetStrictMode(): void
-    {
-        self::$globalStrictMode = true;
-    }
-
-    /**
-     * Check if strict mode is enabled.
-     */
-    public static function isStrictMode(): bool
-    {
-        return self::$globalStrictMode;
     }
 
     // ========================================
@@ -664,7 +607,6 @@ abstract class Model implements JsonSerializable
                 createdAtColumn: static::$createdAtColumn,
                 updatedAtColumn: static::$updatedAtColumn,
                 fillable: static::$fillable,
-                guarded: static::$guarded,
                 casts: static::$casts,
             );
 
@@ -710,9 +652,9 @@ abstract class Model implements JsonSerializable
             }
         }
 
-        // In strict mode, reject if any non-fillable attributes were passed
+        // Reject if any non-fillable attributes were passed
         // Check BEFORE making any changes to model state
-        if (!empty($rejected) && $this->shouldEnforceStrictFillable()) {
+        if (!empty($rejected)) {
             throw MassAssignmentException::forAttributes(static::class, $rejected);
         }
 
@@ -963,19 +905,6 @@ abstract class Model implements JsonSerializable
         return $this->toArray();
     }
 
-    /**
-     * Check if strict fillable should be enforced for this model.
-     */
-    protected function shouldEnforceStrictFillable(): bool
-    {
-        // Model-level strict mode takes precedence
-        if (static::$strictFillable) {
-            return true;
-        }
-
-        // Global strict mode
-        return self::$globalStrictMode;
-    }
 
     /**
      * Cast an attribute to the appropriate type.
