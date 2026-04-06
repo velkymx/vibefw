@@ -9,21 +9,24 @@ use ReflectionClass;
 use ReflectionProperty;
 
 /**
- * Base class for form request validation with PHP 8 attributes.
+ * Base class for form request validation with typed rule objects.
  *
- * Extend this class to create typed, validated request objects:
+ * Extend this class and implement rules() to define validation:
  *
  *     class CreatePostRequest extends FormRequest
  *     {
- *         #[Required]
- *         #[Max(255)]
  *         public string $title;
- *
- *         #[Required]
  *         public string $body;
+ *         public string $status;
  *
- *         #[In(['draft', 'published'])]
- *         public string $status = 'draft';
+ *         public function rules(): array
+ *         {
+ *             return [
+ *                 'title'  => [new Required, new MinLength(3), new MaxLength(255)],
+ *                 'body'   => [new Required],
+ *                 'status' => [new InEnum(Status::class)],
+ *             ];
+ *         }
  *     }
  *
  * Usage in controller:
@@ -33,11 +36,16 @@ use ReflectionProperty;
  *         $validated = CreatePostRequest::fromRequest($request);
  *         // $validated->title, $validated->body, $validated->status are typed
  *     }
- *
- * The validation happens automatically and throws ValidationException if it fails.
  */
 abstract class FormRequest
 {
+    /**
+     * Define validation rules using typed rule objects.
+     *
+     * @return array<string, list<Rule>>
+     */
+    abstract public function rules(): array;
+
     /**
      * Create a validated request from HTTP request data.
      *
@@ -56,17 +64,16 @@ abstract class FormRequest
      */
     public static function fromArray(array $data): static
     {
-        $validator = new Validator();
-        $validated = $validator->validateClass($data, static::class);
-
         $instance = new static();
+        $validator = new Validator();
+        $validated = $validator->validate($data, $instance->rules());
+
         foreach ($validated as $key => $value) {
             if (property_exists($instance, $key)) {
                 $instance->{$key} = $value;
             }
         }
 
-        // Run custom validation logic
         $instance->afterValidation();
 
         return $instance;
@@ -76,7 +83,6 @@ abstract class FormRequest
      * Try to create a validated request, returning null on failure.
      *
      * @param array<string, mixed> $data
-     * @return static|null
      */
     public static function tryFromArray(array $data): ?static
     {
@@ -131,7 +137,7 @@ abstract class FormRequest
     /**
      * Override to add custom validation logic.
      *
-     * This is called after attribute-based validation passes.
+     * Called after rule-based validation passes.
      * Throw ValidationException to indicate custom validation failure.
      *
      * @throws ValidationException
