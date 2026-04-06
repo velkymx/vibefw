@@ -11,12 +11,9 @@ use Fw\Bus\Query;
 use Fw\Bus\QueryBus;
 use Fw\Events\Event;
 use Fw\Events\EventDispatcher;
-use Fw\Support\Arr;
 use Fw\Support\Option;
 use Fw\Support\Result;
-use Fw\Support\Str;
 use RuntimeException;
-use Throwable;
 
 /**
  * Base Controller for MVC applications.
@@ -261,114 +258,6 @@ abstract class Controller
         return $deferred->await();
     }
 
-    /**
-     * Execute an async database query.
-     *
-     * @return array<array<string, mixed>>
-     */
-    protected function dbQuery(string $sql, array $params = []): array
-    {
-        if ($this->app->db === null) {
-            throw new RuntimeException('Database not configured');
-        }
-
-        $asyncDb = new \Fw\Async\AsyncDatabase($this->app->db);
-        return $this->await($asyncDb->fetchAll($sql, $params));
-    }
-
-    /**
-     * Execute an async database query for a single row.
-     *
-     * @return Option<array<string, mixed>>
-     */
-    protected function dbQueryOne(string $sql, array $params = []): Option
-    {
-        if ($this->app->db === null) {
-            return Option::none();
-        }
-
-        $asyncDb = new \Fw\Async\AsyncDatabase($this->app->db);
-        $result = $this->await($asyncDb->fetchOne($sql, $params));
-
-        return Option::fromNullable($result);
-    }
-
-    // ========================================
-    // INPUT HELPERS (using Arr/Str)
-    // ========================================
-
-    /**
-     * Get validated input from request using dot notation.
-     */
-    protected function input(Request $request, string $key, mixed $default = null): mixed
-    {
-        return $request->input($key, $default);
-    }
-
-    /**
-     * Get only specific keys from input.
-     *
-     * @param array<string> $keys
-     * @return array<string, mixed>
-     */
-    protected function only(Request $request, array $keys): array
-    {
-        return $request->only($keys);
-    }
-
-    /**
-     * Get all input except specific keys.
-     *
-     * @param array<string> $keys
-     * @return array<string, mixed>
-     */
-    protected function except(Request $request, array $keys): array
-    {
-        return $request->except($keys);
-    }
-
-    /**
-     * Check if input has a key.
-     */
-    protected function has(Request $request, string $key): bool
-    {
-        return $request->has($key);
-    }
-
-    // ========================================
-    // VALIDATION HELPERS
-    // ========================================
-
-    /**
-     * Validate input and return Result.
-     *
-     * @param array<string, string> $rules Simple validation rules
-     * @return Result<array<string, mixed>, array<string, string>>
-     */
-    protected function validate(Request $request, array $rules): Result
-    {
-        $data = $request->all();
-        $errors = [];
-
-        foreach ($rules as $field => $rule) {
-            $value = Arr::get($data, $field);
-            $ruleList = explode('|', $rule);
-
-            foreach ($ruleList as $r) {
-                $error = $this->checkRule($field, $value, $r);
-                if ($error !== null) {
-                    $errors[$field] = $error;
-                    break;
-                }
-            }
-        }
-
-        if (!empty($errors)) {
-            return Result::err($errors);
-        }
-
-        return Result::ok(Arr::only($data, array_keys($rules)));
-    }
 
     // ========================================
     // UTILITY HELPERS
@@ -392,34 +281,4 @@ abstract class Controller
         return $this->user()->isSome();
     }
 
-    /**
-     * Abort with an exception.
-     */
-    protected function abort(int $status, string $message = ''): never
-    {
-        throw new RuntimeException($message ?: "HTTP Error {$status}", $status);
-    }
-
-    /**
-     * Check a single validation rule.
-     */
-    private function checkRule(string $field, mixed $value, string $rule): ?string
-    {
-        $parts = explode(':', $rule);
-        $ruleName = $parts[0];
-        $param = $parts[1] ?? null;
-
-        return match ($ruleName) {
-            'required' => $value === null || $value === '' ? "{$field} is required" : null,
-            'email' => !filter_var($value, FILTER_VALIDATE_EMAIL) ? "{$field} must be a valid email" : null,
-            'min' => strlen((string) $value) < (int) $param ? "{$field} must be at least {$param} characters" : null,
-            'max' => strlen((string) $value) > (int) $param ? "{$field} must be at most {$param} characters" : null,
-            'numeric' => !is_numeric($value) ? "{$field} must be numeric" : null,
-            'alpha' => !ctype_alpha((string) $value) ? "{$field} must contain only letters" : null,
-            'alphanumeric' => !ctype_alnum((string) $value) ? "{$field} must contain only letters and numbers" : null,
-            'url' => !filter_var($value, FILTER_VALIDATE_URL) ? "{$field} must be a valid URL" : null,
-            'uuid' => !Str::isUuid((string) $value) ? "{$field} must be a valid UUID" : null,
-            default => null,
-        };
-    }
 }
