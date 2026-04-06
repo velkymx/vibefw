@@ -241,6 +241,7 @@ final readonly class Result
      * @param callable(T): U $fn
      * @return Result<U, E>
      */
+    #[\NoDiscard]
     public function map(callable $fn): self
     {
         if (!$this->success) {
@@ -257,6 +258,7 @@ final readonly class Result
      * @param callable(E): F $fn
      * @return Result<T, F>
      */
+    #[\NoDiscard]
     public function mapErr(callable $fn): self
     {
         if ($this->success) {
@@ -289,6 +291,7 @@ final readonly class Result
      * @param callable(T): Result<U, E> $fn
      * @return Result<U, E>
      */
+    #[\NoDiscard]
     public function andThen(callable $fn): self
     {
         return $this->flatMap($fn);

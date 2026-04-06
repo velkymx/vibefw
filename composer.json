@@ -24,7 +24,7 @@
         "source": "https://github.com/velkymx/vibefw"
     },
     "require": {
-        "php": ">=8.4",
+        "php": ">=8.5",
         "ext-pdo": "*",
         "ext-json": "*",
         "ext-mbstring": "*"

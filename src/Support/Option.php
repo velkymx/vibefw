@@ -141,6 +141,7 @@ final readonly class Option
      * @param callable(T): U $fn
      * @return Option<U>
      */
+    #[\NoDiscard]
     public function map(callable $fn): self
     {
         if (!$this->some) {
@@ -206,6 +207,7 @@ final readonly class Option
      * @param callable(T): bool $predicate
      * @return Option<T>
      */
+    #[\NoDiscard]
     public function filter(callable $predicate): self
     {
         if (!$this->some) {

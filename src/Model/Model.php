@@ -312,6 +312,7 @@ abstract class Model implements JsonSerializable
      *
      * @return Option<static>
      */
+    #[\NoDiscard]
     public static function find(mixed $id): Option
     {
         return static::query()->find($id);
@@ -451,6 +452,7 @@ abstract class Model implements JsonSerializable
      *
      * @param array<string, mixed> $attributes
      */
+    #[\NoDiscard]
     public static function create(array $attributes): static
     {
         $model = new static($attributes);
@@ -823,6 +825,7 @@ abstract class Model implements JsonSerializable
     /**
      * Save the model to the database.
      */
+    #[\NoDiscard]
     public function save(): bool
     {
         $connection = static::resolveConnection();
@@ -837,6 +840,7 @@ abstract class Model implements JsonSerializable
     /**
      * Delete the model from the database.
      */
+    #[\NoDiscard]
     public function delete(): bool
     {
         if (!$this->exists) {

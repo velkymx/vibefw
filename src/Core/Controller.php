@@ -209,6 +209,7 @@ abstract class Controller
      * @template T
      * @return Result<T, Throwable>
      */
+    #[\NoDiscard]
     protected function dispatch(Command $command): Result
     {
         if ($this->commands === null) {
@@ -224,6 +225,7 @@ abstract class Controller
      * @template T
      * @return Result<T, Throwable>
      */
+    #[\NoDiscard]
     protected function query(Query $query): Result
     {
         if ($this->queries === null) {
