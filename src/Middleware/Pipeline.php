@@ -62,8 +62,14 @@ final class Pipeline
         // Try to get config from container (set by MiddlewareServiceProvider)
         $config = $this->app->getContainer()->tryGet('middleware.config');
 
+        $config->match(
+            some: function ($cfg) {
+                $this->aliases = $cfg->aliases;
+            },
+            none: fn() => null,
+        );
+
         if ($config->isSome()) {
-            $this->aliases = $config->unwrap()->aliases;
             return;
         }
 

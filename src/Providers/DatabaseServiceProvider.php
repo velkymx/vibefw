@@ -30,9 +30,9 @@ class DatabaseServiceProvider extends ServiceProvider
         // Get connection if available
         $connection = $this->container->tryGet(Connection::class);
 
-        if ($connection->isSome()) {
-            // Set connection for new typed Model system
-            Model::setConnection($connection->unwrap());
-        }
+        $connection->match(
+            some: fn(Connection $conn) => Model::setConnection($conn),
+            none: fn() => null,
+        );
     }
 }

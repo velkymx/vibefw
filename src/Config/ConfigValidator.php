@@ -119,10 +119,10 @@ final class ConfigValidator
         $allErrors = [];
 
         foreach ($configs as $name => $config) {
-            $result = self::validate($name, $config);
-            if ($result->isErr()) {
-                $allErrors = array_merge($allErrors, $result->getError());
-            }
+            self::validate($name, $config)->match(
+                ok: fn() => null,
+                err: fn(array $errors) => $allErrors = array_merge($allErrors, $errors),
+            );
         }
 
         if (!empty($allErrors)) {

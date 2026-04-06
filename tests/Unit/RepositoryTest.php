@@ -171,7 +171,7 @@ final class RepositoryTest extends TestCase
         $found = $this->repository->find($user->id);
 
         $this->assertTrue($found->isSome());
-        $this->assertSame($user, $found->unwrap());
+        $this->assertSame($user, $found->unwrapOr(null));
     }
 
     public function testFindReturnsNoneForMissing(): void
@@ -372,7 +372,7 @@ final class RepositoryTest extends TestCase
         $result = $this->repository->findOneByCriteria($criteria);
 
         $this->assertTrue($result->isSome());
-        $this->assertEquals('John', $result->unwrap()->name);
+        $this->assertEquals('John', $result->unwrapOr(null)->name);
     }
 
     public function testFindOneByCriteriaReturnsNone(): void

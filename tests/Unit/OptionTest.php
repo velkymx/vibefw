@@ -6,7 +6,6 @@ namespace Fw\Tests\Unit;
 
 use Fw\Support\Option;
 use Fw\Support\Result;
-use LogicException;
 use PHPUnit\Framework\TestCase;
 
 final class OptionTest extends TestCase
@@ -21,7 +20,7 @@ final class OptionTest extends TestCase
 
         $this->assertTrue($option->isSome());
         $this->assertFalse($option->isNone());
-        $this->assertEquals('value', $option->unwrap());
+        $this->assertEquals('value', $option->unwrapOr(null));
     }
 
     public function testSomeWithNullValue(): void
@@ -29,7 +28,7 @@ final class OptionTest extends TestCase
         $option = Option::some(null);
 
         $this->assertTrue($option->isSome());
-        $this->assertNull($option->unwrap());
+        $this->assertNull($option->unwrapOr(null));
     }
 
     public function testNoneCreatesEmptyOption(): void
@@ -49,7 +48,7 @@ final class OptionTest extends TestCase
         $option = Option::fromNullable('value');
 
         $this->assertTrue($option->isSome());
-        $this->assertEquals('value', $option->unwrap());
+        $this->assertEquals('value', $option->unwrapOr(null));
     }
 
     public function testFromNullableWithNull(): void
@@ -64,7 +63,7 @@ final class OptionTest extends TestCase
         $option = Option::fromNullable(0);
 
         $this->assertTrue($option->isSome());
-        $this->assertEquals(0, $option->unwrap());
+        $this->assertEquals(0, $option->unwrapOr(null));
     }
 
     public function testFromNullableWithEmptyString(): void
@@ -72,27 +71,12 @@ final class OptionTest extends TestCase
         $option = Option::fromNullable('');
 
         $this->assertTrue($option->isSome());
-        $this->assertEquals('', $option->unwrap());
+        $this->assertEquals('', $option->unwrapOr(null));
     }
 
     // ==========================================
     // UNWRAP TESTS
     // ==========================================
-
-    public function testUnwrapReturnsValue(): void
-    {
-        $option = Option::some('value');
-
-        $this->assertEquals('value', $option->unwrap());
-    }
-
-    public function testUnwrapThrowsOnNone(): void
-    {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Called unwrap() on None Option');
-
-        Option::none()->unwrap();
-    }
 
     public function testUnwrapOrReturnsValueOnSome(): void
     {
@@ -137,7 +121,7 @@ final class OptionTest extends TestCase
         $option = Option::some(5)->map(fn($x) => $x * 2);
 
         $this->assertTrue($option->isSome());
-        $this->assertEquals(10, $option->unwrap());
+        $this->assertEquals(10, $option->unwrapOr(null));
     }
 
     public function testMapPreservesNone(): void
@@ -158,7 +142,7 @@ final class OptionTest extends TestCase
         $option = Option::some('42')->flatMap($parseInt);
 
         $this->assertTrue($option->isSome());
-        $this->assertEquals(42, $option->unwrap());
+        $this->assertEquals(42, $option->unwrapOr(null));
     }
 
     public function testFlatMapPropagatesNone(): void
@@ -181,7 +165,7 @@ final class OptionTest extends TestCase
     {
         $option = Option::some(5)->andThen(fn($x) => Option::some($x * 2));
 
-        $this->assertEquals(10, $option->unwrap());
+        $this->assertEquals(10, $option->unwrapOr(null));
     }
 
     // ==========================================
@@ -192,21 +176,21 @@ final class OptionTest extends TestCase
     {
         $option = Option::some('first')->orElse(Option::some('second'));
 
-        $this->assertEquals('first', $option->unwrap());
+        $this->assertEquals('first', $option->unwrapOr(null));
     }
 
     public function testOrElseReturnsFallbackOnNone(): void
     {
         $option = Option::none()->orElse(Option::some('fallback'));
 
-        $this->assertEquals('fallback', $option->unwrap());
+        $this->assertEquals('fallback', $option->unwrapOr(null));
     }
 
     public function testOrElseTryComputesFallback(): void
     {
         $option = Option::none()->orElseTry(fn() => Option::some('computed'));
 
-        $this->assertEquals('computed', $option->unwrap());
+        $this->assertEquals('computed', $option->unwrapOr(null));
     }
 
     // ==========================================
@@ -218,7 +202,7 @@ final class OptionTest extends TestCase
         $option = Option::some(10)->filter(fn($x) => $x > 5);
 
         $this->assertTrue($option->isSome());
-        $this->assertEquals(10, $option->unwrap());
+        $this->assertEquals(10, $option->unwrapOr(null));
     }
 
     public function testFilterRemovesNonMatchingValue(): void
@@ -248,7 +232,7 @@ final class OptionTest extends TestCase
         });
 
         $this->assertTrue($called);
-        $this->assertEquals('value', $option->unwrap());
+        $this->assertEquals('value', $option->unwrapOr(null));
     }
 
     public function testTapDoesNotExecuteOnNone(): void
@@ -313,7 +297,7 @@ final class OptionTest extends TestCase
         $result = Option::some('value')->toResult('error');
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals('value', $result->unwrap());
+        $this->assertEquals('value', $result->unwrapOr(null));
     }
 
     public function testToResultReturnsErrOnNone(): void
@@ -333,7 +317,7 @@ final class OptionTest extends TestCase
         $option = Option::some('a')->zip(Option::some('b'));
 
         $this->assertTrue($option->isSome());
-        $this->assertEquals(['a', 'b'], $option->unwrap());
+        $this->assertEquals(['a', 'b'], $option->unwrapOr(null));
     }
 
     public function testZipReturnsNoneIfFirstIsNone(): void

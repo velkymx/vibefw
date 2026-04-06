@@ -263,7 +263,7 @@ final class ApiToken
             return false;
         }
 
-        $token = $tokenOption->unwrap();
+        $token = $tokenOption->unwrapOr(null);
         if ((string) $token->user_id !== (string) $user->id) {
             return false;
         }

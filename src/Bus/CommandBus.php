@@ -21,9 +21,10 @@ use Throwable;
  *     // Dispatch returns Result<T, Throwable>
  *     $result = $bus->dispatch(new CreateUser('john@example.com', 'John'));
  *
- *     if ($result->isOk()) {
- *         $user = $result->unwrap();
- *     }
+ *     $user = $result->match(
+ *         ok: fn($user) => $user,
+ *         err: fn($e) => throw $e,
+ *     );
  */
 final class CommandBus
 {

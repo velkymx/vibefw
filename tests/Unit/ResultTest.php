@@ -22,7 +22,7 @@ final class ResultTest extends TestCase
 
         $this->assertTrue($result->isOk());
         $this->assertFalse($result->isErr());
-        $this->assertEquals('value', $result->unwrap());
+        $this->assertEquals('value', $result->unwrapOr(null));
     }
 
     public function testOkWithNullValue(): void
@@ -30,7 +30,7 @@ final class ResultTest extends TestCase
         $result = Result::ok(null);
 
         $this->assertTrue($result->isOk());
-        $this->assertNull($result->unwrap());
+        $this->assertNull($result->unwrapOr('not-null'));
     }
 
     public function testErrCreatesErrorResult(): void
@@ -51,7 +51,7 @@ final class ResultTest extends TestCase
         $result = Result::try(fn() => 'success');
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals('success', $result->unwrap());
+        $this->assertEquals('success', $result->unwrapOr(null));
     }
 
     public function testTryReturnsErrOnException(): void
@@ -72,7 +72,7 @@ final class ResultTest extends TestCase
         $result = Result::fromNullable('value', 'error');
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals('value', $result->unwrap());
+        $this->assertEquals('value', $result->unwrapOr(null));
     }
 
     public function testFromNullableWithNull(): void
@@ -86,21 +86,6 @@ final class ResultTest extends TestCase
     // ==========================================
     // UNWRAP TESTS
     // ==========================================
-
-    public function testUnwrapReturnsValue(): void
-    {
-        $result = Result::ok('value');
-
-        $this->assertEquals('value', $result->unwrap());
-    }
-
-    public function testUnwrapThrowsOnError(): void
-    {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Called unwrap() on error Result');
-
-        Result::err('error')->unwrap();
-    }
 
     public function testUnwrapOrReturnsValueOnOk(): void
     {
@@ -138,22 +123,6 @@ final class ResultTest extends TestCase
     }
 
     // ==========================================
-    // OK/ERR ACCESSORS TESTS
-    // ==========================================
-
-    public function testGetValueReturnsValueOrNull(): void
-    {
-        $this->assertEquals('value', Result::ok('value')->getValue());
-        $this->assertNull(Result::err('error')->getValue());
-    }
-
-    public function testGetErrorReturnsErrorOrNull(): void
-    {
-        $this->assertEquals('error', Result::err('error')->getError());
-        $this->assertNull(Result::ok('value')->getError());
-    }
-
-    // ==========================================
     // MAP TESTS
     // ==========================================
 
@@ -162,7 +131,7 @@ final class ResultTest extends TestCase
         $result = Result::ok(5)->map(fn($x) => $x * 2);
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals(10, $result->unwrap());
+        $this->assertEquals(10, $result->unwrapOr(null));
     }
 
     public function testMapPreservesError(): void
@@ -186,7 +155,7 @@ final class ResultTest extends TestCase
         $result = Result::ok('value')->mapErr(fn($e) => "mapped: $e");
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals('value', $result->unwrap());
+        $this->assertEquals('value', $result->unwrapOr(null));
     }
 
     // ==========================================
@@ -202,7 +171,7 @@ final class ResultTest extends TestCase
         $result = Result::ok(10)->flatMap(fn($x) => $divide($x, 2));
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals(5, $result->unwrap());
+        $this->assertEquals(5, $result->unwrapOr(null));
     }
 
     public function testFlatMapPropagatesError(): void
@@ -221,7 +190,7 @@ final class ResultTest extends TestCase
     {
         $result = Result::ok(5)->andThen(fn($x) => Result::ok($x * 2));
 
-        $this->assertEquals(10, $result->unwrap());
+        $this->assertEquals(10, $result->unwrapOr(null));
     }
 
     // ==========================================
@@ -232,21 +201,21 @@ final class ResultTest extends TestCase
     {
         $result = Result::ok('first')->orElse(Result::ok('second'));
 
-        $this->assertEquals('first', $result->unwrap());
+        $this->assertEquals('first', $result->unwrapOr(null));
     }
 
     public function testOrElseReturnsFallbackOnErr(): void
     {
         $result = Result::err('error')->orElse(Result::ok('fallback'));
 
-        $this->assertEquals('fallback', $result->unwrap());
+        $this->assertEquals('fallback', $result->unwrapOr(null));
     }
 
     public function testOrElseTryComputesFallback(): void
     {
         $result = Result::err('error')->orElseTry(fn($e) => Result::ok("recovered from: $e"));
 
-        $this->assertEquals('recovered from: error', $result->unwrap());
+        $this->assertEquals('recovered from: error', $result->unwrapOr(null));
     }
 
     // ==========================================
@@ -262,7 +231,7 @@ final class ResultTest extends TestCase
         });
 
         $this->assertTrue($called);
-        $this->assertSame('value', $result->unwrap());
+        $this->assertSame('value', $result->unwrapOr(null));
     }
 
     public function testTapDoesNotExecuteOnErr(): void
@@ -312,8 +281,8 @@ final class ResultTest extends TestCase
     public function testMatchCallsOkHandler(): void
     {
         $result = Result::ok('value')->match(
-            fn($v) => "success: $v",
-            fn($e) => "error: $e"
+            ok: fn($v) => "success: $v",
+            err: fn($e) => "error: $e"
         );
 
         $this->assertEquals('success: value', $result);
@@ -322,8 +291,8 @@ final class ResultTest extends TestCase
     public function testMatchCallsErrHandler(): void
     {
         $result = Result::err('error')->match(
-            fn($v) => "success: $v",
-            fn($e) => "error: $e"
+            ok: fn($v) => "success: $v",
+            err: fn($e) => "error: $e"
         );
 
         $this->assertEquals('error: error', $result);
@@ -338,7 +307,7 @@ final class ResultTest extends TestCase
         $option = Result::ok('value')->toOption();
 
         $this->assertTrue($option->isSome());
-        $this->assertEquals('value', $option->unwrap());
+        $this->assertEquals('value', $option->unwrapOr(null));
     }
 
     public function testToOptionReturnsNoneOnErr(): void
@@ -363,7 +332,7 @@ final class ResultTest extends TestCase
         $combined = Result::all($results);
 
         $this->assertTrue($combined->isOk());
-        $this->assertEquals([1, 2, 3], $combined->unwrap());
+        $this->assertEquals([1, 2, 3], $combined->unwrapOr(null));
     }
 
     public function testAllReturnsFirstError(): void
@@ -395,7 +364,7 @@ final class ResultTest extends TestCase
         $combined = Result::any($results);
 
         $this->assertTrue($combined->isOk());
-        $this->assertEquals('success', $combined->unwrap());
+        $this->assertEquals('success', $combined->unwrapOr(null));
     }
 
     public function testAnyReturnsLastErrorIfAllFail(): void

@@ -63,21 +63,20 @@ final class HttpKernel
 
             $routeResult = $this->router->dispatch($request->method, $request->uri);
 
-            if ($routeResult->isErr()) {
-                $response = $this->errorHandler->createRoutingResponse($routeResult->getError(), $request);
-            } else {
-                /** @var RouteMatch $match */
-                $match = $routeResult->getValue();
-                $context->setRouteMatch($match);
+            $response = $routeResult->match(
+                ok: function (RouteMatch $match) use ($request, $context, &$cacheKey) {
+                    $context->setRouteMatch($match);
 
-                // Execute pipeline
-                $response = $this->executePipeline($request, $match);
+                    $response = $this->executePipeline($request, $match);
 
-                // Cache for guests
-                if ($cacheKey !== null) {
-                    $this->cacheGuestResponse($cacheKey, $response->getBody());
-                }
-            }
+                    if ($cacheKey !== null) {
+                        $this->cacheGuestResponse($cacheKey, $response->getBody());
+                    }
+
+                    return $response;
+                },
+                err: fn($error) => $this->errorHandler->createRoutingResponse($error, $request),
+            );
 
         } catch (Throwable $e) {
             $response = $this->errorHandler->createExceptionResponse($e, $request);

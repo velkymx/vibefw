@@ -133,7 +133,7 @@ final class ModelTest extends TestCase
         $found = ModelTestUser::find($created->getKey());
 
         $this->assertTrue($found->isSome());
-        $this->assertEquals('Jane', $found->unwrap()->name);
+        $this->assertEquals('Jane', $found->unwrapOr(null)->name);
     }
 
     public function testFindReturnsNoneForMissing(): void
@@ -157,7 +157,7 @@ final class ModelTest extends TestCase
         $user->name = 'Updated';
         $user->save();
 
-        $fresh = ModelTestUser::find($user->getKey())->unwrap();
+        $fresh = ModelTestUser::find($user->getKey())->unwrapOr(null);
         $this->assertEquals('Updated', $fresh->name);
     }
 
@@ -195,7 +195,7 @@ final class ModelTest extends TestCase
         $active = ModelTestUser::where('is_active', true)->get();
 
         $this->assertCount(1, $active);
-        $this->assertEquals('Active', $active->first()->unwrap()->name);
+        $this->assertEquals('Active', $active->first()->unwrapOr(null)->name);
     }
 
     public function testAllReturnsCollection(): void
@@ -216,7 +216,7 @@ final class ModelTest extends TestCase
         $first = ModelTestUser::first();
 
         $this->assertTrue($first->isSome());
-        $this->assertEquals('First', $first->unwrap()->name);
+        $this->assertEquals('First', $first->unwrapOr(null)->name);
     }
 
     public function testOrderBy(): void
@@ -226,7 +226,7 @@ final class ModelTest extends TestCase
 
         $ordered = ModelTestUser::orderBy('name', 'ASC')->get();
 
-        $this->assertEquals('Alpha', $ordered->first()->unwrap()->name);
+        $this->assertEquals('Alpha', $ordered->first()->unwrapOr(null)->name);
     }
 
     public function testLimit(): void
@@ -304,7 +304,7 @@ final class ModelTest extends TestCase
         $author = $post->user()->get();
 
         $this->assertTrue($author->isSome());
-        $this->assertEquals('Author', $author->unwrap()->name);
+        $this->assertEquals('Author', $author->unwrapOr(null)->name);
     }
 
     public function testHasOneRelationship(): void
@@ -315,7 +315,7 @@ final class ModelTest extends TestCase
         $profile = $user->profile()->get();
 
         $this->assertTrue($profile->isSome());
-        $this->assertEquals('Hello world', $profile->unwrap()->bio);
+        $this->assertEquals('Hello world', $profile->unwrapOr(null)->bio);
     }
 
     public function testEagerLoading(): void
@@ -341,7 +341,7 @@ final class ModelTest extends TestCase
             'is_active' => 1,
         ]);
 
-        $found = ModelTestUser::find($user->getKey())->unwrap();
+        $found = ModelTestUser::find($user->getKey())->unwrapOr(null);
 
         $this->assertIsBool($found->is_active);
         $this->assertTrue($found->is_active);

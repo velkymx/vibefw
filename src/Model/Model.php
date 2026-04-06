@@ -419,14 +419,14 @@ abstract class Model implements JsonSerializable
 
         $existing = $model->first();
 
-        if ($existing->isSome()) {
-            $instance = $existing->unwrap();
-            $instance->fill($values);
-            $instance->save();
-            return $instance;
-        }
-
-        return static::create(array_merge($attributes, $values));
+        return $existing->match(
+            some: function ($instance) use ($values) {
+                $instance->fill($values);
+                (void) $instance->save();
+                return $instance;
+            },
+            none: fn() => static::create(array_merge($attributes, $values)),
+        );
     }
 
     /**
@@ -445,11 +445,10 @@ abstract class Model implements JsonSerializable
 
         $existing = $query->first();
 
-        if ($existing->isSome()) {
-            return $existing->unwrap();
-        }
-
-        return static::create(array_merge($attributes, $values));
+        return $existing->match(
+            some: fn($instance) => $instance,
+            none: fn() => static::create(array_merge($attributes, $values)),
+        );
     }
 
     /**
@@ -813,11 +812,14 @@ abstract class Model implements JsonSerializable
 
         $fresh = static::find($this->getKey());
 
-        if ($fresh->isSome()) {
-            $this->attributes = $fresh->unwrap()->attributes;
-            $this->original = $this->attributes;
-            $this->relations = [];
-        }
+        $fresh->match(
+            some: function ($model) {
+                $this->attributes = $model->attributes;
+                $this->original = $this->attributes;
+                $this->relations = [];
+            },
+            none: fn() => null,
+        );
 
         return $this;
     }

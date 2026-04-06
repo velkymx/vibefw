@@ -269,17 +269,12 @@ final class RequestContext
     {
         $match = $this->routeMatch();
 
-        if ($match->isNone()) {
-            return Option::none();
-        }
-
-        $params = $match->unwrap()->params;
-
-        if (!array_key_exists($name, $params)) {
-            return Option::none();
-        }
-
-        return Option::some($params[$name]);
+        return $match->andThen(function ($m) use ($name) {
+            if (!array_key_exists($name, $m->params)) {
+                return Option::none();
+            }
+            return Option::some($m->params[$name]);
+        });
     }
 
     /**

@@ -22,9 +22,10 @@ use Throwable;
  *     }
  *
  *     $result = divide(10, 2);
- *     if ($result->isOk()) {
- *         echo $result->unwrap(); // 5
- *     }
+ *     echo $result->match(
+ *         ok: fn($v) => $v,
+ *         err: fn($e) => "Error: {$e}",
+ *     );
  *
  *     // Or use map/flatMap for functional composition
  *     $doubled = divide(10, 2)->map(fn($x) => $x * 2); // Result::ok(10)
@@ -157,25 +158,6 @@ final readonly class Result
     }
 
     /**
-     * Get the success value, throwing if error.
-     *
-     * @return T
-     * @throws LogicException If this is an error result
-     */
-    public function unwrap(): mixed
-    {
-        if (!$this->success) {
-            $message = $this->error instanceof Throwable
-                ? $this->error->getMessage()
-                : (is_string($this->error) ? $this->error : 'Result is an error');
-
-            throw new LogicException("Called unwrap() on error Result: {$message}");
-        }
-
-        return $this->value;
-    }
-
-    /**
      * Get the success value or a default.
      *
      * @template D
@@ -212,26 +194,6 @@ final readonly class Result
         }
 
         return $this->error;
-    }
-
-    /**
-     * Get the success value or null.
-     *
-     * @return T|null
-     */
-    public function getValue(): mixed
-    {
-        return $this->success ? $this->value : null;
-    }
-
-    /**
-     * Get the error value or null.
-     *
-     * @return E|null
-     */
-    public function getError(): mixed
-    {
-        return $this->success ? null : $this->error;
     }
 
     /**
@@ -366,13 +328,13 @@ final readonly class Result
      * Match on success or error.
      *
      * @template U
-     * @param callable(T): U $onOk
-     * @param callable(E): U $onErr
+     * @param callable(T): U $ok
+     * @param callable(E): U $err
      * @return U
      */
-    public function match(callable $onOk, callable $onErr): mixed
+    public function match(callable $ok, callable $err): mixed
     {
-        return $this->success ? $onOk($this->value) : $onErr($this->error);
+        return $this->success ? $ok($this->value) : $err($this->error);
     }
 
     /**

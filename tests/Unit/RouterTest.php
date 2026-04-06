@@ -29,7 +29,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/users');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertInstanceOf(RouteMatch::class, $match);
         $this->assertIsCallable($match->handler);
     }
@@ -50,7 +50,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('PUT', '/users/1');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertEquals(['1'], $match->params);
     }
 
@@ -70,7 +70,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/users/42');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertEquals(['42'], $match->params);
     }
 
@@ -81,7 +81,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/posts/10/comments/5');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertEquals(['10', '5'], $match->params);
     }
 
@@ -92,7 +92,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/users/123');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertEquals(['123'], $match->params);
     }
 
@@ -103,7 +103,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/users/abc');
 
         $this->assertTrue($result->isErr());
-        $this->assertInstanceOf(RouteNotFound::class, $result->getError());
+        $this->assertInstanceOf(RouteNotFound::class, $result->unwrapErr());
     }
 
     public function testUnmatchedRouteReturnsError(): void
@@ -113,7 +113,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/posts');
 
         $this->assertTrue($result->isErr());
-        $this->assertInstanceOf(RouteNotFound::class, $result->getError());
+        $this->assertInstanceOf(RouteNotFound::class, $result->unwrapErr());
     }
 
     public function testWrongMethodReturnsMethodNotAllowed(): void
@@ -123,7 +123,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('POST', '/users');
 
         $this->assertTrue($result->isErr());
-        $error = $result->getError();
+        $error = $result->unwrapErr();
         $this->assertInstanceOf(MethodNotAllowed::class, $error);
         $this->assertContains('GET', $error->allowedMethods);
     }
@@ -206,7 +206,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/admin/dashboard');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertContains('auth', $match->middleware);
     }
 
@@ -221,7 +221,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/api/admin/users');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertContains('auth', $match->middleware);
         $this->assertContains('admin', $match->middleware);
     }
@@ -234,7 +234,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/admin');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertContains('auth', $match->middleware);
     }
 
@@ -246,7 +246,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/admin');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertContains('auth', $match->middleware);
         $this->assertContains('verified', $match->middleware);
     }
@@ -322,7 +322,7 @@ final class RouterTest extends TestCase
         $result = $this->router->dispatch('GET', '/users');
 
         $this->assertTrue($result->isOk());
-        $match = $result->getValue();
+        $match = $result->unwrapOr(null);
         $this->assertEquals($handler, $match->handler);
     }
 

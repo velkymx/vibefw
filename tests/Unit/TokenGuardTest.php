@@ -84,7 +84,7 @@ final class TokenGuardTest extends TestCase
         ]));
 
         $row = $this->db->table('users')->where('email', $data['email'])->first();
-        return User::find($row['id'])->unwrap();
+        return User::find($row['id'])->unwrapOr(null);
     }
 
     public function testAuthenticateReturnsUserForValidToken(): void
@@ -294,7 +294,7 @@ final class TokenGuardTest extends TestCase
         TokenGuard::authenticate($request);
 
         // Refresh token from database
-        $token = PersonalAccessToken::find($newToken->accessToken->id)->unwrap();
+        $token = PersonalAccessToken::find($newToken->accessToken->id)->unwrapOr(null);
         $this->assertNotNull($token->last_used_at);
     }
 }

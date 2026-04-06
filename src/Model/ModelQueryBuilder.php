@@ -465,7 +465,10 @@ final class ModelQueryBuilder
     private function loadRelation(Collection $models, string $name): void
     {
         // Get the first model to access the relationship definition
-        $first = $models->first()->unwrap();
+        $first = $models->first()->unwrapOr(null);
+        if ($first === null) {
+            return;
+        }
 
         if (!method_exists($first, $name)) {
             return;

@@ -79,19 +79,21 @@ final class ValidateConfigCommand extends Command
 
         $result = ConfigValidator::validateAll($configs);
 
-        if ($result->isErr()) {
-            $errors = $result->getError();
-            $this->error('Validation errors found:');
-            $this->newLine();
-            foreach ($errors as $error) {
-                $this->line("  - $error");
-            }
-            $this->newLine();
-            $this->line('Total: ' . count($errors) . ' error(s)');
-            return 1;
-        }
-
-        $this->success('All configuration files are valid');
-        return 0;
+        return $result->match(
+            ok: function () {
+                $this->success('All configuration files are valid');
+                return 0;
+            },
+            err: function (array $errors) {
+                $this->error('Validation errors found:');
+                $this->newLine();
+                foreach ($errors as $error) {
+                    $this->line("  - $error");
+                }
+                $this->newLine();
+                $this->line('Total: ' . count($errors) . ' error(s)');
+                return 1;
+            },
+        );
     }
 }

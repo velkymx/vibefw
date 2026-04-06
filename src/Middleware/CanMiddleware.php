@@ -95,12 +95,7 @@ final class CanMiddleware implements MiddlewareInterface
             $value = $context->routeParam($paramName);
 
             if ($value->isSome()) {
-                $result = $class::find($value->unwrap());
-                // Handle Option return from find()
-                if (method_exists($result, 'unwrapOr')) {
-                    return $result->unwrapOr(null);
-                }
-                return $result;
+                return $class::find($value->unwrapOr(null))->unwrapOr(null);
             }
         }
 

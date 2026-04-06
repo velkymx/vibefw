@@ -78,7 +78,7 @@ final class Auth
             return false;
         }
 
-        $user = $userOption->unwrap();
+        $user = $userOption->unwrapOr(null);
 
         if (!$user->verifyPassword($password)) {
             return false;
@@ -379,7 +379,7 @@ final class Auth
             return null;
         }
 
-        $user = $userOption->unwrap();
+        $user = $userOption->unwrapOr(null);
 
         // Use DUMMY_SHA256_HASH instead of '' when token is null to ensure constant-time comparison
         // Empty string vs 64-char hash would return false immediately without constant-time behavior

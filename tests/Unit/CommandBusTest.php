@@ -77,7 +77,7 @@ final class CommandBusTest extends TestCase
         $result = $bus->dispatch(new CreateTestUser('john@example.com', 'John'));
 
         $this->assertTrue($result->isOk());
-        $user = $result->unwrap();
+        $user = $result->unwrapOr(null);
         $this->assertEquals('john@example.com', $user['email']);
         $this->assertEquals('John', $user['name']);
     }
@@ -90,7 +90,7 @@ final class CommandBusTest extends TestCase
         $result = $bus->dispatch(new CreateTestUser('jane@example.com', 'Jane'));
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals('Jane', $result->unwrap()['name']);
+        $this->assertEquals('Jane', $result->unwrapOr(null)['name']);
     }
 
     public function testDispatchWithCallableHandler(): void
@@ -103,7 +103,7 @@ final class CommandBusTest extends TestCase
         $result = $bus->dispatch(new CreateTestUser('test@example.com', 'Test'));
 
         $this->assertTrue($result->isOk());
-        $this->assertTrue($result->unwrap()['handled']);
+        $this->assertTrue($result->unwrapOr(null)['handled']);
     }
 
     public function testDispatchWithContainerResolver(): void
@@ -223,7 +223,7 @@ final class CommandBusTest extends TestCase
         $result = $bus->dispatch(new GetTestUser('user-123'));
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals('John', $result->unwrap()['name']);
+        $this->assertEquals('John', $result->unwrapOr(null)['name']);
     }
 
     public function testQueryBusDispatchReturnsNullForMissing(): void
@@ -234,7 +234,7 @@ final class CommandBusTest extends TestCase
         $result = $bus->dispatch(new GetTestUser('nonexistent'));
 
         $this->assertTrue($result->isOk());
-        $this->assertNull($result->unwrap());
+        $this->assertNull($result->unwrapOr(null));
     }
 
     public function testQueryBusWithCallableHandler(): void
@@ -247,7 +247,7 @@ final class CommandBusTest extends TestCase
         $result = $bus->dispatch(new GetTestUser('abc'));
 
         $this->assertTrue($result->isOk());
-        $this->assertEquals('Queried', $result->unwrap()['name']);
+        $this->assertEquals('Queried', $result->unwrapOr(null)['name']);
     }
 
     public function testQueryBusMiddleware(): void
@@ -276,6 +276,6 @@ final class CommandBusTest extends TestCase
 
         $this->assertTrue($result1->isOk());
         $this->assertTrue($result2->isOk());
-        $this->assertEquals($result1->unwrap(), $result2->unwrap());
+        $this->assertEquals($result1->unwrapOr(null), $result2->unwrapOr(null));
     }
 }

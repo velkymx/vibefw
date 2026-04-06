@@ -84,7 +84,7 @@ final class PersonalAccessTokenTest extends TestCase
         $data = array_merge($defaults, $attributes);
         $this->db->insert('personal_access_tokens', $data);
 
-        return PersonalAccessToken::find($id)->unwrap();
+        return PersonalAccessToken::find($id)->unwrapOr(null);
     }
 
     public function testFindTokenReturnsTokenByHash(): void
@@ -264,7 +264,7 @@ final class PersonalAccessTokenTest extends TestCase
         $userId = $this->createUser();
         $token = $this->createToken($userId);
 
-        $user = $token->user()->get()->unwrap();
+        $user = $token->user()->get()->unwrapOr(null);
 
         $this->assertInstanceOf(User::class, $user);
         $this->assertEquals($userId, (string) $user->id);

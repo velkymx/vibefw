@@ -80,7 +80,7 @@ final class ApiTokenTest extends TestCase
         ]));
 
         $row = $this->db->table('users')->where('email', $data['email'])->first();
-        return User::find($row['id'])->unwrap();
+        return User::find($row['id'])->unwrapOr(null);
     }
 
     public function testCreateReturnsNewAccessToken(): void

@@ -86,21 +86,6 @@ final readonly class Option
     }
 
     /**
-     * Get the value, throwing if empty.
-     *
-     * @return T
-     * @throws LogicException If this is None
-     */
-    public function unwrap(): mixed
-    {
-        if (!$this->some) {
-            throw new LogicException('Called unwrap() on None Option');
-        }
-
-        return $this->value;
-    }
-
-    /**
      * Get the value or a default.
      *
      * @template D
@@ -246,13 +231,13 @@ final readonly class Option
      * Match on Some or None.
      *
      * @template U
-     * @param callable(T): U $onSome
-     * @param callable(): U $onNone
+     * @param callable(T): U $some
+     * @param callable(): U $none
      * @return U
      */
-    public function match(callable $onSome, callable $onNone): mixed
+    public function match(callable $some, callable $none): mixed
     {
-        return $this->some ? $onSome($this->value) : $onNone();
+        return $this->some ? $some($this->value) : $none();
     }
 
     /**
