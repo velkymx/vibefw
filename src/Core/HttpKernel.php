@@ -237,16 +237,14 @@ final class HttpKernel
             ->through($middleware)
             ->then($destination, $request);
 
-        // Normalize output to Response
-        if ($output instanceof Response) {
-            return $output;
+        if (!$output instanceof Response) {
+            throw new RuntimeException(
+                'Controller must return a Response object. Got: ' . get_debug_type($output)
+                . '. Use $this->json() for JSON or $this->view() for HTML.'
+            );
         }
 
-        if (is_array($output)) {
-            return new Response(json_encode($output, JSON_THROW_ON_ERROR), 200);
-        }
-
-        return new Response((string) $output, 200);
+        return $output;
     }
 
     /**
@@ -292,8 +290,16 @@ final class HttpKernel
             throw $fiber->getError();
         }
 
-        $output = $fiber->getOutput() ?? '';
-        return $output instanceof Response ? $output : new Response((string) $output, 200);
+        $output = $fiber->getOutput();
+
+        if (!$output instanceof Response) {
+            throw new RuntimeException(
+                'Controller must return a Response object. Got: ' . get_debug_type($output)
+                . '. Use $this->json() for JSON or $this->view() for HTML.'
+            );
+        }
+
+        return $output;
     }
 
     /**

@@ -441,6 +441,13 @@ final class Router
      */
     private function addRoute(string $method, string $path, callable|array|string $handler, ?string $name): self
     {
+        if ($handler instanceof Closure) {
+            throw new InvalidArgumentException(
+                "Closure route handlers are not allowed. Use [Controller::class, 'method'] syntax instead. "
+                . "Route: {$method} {$path}"
+            );
+        }
+
         $fullPath = $this->groupPrefix . '/' . trim($path, '/');
         $fullPath = '/' . trim($fullPath, '/');
 

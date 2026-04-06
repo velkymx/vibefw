@@ -14,6 +14,8 @@ final class RouterTest extends TestCase
 {
     private Router $router;
 
+    public static function dummyAction(): void {}
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -22,7 +24,7 @@ final class RouterTest extends TestCase
 
     public function testGetRouteCanBeAdded(): void
     {
-        $this->router->get('/users', fn() => 'users', 'users.index');
+        $this->router->get('/users', [self::class, 'dummyAction'], 'users.index');
 
         $result = $this->router->dispatch('GET', '/users');
 
@@ -34,7 +36,7 @@ final class RouterTest extends TestCase
 
     public function testPostRouteCanBeAdded(): void
     {
-        $this->router->post('/users', fn() => 'created', 'users.store');
+        $this->router->post('/users', [self::class, 'dummyAction'], 'users.store');
 
         $result = $this->router->dispatch('POST', '/users');
 
@@ -43,7 +45,7 @@ final class RouterTest extends TestCase
 
     public function testPutRouteCanBeAdded(): void
     {
-        $this->router->put('/users/{id}', fn() => 'updated');
+        $this->router->put('/users/{id}', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('PUT', '/users/1');
 
@@ -54,7 +56,7 @@ final class RouterTest extends TestCase
 
     public function testDeleteRouteCanBeAdded(): void
     {
-        $this->router->delete('/users/{id}', fn() => 'deleted');
+        $this->router->delete('/users/{id}', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('DELETE', '/users/1');
 
@@ -63,7 +65,7 @@ final class RouterTest extends TestCase
 
     public function testRouteWithParameterExtractsValue(): void
     {
-        $this->router->get('/users/{id}', fn($id) => $id);
+        $this->router->get('/users/{id}', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('GET', '/users/42');
 
@@ -74,7 +76,7 @@ final class RouterTest extends TestCase
 
     public function testRouteWithMultipleParametersExtractsAllValues(): void
     {
-        $this->router->get('/posts/{postId}/comments/{commentId}', fn($postId, $commentId) => [$postId, $commentId]);
+        $this->router->get('/posts/{postId}/comments/{commentId}', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('GET', '/posts/10/comments/5');
 
@@ -85,7 +87,7 @@ final class RouterTest extends TestCase
 
     public function testRouteWithConstraintMatchesValidPattern(): void
     {
-        $this->router->get('/users/{id:\d+}', fn($id) => $id);
+        $this->router->get('/users/{id:\d+}', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('GET', '/users/123');
 
@@ -96,7 +98,7 @@ final class RouterTest extends TestCase
 
     public function testRouteWithConstraintRejectsInvalidPattern(): void
     {
-        $this->router->get('/users/{id:\d+}', fn($id) => $id);
+        $this->router->get('/users/{id:\d+}', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('GET', '/users/abc');
 
@@ -106,7 +108,7 @@ final class RouterTest extends TestCase
 
     public function testUnmatchedRouteReturnsError(): void
     {
-        $this->router->get('/users', fn() => 'users');
+        $this->router->get('/users', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('GET', '/posts');
 
@@ -116,7 +118,7 @@ final class RouterTest extends TestCase
 
     public function testWrongMethodReturnsMethodNotAllowed(): void
     {
-        $this->router->get('/users', fn() => 'users');
+        $this->router->get('/users', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('POST', '/users');
 
@@ -128,7 +130,7 @@ final class RouterTest extends TestCase
 
     public function testHeadMethodMatchesGetRoute(): void
     {
-        $this->router->get('/users', fn() => 'users');
+        $this->router->get('/users', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('HEAD', '/users');
 
@@ -137,7 +139,7 @@ final class RouterTest extends TestCase
 
     public function testNamedRouteCanGenerateUrl(): void
     {
-        $this->router->get('/users/{id}', fn($id) => $id, 'users.show');
+        $this->router->get('/users/{id}', [self::class, 'dummyAction'], 'users.show');
 
         $url = $this->router->url('users.show', ['id' => 42]);
 
@@ -146,7 +148,7 @@ final class RouterTest extends TestCase
 
     public function testNamedRouteWithConstraintGeneratesUrl(): void
     {
-        $this->router->get('/users/{id:\d+}', fn($id) => $id, 'users.show');
+        $this->router->get('/users/{id:\d+}', [self::class, 'dummyAction'], 'users.show');
 
         $url = $this->router->url('users.show', ['id' => 123]);
 
@@ -163,7 +165,7 @@ final class RouterTest extends TestCase
 
     public function testNamedRouteThrowsExceptionForMissingParams(): void
     {
-        $this->router->get('/users/{id}', fn($id) => $id, 'users.show');
+        $this->router->get('/users/{id}', [self::class, 'dummyAction'], 'users.show');
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage("Missing required parameters");
@@ -174,7 +176,7 @@ final class RouterTest extends TestCase
     public function testRouteGroupAppliesPrefix(): void
     {
         $this->router->group('/api', function (Router $router) {
-            $router->get('/users', fn() => 'users');
+            $router->get('/users', [self::class, 'dummyAction']);
         });
 
         $result = $this->router->dispatch('GET', '/api/users');
@@ -186,7 +188,7 @@ final class RouterTest extends TestCase
     {
         $this->router->group('/api', function (Router $router) {
             $router->group('/v1', function (Router $router) {
-                $router->get('/users', fn() => 'users');
+                $router->get('/users', [self::class, 'dummyAction']);
             });
         });
 
@@ -198,7 +200,7 @@ final class RouterTest extends TestCase
     public function testRouteGroupAppliesMiddleware(): void
     {
         $this->router->group('/admin', function (Router $router) {
-            $router->get('/dashboard', fn() => 'dashboard');
+            $router->get('/dashboard', [self::class, 'dummyAction']);
         }, ['auth']);
 
         $result = $this->router->dispatch('GET', '/admin/dashboard');
@@ -212,7 +214,7 @@ final class RouterTest extends TestCase
     {
         $this->router->group('/api', function (Router $router) {
             $router->group('/admin', function (Router $router) {
-                $router->get('/users', fn() => 'users');
+                $router->get('/users', [self::class, 'dummyAction']);
             }, ['admin']);
         }, ['auth']);
 
@@ -226,7 +228,7 @@ final class RouterTest extends TestCase
 
     public function testMiddlewareCanBeAddedToSingleRoute(): void
     {
-        $this->router->get('/admin', fn() => 'admin')
+        $this->router->get('/admin', [self::class, 'dummyAction'])
             ->middleware('auth');
 
         $result = $this->router->dispatch('GET', '/admin');
@@ -238,7 +240,7 @@ final class RouterTest extends TestCase
 
     public function testMultipleMiddlewareCanBeAddedToSingleRoute(): void
     {
-        $this->router->get('/admin', fn() => 'admin')
+        $this->router->get('/admin', [self::class, 'dummyAction'])
             ->middleware(['auth', 'verified']);
 
         $result = $this->router->dispatch('GET', '/admin');
@@ -276,7 +278,7 @@ final class RouterTest extends TestCase
 
     public function testAnyRouteMatchesAllMethods(): void
     {
-        $this->router->any('/webhook', fn() => 'ok');
+        $this->router->any('/webhook', [self::class, 'dummyAction']);
 
         foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as $method) {
             $result = $this->router->dispatch($method, '/webhook');
@@ -286,7 +288,7 @@ final class RouterTest extends TestCase
 
     public function testMatchRouteMatchesSpecifiedMethods(): void
     {
-        $this->router->match(['GET', 'POST'], '/resource', fn() => 'ok');
+        $this->router->match(['GET', 'POST'], '/resource', [self::class, 'dummyAction']);
 
         $this->assertTrue($this->router->dispatch('GET', '/resource')->isOk());
         $this->assertTrue($this->router->dispatch('POST', '/resource')->isOk());
@@ -295,7 +297,7 @@ final class RouterTest extends TestCase
 
     public function testDispatchHandlesQueryStrings(): void
     {
-        $this->router->get('/search', fn() => 'results');
+        $this->router->get('/search', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('GET', '/search?q=test&page=1');
 
@@ -304,7 +306,7 @@ final class RouterTest extends TestCase
 
     public function testDispatchMatchesTrailingSlashes(): void
     {
-        $this->router->get('/users', fn() => 'users');
+        $this->router->get('/users', [self::class, 'dummyAction']);
 
         $result = $this->router->dispatch('GET', '/users/');
 
@@ -326,8 +328,8 @@ final class RouterTest extends TestCase
 
     public function testGetRoutesReturnsAllRoutes(): void
     {
-        $this->router->get('/get', fn() => 'get');
-        $this->router->post('/post', fn() => 'post');
+        $this->router->get('/get', [self::class, 'dummyAction']);
+        $this->router->post('/post', [self::class, 'dummyAction']);
 
         $routes = $this->router->getRoutes();
 
@@ -339,9 +341,9 @@ final class RouterTest extends TestCase
 
     public function testGetAllowedMethodsReturnsCorrectMethods(): void
     {
-        $this->router->get('/users', fn() => 'users');
-        $this->router->post('/users', fn() => 'users');
-        $this->router->put('/users/{id}', fn() => 'users');
+        $this->router->get('/users', [self::class, 'dummyAction']);
+        $this->router->post('/users', [self::class, 'dummyAction']);
+        $this->router->put('/users/{id}', [self::class, 'dummyAction']);
 
         $methods = $this->router->getAllowedMethods('/users');
 
