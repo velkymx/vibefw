@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Fw\Model;
 
-use ReflectionClass;
 use RuntimeException;
 
 /**
@@ -20,14 +19,19 @@ final class ModelNotFoundException extends RuntimeException
         public readonly mixed $id = null,
         string $message = '',
     ) {
-        $className = new ReflectionClass($model)->getShortName();
+        parent::__construct($message ?: $this->buildMessage(), 404);
+    }
 
-        parent::__construct(
-            $message ?: ($id !== null
-                ? "{$className} with ID [{$id}] not found"
-                : "{$className} not found"),
-            404
-        );
+    private function buildMessage(): string
+    {
+        $shortClass = basename(str_replace('\\', '/', $this->model));
+
+        $msg = $this->id !== null
+            ? "{$shortClass} with ID [{$this->id}] not found"
+            : "{$shortClass} not found";
+
+        return $msg . "\nFix: Check your ID or query conditions. Inspect with:\n"
+            . "  php fw model:inspect {$shortClass}";
     }
 
     /**

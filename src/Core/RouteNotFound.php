@@ -17,7 +17,9 @@ final class RouteNotFound extends RuntimeException
         string $message = '',
     ) {
         parent::__construct(
-            $message ?: "No route found for {$method} {$uri}",
+            $message ?: "No route found for {$method} {$uri}\n"
+                . "Fix: Register this route in config/routes.php, then verify with:\n"
+                . "  php fw routes:list",
             404
         );
     }

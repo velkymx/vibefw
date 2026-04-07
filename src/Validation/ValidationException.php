@@ -18,9 +18,18 @@ class ValidationException extends RuntimeException
      */
     public function __construct(
         public readonly array $errors,
-        string $message = 'The given data was invalid.',
+        string $message = '',
     ) {
-        parent::__construct($message);
+        parent::__construct($message ?: $this->buildMessage());
+    }
+
+    private function buildMessage(): string
+    {
+        $fields = implode(', ', array_keys($this->errors));
+
+        return "The given data was invalid. Failing fields: {$fields}\n"
+            . "Fix: Check your FormRequest rules or run:\n"
+            . "  php fw check";
     }
 
     /**

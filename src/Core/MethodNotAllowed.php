@@ -21,7 +21,9 @@ final class MethodNotAllowed extends RuntimeException
         string $message = '',
     ) {
         parent::__construct(
-            $message ?: "Method {$method} not allowed for {$uri}. Allowed: " . implode(', ', $allowedMethods),
+            $message ?: "Method {$method} not allowed for {$uri}. Allowed: " . implode(', ', $allowedMethods) . "\n"
+                . "Fix: Use one of the allowed methods, or add a {$method} route in config/routes.php:\n"
+                . "  php fw routes:list",
             405
         );
     }

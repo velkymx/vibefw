@@ -39,7 +39,8 @@ final class GateTest extends TestCase
     {
         $exception = new ForbiddenException();
 
-        $this->assertEquals('This action is unauthorized.', $exception->getMessage());
+        $this->assertStringContainsString('This action is unauthorized.', $exception->getMessage());
+        $this->assertStringContainsString('php fw routes:list --middleware', $exception->getMessage());
     }
 
     public function testForbiddenExceptionAcceptsCustomMessage(): void

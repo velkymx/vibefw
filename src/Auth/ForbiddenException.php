@@ -11,8 +11,13 @@ use Exception;
  */
 final class ForbiddenException extends Exception
 {
-    public function __construct(string $message = 'This action is unauthorized.')
+    public function __construct(string $message = '')
     {
-        parent::__construct($message, 403);
+        parent::__construct(
+            $message ?: "This action is unauthorized.\n"
+                . "Fix: Check middleware and authorization rules:\n"
+                . "  php fw routes:list --middleware",
+            403
+        );
     }
 }

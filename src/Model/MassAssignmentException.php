@@ -54,8 +54,10 @@ class MassAssignmentException extends RuntimeException
     {
         $attrs = implode(', ', $this->attributes);
         $shortClass = basename(str_replace('\\', '/', $this->model));
+        $attrList = implode(' ', $this->attributes);
 
-        return "Mass assignment violation on {$shortClass}: [{$attrs}] are not fillable. "
-            . "Add them to \$fillable or use forceFill() for trusted data.";
+        return "Mass assignment violation on {$shortClass}: [{$attrs}] are not fillable.\n"
+            . "Fix: Add to \$fillable in app/Models/{$shortClass}.php, or run:\n"
+            . "  php fw add:field {$shortClass} {$this->attributes[0]} string";
     }
 }
