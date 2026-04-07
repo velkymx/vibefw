@@ -202,8 +202,33 @@ final class Router
         return $this;
     }
 
+    /**
+     * Apply a middleware class to a group of routes (typed alternative to group middleware arrays).
+     *
+     * @param class-string $middleware Fully-qualified middleware class name
+     */
+    public function with(string $middleware, callable $callback): self
+    {
+        $this->validateMiddlewareClassString($middleware);
+
+        $previousMiddleware = $this->groupMiddleware;
+        $this->groupMiddleware = array_merge($previousMiddleware, [$middleware]);
+
+        $callback($this);
+
+        $this->groupMiddleware = $previousMiddleware;
+
+        return $this;
+    }
+
     public function group(string $prefix, callable $callback, array $middleware = []): self
     {
+        foreach ($middleware as $mw) {
+            if (is_string($mw)) {
+                $this->validateMiddlewareClassString($mw);
+            }
+        }
+
         $previousPrefix = $this->groupPrefix;
         $previousMiddleware = $this->groupMiddleware;
 
@@ -221,6 +246,12 @@ final class Router
     public function middleware(string|array|callable $middleware): self
     {
         $middleware = is_array($middleware) ? $middleware : [$middleware];
+
+        foreach ($middleware as $mw) {
+            if (is_string($mw)) {
+                $this->validateMiddlewareClassString($mw);
+            }
+        }
 
         if ($this->pendingRoute !== null) {
             $method = $this->pendingRoute['method'];
@@ -509,6 +540,25 @@ final class Router
         }
 
         return '#^' . $pattern . '$#';
+    }
+
+    /**
+     * Validate that a middleware string looks like a class-string (contains backslash or class_exists).
+     * Allows 'ClassName:param' format where the part before ':' is a valid class.
+     */
+    private function validateMiddlewareClassString(string $middleware): void
+    {
+        $className = str_contains($middleware, ':')
+            ? substr($middleware, 0, strpos($middleware, ':'))
+            : $middleware;
+
+        if (!str_contains($className, '\\') && !class_exists($className)) {
+            throw new InvalidArgumentException(
+                "Middleware '{$middleware}' must be a class-string (e.g. AuthMiddleware::class). "
+                . "Plain string aliases are no longer supported. "
+                . "Run: php fw fix to update middleware references."
+            );
+        }
     }
 
     /**

@@ -201,13 +201,13 @@ final class RouterTest extends TestCase
     {
         $this->router->group('/admin', function (Router $router) {
             $router->get('/dashboard', [self::class, 'dummyAction']);
-        }, ['auth']);
+        }, [Fw\Middleware\AuthMiddleware::class]);
 
         $result = $this->router->dispatch('GET', '/admin/dashboard');
 
         $this->assertTrue($result->isOk());
         $match = $result->unwrapOr(null);
-        $this->assertContains('auth', $match->middleware);
+        $this->assertContains(Fw\Middleware\AuthMiddleware::class, $match->middleware);
     }
 
     public function testNestedRouteGroupsMergeMiddleware(): void
@@ -215,40 +215,40 @@ final class RouterTest extends TestCase
         $this->router->group('/api', function (Router $router) {
             $router->group('/admin', function (Router $router) {
                 $router->get('/users', [self::class, 'dummyAction']);
-            }, ['admin']);
-        }, ['auth']);
+            }, [Fw\Middleware\AdminMiddleware::class]);
+        }, [Fw\Middleware\AuthMiddleware::class]);
 
         $result = $this->router->dispatch('GET', '/api/admin/users');
 
         $this->assertTrue($result->isOk());
         $match = $result->unwrapOr(null);
-        $this->assertContains('auth', $match->middleware);
-        $this->assertContains('admin', $match->middleware);
+        $this->assertContains(Fw\Middleware\AuthMiddleware::class, $match->middleware);
+        $this->assertContains(Fw\Middleware\AdminMiddleware::class, $match->middleware);
     }
 
     public function testMiddlewareCanBeAddedToSingleRoute(): void
     {
         $this->router->get('/admin', [self::class, 'dummyAction'])
-            ->middleware('auth');
+            ->middleware(Fw\Middleware\AuthMiddleware::class);
 
         $result = $this->router->dispatch('GET', '/admin');
 
         $this->assertTrue($result->isOk());
         $match = $result->unwrapOr(null);
-        $this->assertContains('auth', $match->middleware);
+        $this->assertContains(Fw\Middleware\AuthMiddleware::class, $match->middleware);
     }
 
     public function testMultipleMiddlewareCanBeAddedToSingleRoute(): void
     {
         $this->router->get('/admin', [self::class, 'dummyAction'])
-            ->middleware(['auth', 'verified']);
+            ->middleware([Fw\Middleware\AuthMiddleware::class, Fw\Middleware\VerifiedMiddleware::class]);
 
         $result = $this->router->dispatch('GET', '/admin');
 
         $this->assertTrue($result->isOk());
         $match = $result->unwrapOr(null);
-        $this->assertContains('auth', $match->middleware);
-        $this->assertContains('verified', $match->middleware);
+        $this->assertContains(Fw\Middleware\AuthMiddleware::class, $match->middleware);
+        $this->assertContains(Fw\Middleware\VerifiedMiddleware::class, $match->middleware);
     }
 
     public function testMiddlewareAliasesCanBeRegistered(): void

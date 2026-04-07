@@ -81,16 +81,16 @@ return [
     */
     'groups' => [
         'web' => [
-            'csrf',
+            CsrfMiddleware::class,
         ],
 
         'api' => [
-            'throttle',
+            RateLimitMiddleware::class,
         ],
 
         'authenticated' => [
-            'auth',
-            'csrf',
+            AuthMiddleware::class,
+            CsrfMiddleware::class,
         ],
     ],
 ];
