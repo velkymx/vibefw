@@ -336,6 +336,7 @@ final class Application
             Commands\ValidateSecurityCommand::class,
             Commands\ValidateConfigCommand::class,
             Commands\ValidateAllCommand::class,
+            Commands\CheckCommand::class,
 
             // Testing
             Commands\TestCommand::class,
