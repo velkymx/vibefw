@@ -300,6 +300,7 @@ final class Application
             Commands\MakeCommandCommand::class,
             Commands\MakeQueryCommand::class,
             Commands\MakeSchemaCommand::class,
+            Commands\MakeResourceCommand::class,
             Commands\ScaffoldSpaCommand::class,
 
             // Database

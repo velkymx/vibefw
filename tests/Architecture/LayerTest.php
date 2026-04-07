@@ -92,13 +92,15 @@ final class LayerTest extends TestCase
         $violations = [];
         $srcFiles = $this->getPhpFiles(self::BASE_PATH . 'src');
 
-        // Allowed exceptions: Auth can reference App for policy resolution
+        // Allowed exceptions: Auth can reference App for policy resolution,
+        // and code generators emit App namespace strings in generated output
         $allowedExceptions = [
             'src/Auth/Auth.php',
             'src/Auth/Gate.php',
             'src/Auth/Policy.php',
             'src/Auth/ApiToken.php',
             'src/Auth/TokenGuard.php',
+            'src/Console/Commands/MakeResourceCommand.php',
         ];
 
         foreach ($srcFiles as $file) {
