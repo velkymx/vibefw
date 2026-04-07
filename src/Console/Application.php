@@ -339,6 +339,9 @@ final class Application
             Commands\CheckCommand::class,
             Commands\FixCommand::class,
 
+            // AI Context
+            Commands\AiMapCommand::class,
+
             // Testing
             Commands\TestCommand::class,
         ];
