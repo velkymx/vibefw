@@ -303,6 +303,7 @@ final class Application
             Commands\MakeResourceCommand::class,
             Commands\AddFieldCommand::class,
             Commands\MakeLinkCommand::class,
+            Commands\MakeTestCommand::class,
             Commands\ScaffoldSpaCommand::class,
 
             // Database
