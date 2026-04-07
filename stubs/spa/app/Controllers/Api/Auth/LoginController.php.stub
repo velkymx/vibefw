@@ -7,48 +7,25 @@ namespace App\Controllers\Api\Auth;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
-use App\Models\User;
+use App\Requests\LoginRequest;
 use Fw\Auth\Auth;
-use Fw\Support\Hash;
+use Fw\Validation\ValidationException;
 
-/**
- * LoginController handles the authentication lifecycle for the SPA.
- * 
- * VibeFW v2.0 Pattern:
- * 1. Uses non-blocking validation via the Controller base class.
- * 2. Returns side-effect-free Response objects (Value Objects).
- * 3. Leverages Fiber-safe Auth singleton for credential verification.
- */
 final class LoginController extends Controller
 {
-    /**
-     * Authenticate a user and return a Personal Access Token.
-     * 
-     * @param Request $request
-     * @return Response (200 OK with token or 401/422 on failure)
-     */
     public function login(Request $request): Response
     {
-        // VibeFW Validation: automatically handles error formatting for VibeUI
-        $validation = $this->validate($request, [
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        if ($validation->isErr()) {
+        try {
+            $data = LoginRequest::fromRequest($request);
+        } catch (ValidationException $e) {
             return $this->json([
-                'message' => 'Validation failed', 
-                'errors' => $validation->getError()
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
             ], 422);
         }
 
-        $credentials = $validation->getValue();
-
-        // Auth::attempt is Fiber-safe in v2.0
-        if (Auth::attempt($credentials['email'], $credentials['password'])) {
+        if (Auth::attempt($data->email, $data->password)) {
             $user = Auth::user();
-            
-            // Generate a plaintext token for the SPA to store in LocalStorage
             $token = $user->createToken('spa-login')->plainTextToken;
 
             return $this->json([
@@ -60,35 +37,9 @@ final class LoginController extends Controller
         return $this->json(['message' => 'Invalid credentials'], 401);
     }
 
-    /**
-     * Log the user out and invalidate the session.
-     */
     public function logout(Request $request): Response
     {
         Auth::logout();
         return $this->json(['message' => 'Logged out successfully']);
-    }
-
-    /**
-     * Confirm the user's password.
-     */
-    public function confirmPassword(Request $request): Response
-    {
-        $validation = $this->validate($request, [
-            'password' => 'required',
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->json(['errors' => $validation->getError()], 422);
-        }
-
-        $user = Auth::user();
-        $password = $validation->getValue()['password'];
-
-        if (Hash::check($password, $user->password)) {
-            return $this->json(['message' => 'Password confirmed']);
-        }
-
-        return $this->json(['message' => 'The provided password does not match our records.'], 422);
     }
 }

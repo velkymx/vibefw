@@ -11,14 +11,8 @@ use App\Models\User;
 use Fw\Auth\EmailVerification;
 use Fw\Auth\Auth;
 
-/**
- * EmailVerificationController handles the email verification lifecycle.
- */
 final class EmailVerificationController extends Controller
 {
-    /**
-     * Send a new verification email.
-     */
     public function send(Request $request): Response
     {
         $user = Auth::user();
@@ -27,16 +21,11 @@ final class EmailVerificationController extends Controller
             return $this->json(['message' => 'Email already verified']);
         }
 
-        $token = EmailVerification::createToken($user->email);
+        EmailVerification::createToken($user->email);
 
-        // TODO: Dispatch job to send the verification email
-        
         return $this->json(['message' => 'Verification link sent']);
     }
 
-    /**
-     * Mark the user's email address as verified.
-     */
     public function verify(Request $request): Response
     {
         $token = $request->get('token');
@@ -51,15 +40,15 @@ final class EmailVerificationController extends Controller
             return $this->json(['message' => 'Invalid or expired token'], 422);
         }
 
-        $user = User::where('email', $email)->first()->unwrapOr(null);
-
-        if ($user && !$user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
-            EmailVerification::deleteToken($token);
-            
-            return $this->json(['message' => 'Email verified successfully']);
-        }
-
-        return $this->json(['message' => 'Verification failed or already verified'], 422);
+        return User::where('email', $email)->first()->match(
+            some: function ($user) use ($token) {
+                if (!$user->hasVerifiedEmail()) {
+                    $user->markEmailAsVerified();
+                    EmailVerification::deleteToken($token);
+                }
+                return $this->json(['message' => 'Email verified successfully']);
+            },
+            none: fn() => $this->json(['message' => 'Verification failed'], 422),
+        );
     }
 }

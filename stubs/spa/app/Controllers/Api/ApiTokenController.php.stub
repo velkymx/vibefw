@@ -7,30 +7,17 @@ namespace App\Controllers\Api;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
+use App\Requests\CreateTokenRequest;
 use Fw\Auth\Auth;
 use Fw\Auth\ApiToken;
+use Fw\Validation\ValidationException;
 
-/**
- * ApiTokenController — Personal access token management API
- *
- * API contract:
- *   GET    /api/tokens      → List all tokens for the authenticated user
- *   POST   /api/tokens      → Create a new token (returns plaintext token)
- *   DELETE /api/tokens/{id}  → Revoke a specific token
- *
- * All endpoints are protected by the auth:api middleware in config/routes.php.
- * Tokens are stored in the personal_access_tokens table via Fw\Auth\ApiToken.
- */
 final class ApiTokenController extends Controller
 {
-    /**
-     * List all tokens for the authenticated user.
-     */
     public function index(Request $request): Response
     {
         $user = Auth::user();
-        
-        // personal_access_tokens table is used by Fw\Auth\ApiToken
+
         $tokens = ApiToken::where('tokenable_id', $user->id)
             ->where('tokenable_type', 'App\Models\User')
             ->get();
@@ -38,48 +25,38 @@ final class ApiTokenController extends Controller
         return $this->json($tokens);
     }
 
-    /**
-     * Create a new personal access token.
-     */
     public function store(Request $request): Response
     {
-        $validation = $this->validate($request, [
-            'name' => 'required',
-            'abilities' => 'array',
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->json(['errors' => $validation->getError()], 422);
+        try {
+            $data = CreateTokenRequest::fromRequest($request);
+        } catch (ValidationException $e) {
+            return $this->json(['errors' => $e->errors()], 422);
         }
 
         $user = Auth::user();
-        $data = $validation->getValue();
-        
-        $token = $user->createToken($data['name'], $data['abilities'] ?? ['*']);
+        $abilities = $request->input('abilities', ['*']);
+        $token = $user->createToken($data->name, $abilities);
 
         return $this->json([
             'token' => $token->plainTextToken,
-            'message' => 'Token created successfully.'
+            'message' => 'Token created successfully.',
         ], 201);
     }
 
-    /**
-     * Revoke a specific token.
-     */
     public function destroy(Request $request, string $id): Response
     {
         $user = Auth::user();
-        
+
         $token = ApiToken::where('id', (int) $id)
             ->where('tokenable_id', $user->id)
-            ->first()
-            ->unwrapOr(null);
+            ->first();
 
-        if ($token) {
-            $token->delete();
-            return $this->json(['message' => 'Token revoked.']);
-        }
-
-        return $this->json(['message' => 'Token not found.'], 404);
+        return $token->match(
+            some: function ($t) {
+                $t->delete();
+                return $this->json(['message' => 'Token revoked.']);
+            },
+            none: fn() => $this->json(['message' => 'Token not found.'], 404),
+        );
     }
 }

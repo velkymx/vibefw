@@ -7,94 +7,60 @@ namespace App\Controllers\Api;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
+use App\Requests\UpdateProfileRequest;
+use App\Requests\UpdatePasswordRequest;
 use Fw\Auth\Auth;
 use Fw\Support\Hash;
+use Fw\Validation\ValidationException;
 
-/**
- * ProfileController — User profile and security settings API
- *
- * API contract:
- *   PUT    /api/profile           → Update name/email (Bearer token required)
- *   PUT    /api/profile/password  → Change password (Bearer token required)
- *   DELETE /api/profile           → Delete account (Bearer token + password confirmation)
- *
- * All endpoints are protected by the auth:api middleware in config/routes.php.
- */
 final class ProfileController extends Controller
 {
-    /**
-     * Update the user's profile information.
-     */
     public function update(Request $request): Response
     {
-        $user = Auth::user();
-
-        $validation = $this->validate($request, [
-            'name' => 'required|min:2',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->json(['errors' => $validation->getError()], 422);
+        try {
+            $data = UpdateProfileRequest::fromRequest($request);
+        } catch (ValidationException $e) {
+            return $this->json(['errors' => $e->errors()], 422);
         }
 
-        $user->fill($validation->getValue())->save();
+        $user = Auth::user();
+        $user->fill($data->toArray())->save();
 
         return $this->json([
             'user' => $user,
-            'message' => 'Profile updated successfully.'
+            'message' => 'Profile updated successfully.',
         ]);
     }
 
-    /**
-     * Update the user's password.
-     */
     public function updatePassword(Request $request): Response
     {
-        $user = Auth::user();
-
-        $validation = $this->validate($request, [
-            'current_password' => 'required',
-            'password' => 'required|min:8|confirmed',
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->json(['errors' => $validation->getError()], 422);
+        try {
+            $data = UpdatePasswordRequest::fromRequest($request);
+        } catch (ValidationException $e) {
+            return $this->json(['errors' => $e->errors()], 422);
         }
 
-        $data = $validation->getValue();
+        $user = Auth::user();
 
-        if (!Hash::check($data['current_password'], $user->password)) {
+        if (!Hash::check($data->current_password, $user->password)) {
             return $this->json([
-                'errors' => ['current_password' => 'The provided password does not match your current password.']
+                'errors' => ['current_password' => 'The provided password does not match your current password.'],
             ], 422);
         }
 
-        $user->fill([
-            'password' => Hash::make($data['password']),
-        ])->save();
+        $user->fill(['password' => Hash::make($data->password)])->save();
 
         return $this->json(['message' => 'Password updated successfully.']);
     }
 
-    /**
-     * Delete the user's account.
-     */
     public function destroy(Request $request): Response
     {
         $user = Auth::user();
+        $password = $request->input('password', '');
 
-        $validation = $this->validate($request, [
-            'password' => 'required',
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->json(['errors' => $validation->getError()], 422);
-        }
-
-        if (!Hash::check($validation->getValue()['password'], $user->password)) {
+        if (!Hash::check($password, $user->password)) {
             return $this->json([
-                'errors' => ['password' => 'The provided password does not match our records.']
+                'errors' => ['password' => 'The provided password does not match our records.'],
             ], 422);
         }
 

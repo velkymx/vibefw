@@ -102,6 +102,7 @@ final class LayerTest extends TestCase
             'src/Auth/TokenGuard.php',
             'src/Console/Commands/MakeResourceCommand.php',
             'src/Console/Commands/MakeTestCommand.php',
+            'src/Console/Commands/ScaffoldSpaCommand.php',
         ];
 
         foreach ($srcFiles as $file) {

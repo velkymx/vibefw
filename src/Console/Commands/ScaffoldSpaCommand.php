@@ -84,6 +84,10 @@ final class ScaffoldSpaCommand extends Command
             'app/Controllers/Api/Auth/LoginController.php',
             'app/Controllers/Api/Auth/RegisterController.php',
             'app/Controllers/Api/StatsController.php',
+            'app/Controllers/Api/ProfileController.php',
+            'app/Controllers/Api/ApiTokenController.php',
+            'app/Requests/LoginRequest.php',
+            'app/Requests/RegisterRequest.php',
             'app/Models/User.php',
             'database/migrations/0001_create_users_table.php',
             'database/migrations/0003_create_jobs_table.php',
@@ -278,14 +282,27 @@ final class ScaffoldSpaCommand extends Command
                 mkdir($appDir . '/Models', 0o755, true);
             }
 
-            // 2. Copy stubs
+            // 2. Copy controller stubs
             $this->copyAppStub('Controllers/Api/Auth/LoginController.php', $appDir . '/Controllers/Api/Auth/LoginController.php');
             $this->copyAppStub('Controllers/Api/Auth/RegisterController.php', $appDir . '/Controllers/Api/Auth/RegisterController.php');
             $this->copyAppStub('Controllers/Api/StatsController.php', $appDir . '/Controllers/Api/StatsController.php');
+            $this->copyAppStub('Controllers/Api/ProfileController.php', $appDir . '/Controllers/Api/ProfileController.php');
+            $this->copyAppStub('Controllers/Api/ApiTokenController.php', $appDir . '/Controllers/Api/ApiTokenController.php');
 
+            // 3. Copy FormRequest stubs
+            if (!is_dir($appDir . '/Requests')) {
+                mkdir($appDir . '/Requests', 0o755, true);
+            }
+            $this->copyAppStub('Requests/LoginRequest.php', $appDir . '/Requests/LoginRequest.php');
+            $this->copyAppStub('Requests/RegisterRequest.php', $appDir . '/Requests/RegisterRequest.php');
+            $this->copyAppStub('Requests/UpdateProfileRequest.php', $appDir . '/Requests/UpdateProfileRequest.php');
+            $this->copyAppStub('Requests/UpdatePasswordRequest.php', $appDir . '/Requests/UpdatePasswordRequest.php');
+            $this->copyAppStub('Requests/CreateTokenRequest.php', $appDir . '/Requests/CreateTokenRequest.php');
+
+            // 4. Copy model stubs
             $this->copyAppStub('Models/User.php', $appDir . '/Models/User.php');
 
-            // 3. Write fresh routes.php
+            // 5. Write fresh routes.php with typed middleware
             $routesFile = BASE_PATH . '/config/routes.php';
             $routesContent = <<<'PHP'
                 <?php
@@ -293,27 +310,33 @@ final class ScaffoldSpaCommand extends Command
                 declare(strict_types=1);
 
                 use Fw\Core\Router;
-                use Fw\Core\Request;
-                use Fw\Core\Response;
-                use Fw\Auth\Auth;
+                use App\Controllers\Api\UserController;
+                use App\Controllers\Api\StatsController;
+                use App\Controllers\Api\ProfileController;
+                use App\Controllers\Api\ApiTokenController;
+                use App\Controllers\Api\Auth\LoginController;
+                use App\Controllers\Api\Auth\RegisterController;
+                use Fw\Middleware\ApiAuthMiddleware;
 
                 return function (Router $router): void {
                     $router->group('/api', function (Router $router): void {
 
                         // Auth (public)
-                        $router->post('/auth/login', [App\Controllers\Api\Auth\LoginController::class, 'login']);
-                        $router->post('/auth/register', [App\Controllers\Api\Auth\RegisterController::class, 'register']);
-                        $router->post('/auth/logout', [App\Controllers\Api\Auth\LoginController::class, 'logout']);
+                        $router->post('/auth/login', [LoginController::class, 'login']);
+                        $router->post('/auth/register', [RegisterController::class, 'register']);
+                        $router->post('/auth/logout', [LoginController::class, 'logout']);
 
-                        // User (protected)
-                        $router->get('/user', function (Request $request): Response {
-                            return (new Response(json_encode(Auth::user(), JSON_THROW_ON_ERROR), 200))
-                                ->header('Content-Type', 'application/json');
-                        })->middleware('auth:api');
-
-                        // Dashboard data (protected)
-                        $router->get('/dashboard/stats', [App\Controllers\Api\StatsController::class, 'index'])
-                            ->middleware('auth:api');
+                        // Protected routes
+                        $router->with(ApiAuthMiddleware::class, function (Router $router): void {
+                            $router->get('/user', [UserController::class, 'show']);
+                            $router->get('/dashboard/stats', [StatsController::class, 'index']);
+                            $router->put('/profile', [ProfileController::class, 'update']);
+                            $router->put('/profile/password', [ProfileController::class, 'updatePassword']);
+                            $router->delete('/profile', [ProfileController::class, 'destroy']);
+                            $router->get('/tokens', [ApiTokenController::class, 'index']);
+                            $router->post('/tokens', [ApiTokenController::class, 'store']);
+                            $router->delete('/tokens/{id}', [ApiTokenController::class, 'destroy']);
+                        });
                     });
                 };
                 PHP;
