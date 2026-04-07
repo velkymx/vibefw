@@ -299,6 +299,7 @@ final class Application
             Commands\MakeSeederCommand::class,
             Commands\MakeCommandCommand::class,
             Commands\MakeQueryCommand::class,
+            Commands\MakeSchemaCommand::class,
             Commands\ScaffoldSpaCommand::class,
 
             // Database
