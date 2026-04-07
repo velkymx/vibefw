@@ -10,65 +10,42 @@ use Fw\Core\Response;
 
 class {{CLASS_NAME}} extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // CUSTOMIZE: Add dependencies via constructor injection
+
     public function index(Request $request): Response
     {
         return $this->view('{{VIEW_PATH}}.index');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create(Request $request): Response
     {
         return $this->view('{{VIEW_PATH}}.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request): Response
     {
-        // Validate and store
-
+        // CUSTOMIZE: Use FormRequest for validation
         return $this->redirect('/{{ROUTE_PREFIX}}');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Request $request, string $id): Response
     {
         return $this->view('{{VIEW_PATH}}.show');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Request $request, string $id): Response
     {
         return $this->view('{{VIEW_PATH}}.edit');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id): Response
     {
-        // Validate and update
-
+        // CUSTOMIZE: Use FormRequest for validation
         return $this->redirect('/{{ROUTE_PREFIX}}/' . $id);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Request $request, string $id): Response
     {
-        // Delete
-
         return $this->redirect('/{{ROUTE_PREFIX}}');
     }
 }

@@ -5,30 +5,26 @@ declare(strict_types=1);
 namespace App\Requests;
 
 use Fw\Validation\FormRequest;
+use Fw\Validation\Rule;
 use Fw\Validation\Rules\Required;
-use Fw\Validation\Rules\Max;
+use Fw\Validation\Rules\MaxLength;
 use Fw\Validation\Rules\Email;
 
-/**
- * Form request validation for {{NAME}}.
- */
 class {{CLASS_NAME}} extends FormRequest
 {
-    #[Required]
-    #[Max(255)]
+    // CUSTOMIZE: Add validated properties
     public string $name;
 
-    // Add your validated properties with validation attributes here
-    // Examples:
-    //
-    // #[Required]
-    // #[Email]
-    // public string $email;
-    //
-    // #[Required]
-    // #[Min(8)]
-    // public string $password;
-    //
-    // #[In(['draft', 'published'])]
-    // public string $status = 'draft';
+    /**
+     * Define validation rules using typed rule objects.
+     *
+     * @return array<string, list<Rule>>
+     */
+    public function rules(): array
+    {
+        return [
+            // CUSTOMIZE: Define typed validation rules
+            'name' => [new Required, new MaxLength(255)],
+        ];
+    }
 }

@@ -10,11 +10,13 @@ class {{CLASS_NAME}} extends Model
 {
     protected static ?string $table = '{{TABLE_NAME}}';
 
+    // CUSTOMIZE: Add mass-assignable fields
     /** @var array<string> */
     protected static array $fillable = [
         //
     ];
 
+    // CUSTOMIZE: Add type casts for attributes
     /** @var array<string, string> */
     protected static array $casts = [
         //

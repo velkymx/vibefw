@@ -24,7 +24,7 @@ class {{CLASS_NAME}} extends Factory
     public function definition(): array
     {
         return [
-            // Define default attributes here
+            // CUSTOMIZE: Define default attributes here
             // 'name' => $this->faker->name(),
             // 'email' => $this->faker->unique()->email(),
         ];

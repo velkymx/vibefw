@@ -11,7 +11,7 @@ return new class extends Migration
     {
         $this->create('{{TABLE_NAME}}', function (Blueprint $table): void {
             $table->id();
-            // Add columns here
+            // CUSTOMIZE: Add columns here
             $table->timestamps();
         });
     }
