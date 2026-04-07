@@ -302,6 +302,7 @@ final class Application
             Commands\MakeSchemaCommand::class,
             Commands\MakeResourceCommand::class,
             Commands\AddFieldCommand::class,
+            Commands\MakeLinkCommand::class,
             Commands\ScaffoldSpaCommand::class,
 
             // Database
