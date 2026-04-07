@@ -337,6 +337,7 @@ final class Application
             Commands\ValidateConfigCommand::class,
             Commands\ValidateAllCommand::class,
             Commands\CheckCommand::class,
+            Commands\FixCommand::class,
 
             // Testing
             Commands\TestCommand::class,
