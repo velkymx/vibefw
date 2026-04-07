@@ -30,7 +30,7 @@ final class ApiTokenController extends Controller
         try {
             $data = CreateTokenRequest::fromRequest($request);
         } catch (ValidationException $e) {
-            return $this->json(['errors' => $e->errors()], 422);
+            return $this->json(['errors' => $e->errors], 422);
         }
 
         $user = Auth::user();

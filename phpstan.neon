@@ -1,6 +1,11 @@
 includes:
     - phpstan-baseline.neon
 
+rules:
+    - Fw\PHPStan\Rules\NoStringPipeValidationRule
+    - Fw\PHPStan\Rules\ControllerReturnTypeRule
+    - Fw\PHPStan\Rules\NoRemovedMethodCallRule
+
 parameters:
     level: 8
     paths:
@@ -8,6 +13,7 @@ parameters:
         - app
     excludePaths:
         - src/Console/Commands  # CLI commands have dynamic patterns
+        - src/PHPStan            # PHPStan rules use PHPStan internals
 
     # Treat phpdoc types as authoritative
     treatPhpDocTypesAsCertain: false
@@ -15,8 +21,8 @@ parameters:
     # Report unused parameters
     reportUnmatchedIgnoredErrors: false
 
-    # PHP 8.4 features
-    phpVersion: 80400
+    # PHP 8.5 features
+    phpVersion: 80500
 
     # Ignore patterns for framework magic
     ignoreErrors:

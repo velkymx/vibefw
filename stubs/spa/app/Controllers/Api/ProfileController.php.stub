@@ -20,7 +20,7 @@ final class ProfileController extends Controller
         try {
             $data = UpdateProfileRequest::fromRequest($request);
         } catch (ValidationException $e) {
-            return $this->json(['errors' => $e->errors()], 422);
+            return $this->json(['errors' => $e->errors], 422);
         }
 
         $user = Auth::user();
@@ -37,7 +37,7 @@ final class ProfileController extends Controller
         try {
             $data = UpdatePasswordRequest::fromRequest($request);
         } catch (ValidationException $e) {
-            return $this->json(['errors' => $e->errors()], 422);
+            return $this->json(['errors' => $e->errors], 422);
         }
 
         $user = Auth::user();

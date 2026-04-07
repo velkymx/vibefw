@@ -22,7 +22,7 @@ final class RegisterController extends Controller
         } catch (ValidationException $e) {
             return $this->json([
                 'message' => 'Registration failed',
-                'errors' => $e->errors(),
+                'errors' => $e->errors,
             ], 422);
         }
 

@@ -21,7 +21,7 @@ final class LoginController extends Controller
         } catch (ValidationException $e) {
             return $this->json([
                 'message' => 'Validation failed',
-                'errors' => $e->errors(),
+                'errors' => $e->errors,
             ], 422);
         }
 
