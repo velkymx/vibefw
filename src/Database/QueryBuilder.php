@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Database;
 
 use InvalidArgumentException;
+use LogicException;
 
 /**
  * Fluent query builder for database operations.
@@ -168,6 +169,9 @@ final class QueryBuilder
 
     public function join(string $table, string $first, string $operator, string $second): self
     {
+        if ($this->limit !== null) {
+            throw new LogicException('Cannot add a join after limit has been set. Call join() before limit().');
+        }
         $this->validateOperator($operator);
         $clone = clone $this;
         $clone->joins[] = [
@@ -182,6 +186,9 @@ final class QueryBuilder
 
     public function leftJoin(string $table, string $first, string $operator, string $second): self
     {
+        if ($this->limit !== null) {
+            throw new LogicException('Cannot add a join after limit has been set. Call join() before limit().');
+        }
         $this->validateOperator($operator);
         $clone = clone $this;
         $clone->joins[] = [
@@ -241,12 +248,14 @@ final class QueryBuilder
 
     public function get(): array
     {
+        $this->requireTable();
         [$sql, $bindings] = $this->toSql();
         return $this->connection->select($sql, $bindings);
     }
 
     public function first(): ?array
     {
+        $this->requireTable();
         $result = $this->limit(1)->get();
         return $result[0] ?? null;
     }
@@ -258,6 +267,7 @@ final class QueryBuilder
 
     public function count(): int
     {
+        $this->requireTable();
         $clone = clone $this;
         $clone->columns = ['COUNT(*) as aggregate'];
         $result = $clone->first();
@@ -323,11 +333,13 @@ final class QueryBuilder
 
     public function insert(array $data): int
     {
+        $this->requireTable();
         return $this->connection->insert($this->table, $data);
     }
 
     public function update(array $data): int
     {
+        $this->requireTable();
         $set = [];
         $params = [];
         foreach ($data as $column => $value) {
@@ -340,12 +352,14 @@ final class QueryBuilder
 
     public function delete(): int
     {
+        $this->requireTable();
         $sql = sprintf('DELETE FROM %s%s', $this->quoteIdentifier($this->table), $this->compileWheres());
         return $this->connection->query($sql, $this->bindings)->rowCount();
     }
 
     public function toSql(): array
     {
+        $this->requireTable();
         $bindings = $this->bindings;
         $sql = $this->distinct ? 'SELECT DISTINCT ' : 'SELECT ';
         $sql .= implode(', ', array_map(fn ($c) => $this->compileSelectColumn($c), $this->columns));
@@ -374,6 +388,13 @@ final class QueryBuilder
         }
 
         return [$sql, $bindings];
+    }
+
+    private function requireTable(): void
+    {
+        if ($this->table === '') {
+            throw new LogicException('Cannot execute query: no table has been set. Call ->table() first.');
+        }
     }
 
     private function validateIdentifier(string $identifier, string $type = 'identifier'): void
