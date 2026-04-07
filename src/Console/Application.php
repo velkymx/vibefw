@@ -341,6 +341,7 @@ final class Application
 
             // AI Context
             Commands\AiMapCommand::class,
+            Commands\AiContextCommand::class,
 
             // Testing
             Commands\TestCommand::class,
