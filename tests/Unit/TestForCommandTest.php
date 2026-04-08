@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Console\Application as ConsoleApp;
+use Fw\Console\Output;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -21,7 +22,7 @@ final class TestForCommandTest extends TestCase
         mkdir($this->tempDir . '/tests/Unit', 0o755, true);
         mkdir($this->tempDir . '/tests/Feature', 0o755, true);
 
-        $this->console = new ConsoleApp($this->tempDir);
+        $this->console = new ConsoleApp($this->tempDir, Output::createBuffer());
     }
 
     protected function tearDown(): void
@@ -33,7 +34,7 @@ final class TestForCommandTest extends TestCase
     #[Test]
     public function commandIsRegistered(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $commands = $app->getCommands();
 
         $found = false;
@@ -52,9 +53,8 @@ final class TestForCommandTest extends TestCase
     {
         $this->writeTestFiles();
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'test:for', 'post']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('PostTest', $output);
@@ -66,9 +66,8 @@ final class TestForCommandTest extends TestCase
     {
         $this->writeTestFiles();
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'test:for', 'nonexistent']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('No test', $output);
@@ -77,9 +76,7 @@ final class TestForCommandTest extends TestCase
     #[Test]
     public function failsWithoutTopic(): void
     {
-        ob_start();
         $exitCode = $this->console->run(['fw', 'test:for']);
-        ob_get_clean();
 
         $this->assertSame(1, $exitCode);
     }

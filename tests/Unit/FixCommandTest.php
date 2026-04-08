@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Console\Application as ConsoleApp;
+use Fw\Console\Output;
 use Fw\Console\Commands\FixCommand;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -22,7 +23,7 @@ final class FixCommandTest extends TestCase
         mkdir($this->tempDir . '/app/Models', 0o755, true);
         mkdir($this->tempDir . '/app/Controllers', 0o755, true);
 
-        $this->console = new ConsoleApp($this->tempDir);
+        $this->console = new ConsoleApp($this->tempDir, Output::createBuffer());
     }
 
     protected function tearDown(): void
@@ -34,7 +35,7 @@ final class FixCommandTest extends TestCase
     #[Test]
     public function commandIsRegistered(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $commands = $app->getCommands();
 
         $found = false;
@@ -51,7 +52,7 @@ final class FixCommandTest extends TestCase
     #[Test]
     public function commandHasCorrectNameAndDescription(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $command = new FixCommand($app);
 
         $this->assertSame('fix', $command->getName());
@@ -126,9 +127,8 @@ final class FixCommandTest extends TestCase
 
         file_put_contents($this->tempDir . '/app/Models/Item.php', $content);
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'fix']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertStringContainsString('fix', strtolower($output));
     }
@@ -153,9 +153,8 @@ final class FixCommandTest extends TestCase
 
         file_put_contents($this->tempDir . '/app/Models/Clean.php', $content);
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'fix']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
     }

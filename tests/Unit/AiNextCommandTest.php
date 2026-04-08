@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Console\Application as ConsoleApp;
+use Fw\Console\Output;
 use Fw\Console\Commands\AiNextCommand;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -21,7 +22,7 @@ final class AiNextCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir() . '/fw_ainext_test_' . bin2hex(random_bytes(8));
         mkdir($this->tempDir . '/config', 0o755, true);
 
-        $this->console = new ConsoleApp($this->tempDir);
+        $this->console = new ConsoleApp($this->tempDir, Output::createBuffer());
     }
 
     protected function tearDown(): void
@@ -33,7 +34,7 @@ final class AiNextCommandTest extends TestCase
     #[Test]
     public function commandIsRegistered(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $commands = $app->getCommands();
 
         $found = false;
@@ -53,9 +54,8 @@ final class AiNextCommandTest extends TestCase
         // Empty project — no models, no routes
         file_put_contents($this->tempDir . '/config/routes.php', "<?php\nreturn function() {};");
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'ai:next']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('php fw', $output);
@@ -76,9 +76,8 @@ final class AiNextCommandTest extends TestCase
         }
         PHP);
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'ai:next']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
         // Should suggest something related to the project state
@@ -88,9 +87,8 @@ final class AiNextCommandTest extends TestCase
     #[Test]
     public function outputIncludesExactCommand(): void
     {
-        ob_start();
         $this->console->run(['fw', 'ai:next']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         // Every suggestion should include an exact fw command
         $this->assertMatchesRegularExpression('/php fw \S+/', $output);

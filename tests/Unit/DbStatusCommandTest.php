@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Console\Application as ConsoleApp;
+use Fw\Console\Output;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -24,7 +25,7 @@ final class DbStatusCommandTest extends TestCase
         // Write a minimal .env for SQLite
         file_put_contents($this->tempDir . '/.env', "DB_DRIVER=sqlite\nDB_DATABASE=:memory:\n");
 
-        $this->console = new ConsoleApp($this->tempDir);
+        $this->console = new ConsoleApp($this->tempDir, Output::createBuffer());
     }
 
     protected function tearDown(): void
@@ -36,7 +37,7 @@ final class DbStatusCommandTest extends TestCase
     #[Test]
     public function commandIsRegistered(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $commands = $app->getCommands();
 
         $found = false;
@@ -53,9 +54,8 @@ final class DbStatusCommandTest extends TestCase
     #[Test]
     public function showsDriverInfo(): void
     {
-        ob_start();
         $exitCode = $this->console->run(['fw', 'db:status']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('Driver', $output);
@@ -66,9 +66,8 @@ final class DbStatusCommandTest extends TestCase
     {
         $this->writeMigration();
 
-        ob_start();
         $this->console->run(['fw', 'db:status']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertStringContainsString('Migration', $output);
     }

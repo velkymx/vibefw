@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Console\Application as ConsoleApp;
+use Fw\Console\Output;
 use Fw\Console\Commands\CheckCommand;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -14,7 +15,7 @@ final class CheckCommandTest extends TestCase
     #[Test]
     public function commandIsRegistered(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $commands = $app->getCommands();
 
         $found = false;
@@ -31,7 +32,7 @@ final class CheckCommandTest extends TestCase
     #[Test]
     public function commandHasCorrectDescription(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $command = new CheckCommand($app);
 
         $this->assertSame('check', $command->getName());

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Console\Application as ConsoleApp;
+use Fw\Console\Output;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -28,7 +29,7 @@ final class MakeResourceCommandTest extends TestCase
         mkdir($this->tempDir . '/database/factories', 0o755, true);
         mkdir($this->tempDir . '/stubs', 0o755, true);
 
-        $this->console = new ConsoleApp($this->tempDir);
+        $this->console = new ConsoleApp($this->tempDir, Output::createBuffer());
 
         $this->writeSchemaFile();
     }

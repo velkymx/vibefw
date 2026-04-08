@@ -20,11 +20,16 @@ final class Application
 
     private string $basePath;
 
-    public function __construct(string $basePath)
+    public function __construct(string $basePath, ?Output $output = null)
     {
         $this->basePath = $basePath;
-        $this->output = new Output();
+        $this->output = $output ?? new Output();
         $this->registerBuiltinCommands();
+    }
+
+    public function getOutput(): Output
+    {
+        return $this->output;
     }
 
     /**

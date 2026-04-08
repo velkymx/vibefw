@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Console\Application as ConsoleApp;
+use Fw\Console\Output;
 use Fw\Console\Commands\AiContextCommand;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +28,7 @@ final class AiContextCommandTest extends TestCase
         mkdir($this->tempDir . '/config', 0o755, true);
 
         $this->writeFixtures();
-        $this->console = new ConsoleApp($this->tempDir);
+        $this->console = new ConsoleApp($this->tempDir, Output::createBuffer());
     }
 
     protected function tearDown(): void
@@ -39,7 +40,7 @@ final class AiContextCommandTest extends TestCase
     #[Test]
     public function commandIsRegistered(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $commands = $app->getCommands();
 
         $found = false;
@@ -56,9 +57,8 @@ final class AiContextCommandTest extends TestCase
     #[Test]
     public function dumpsModelForTopic(): void
     {
-        ob_start();
         $exitCode = $this->console->run(['fw', 'ai:context', 'post']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('Post.php', $output);
@@ -68,9 +68,8 @@ final class AiContextCommandTest extends TestCase
     #[Test]
     public function dumpsControllerForTopic(): void
     {
-        ob_start();
         $exitCode = $this->console->run(['fw', 'ai:context', 'post']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertStringContainsString('PostController', $output);
     }
@@ -78,9 +77,8 @@ final class AiContextCommandTest extends TestCase
     #[Test]
     public function dumpsRequestForTopic(): void
     {
-        ob_start();
         $this->console->run(['fw', 'ai:context', 'post']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertStringContainsString('StorePostRequest', $output);
     }
@@ -88,9 +86,8 @@ final class AiContextCommandTest extends TestCase
     #[Test]
     public function compactModeStripsComments(): void
     {
-        ob_start();
         $this->console->run(['fw', 'ai:context', 'post', '--compact']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertStringContainsString('Post.php', $output);
         // The docblock comment should be stripped in compact mode
@@ -100,9 +97,8 @@ final class AiContextCommandTest extends TestCase
     #[Test]
     public function jsonModeOutputsValidJson(): void
     {
-        ob_start();
         $this->console->run(['fw', 'ai:context', 'post', '--json']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $data = json_decode($output, true);
         $this->assertNotNull($data, 'Output should be valid JSON');
@@ -112,9 +108,7 @@ final class AiContextCommandTest extends TestCase
     #[Test]
     public function failsWithoutTopic(): void
     {
-        ob_start();
         $exitCode = $this->console->run(['fw', 'ai:context']);
-        ob_get_clean();
 
         $this->assertSame(1, $exitCode);
     }

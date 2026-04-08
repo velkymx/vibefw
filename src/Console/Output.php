@@ -30,14 +30,42 @@ final class Output
 
     private bool $supportsColor;
 
-    public function __construct()
+    /** @var resource */
+    private mixed $stream;
+
+    /**
+     * @param resource|null $stream Writable stream (defaults to STDOUT)
+     */
+    public function __construct(mixed $stream = null)
     {
+        $this->stream = $stream ?? STDOUT;
         $this->supportsColor = $this->detectColorSupport();
+    }
+
+    /**
+     * Create an Output instance that writes to an in-memory buffer.
+     */
+    public static function createBuffer(): self
+    {
+        return new self(fopen('php://memory', 'r+'));
+    }
+
+    /**
+     * Get buffered output contents (for Output instances created with createBuffer).
+     */
+    public function getBuffer(): string
+    {
+        $position = ftell($this->stream);
+        rewind($this->stream);
+        $contents = stream_get_contents($this->stream);
+        fseek($this->stream, $position);
+
+        return $contents;
     }
 
     public function line(string $text): void
     {
-        echo $text . PHP_EOL;
+        fwrite($this->stream, $text . PHP_EOL);
     }
 
     public function info(string $text): void
@@ -67,12 +95,12 @@ final class Output
 
     public function newLine(int $count = 1): void
     {
-        echo str_repeat(PHP_EOL, $count);
+        fwrite($this->stream, str_repeat(PHP_EOL, $count));
     }
 
     public function write(string $text): void
     {
-        echo $text;
+        fwrite($this->stream, $text);
     }
 
     /**
@@ -181,6 +209,10 @@ final class Output
             return getenv('ANSICON') !== false
                 || getenv('ConEmuANSI') === 'ON'
                 || str_contains(getenv('TERM') ?: '', 'xterm');
+        }
+
+        if ($this->stream !== STDOUT) {
+            return false;
         }
 
         return stream_isatty(STDOUT);

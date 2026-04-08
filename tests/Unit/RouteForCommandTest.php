@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Console\Application as ConsoleApp;
+use Fw\Console\Output;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +21,7 @@ final class RouteForCommandTest extends TestCase
         $this->tempDir = sys_get_temp_dir() . '/fw_routefor_test_' . bin2hex(random_bytes(8));
         mkdir($this->tempDir . '/config', 0o755, true);
 
-        $this->console = new ConsoleApp($this->tempDir);
+        $this->console = new ConsoleApp($this->tempDir, Output::createBuffer());
     }
 
     protected function tearDown(): void
@@ -32,7 +33,7 @@ final class RouteForCommandTest extends TestCase
     #[Test]
     public function commandIsRegistered(): void
     {
-        $app = new ConsoleApp(dirname(__DIR__, 2));
+        $app = new ConsoleApp(dirname(__DIR__, 2), Output::createBuffer());
         $commands = $app->getCommands();
 
         $found = false;
@@ -51,9 +52,8 @@ final class RouteForCommandTest extends TestCase
     {
         $this->writeRoutes();
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'route:for', 'post']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('/posts', $output);
@@ -66,9 +66,8 @@ final class RouteForCommandTest extends TestCase
     {
         $this->writeRoutes();
 
-        ob_start();
         $this->console->run(['fw', 'route:for', 'post']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertStringContainsString('GET', $output);
         $this->assertStringContainsString('POST', $output);
@@ -79,9 +78,7 @@ final class RouteForCommandTest extends TestCase
     {
         $this->writeRoutes();
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'route:for']);
-        ob_get_clean();
 
         $this->assertSame(1, $exitCode);
     }
@@ -91,9 +88,8 @@ final class RouteForCommandTest extends TestCase
     {
         $this->writeRoutes();
 
-        ob_start();
         $exitCode = $this->console->run(['fw', 'route:for', 'nonexistent']);
-        $output = ob_get_clean();
+        $output = $this->console->getOutput()->getBuffer();
 
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('No routes', $output);
