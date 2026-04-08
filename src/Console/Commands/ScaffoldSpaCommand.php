@@ -16,7 +16,7 @@ use Throwable;
  */
 final class ScaffoldSpaCommand extends Command
 {
-    protected string $name = 'make:spa {--test}';
+    protected string $name = 'make:spa {--test} {--force}';
 
     protected string $description = 'Scaffold a modern SPA (VibeUI) + API starter kit';
 
@@ -31,15 +31,19 @@ final class ScaffoldSpaCommand extends Command
             return $this->runVerification();
         }
 
+        $force = (bool) $this->option('force');
+
         $this->displayBanner();
 
-        // 1. Mandatory Confirmation
-        $this->warning('WARNING: This command will reset your "app/" directory to a clean slate.');
-        $this->line('Existing controllers and models will be backed up to "storage/backups/".');
+        // 1. Mandatory Confirmation (skip with --force)
+        if (!$force) {
+            $this->warning('WARNING: This command will reset your "app/" directory to a clean slate.');
+            $this->line('Existing controllers and models will be backed up to "storage/backups/".');
 
-        if (!$this->confirm('Do you wish to proceed with the SPA scaffolding?')) {
-            $this->comment('Scaffolding cancelled.');
-            return 0;
+            if (!$this->confirm('Do you wish to proceed with the SPA scaffolding?')) {
+                $this->comment('Scaffolding cancelled.');
+                return 0;
+            }
         }
 
         $this->info('Stack: Vue 3 + TypeScript (Standard)');
@@ -132,6 +136,8 @@ final class ScaffoldSpaCommand extends Command
 
     private function setupDatabase(): void
     {
+        $force = (bool) $this->option('force');
+
         $this->newLine();
         $this->info('🗄️ Database Setup');
 
@@ -157,17 +163,11 @@ final class ScaffoldSpaCommand extends Command
             return "{$copied} migrations installed";
         });
 
-        $driver = $this->choice('Which database driver will you use?', [
-            'sqlite' => 'SQLite',
-            'mysql' => 'MySQL',
-            'pgsql' => 'PostgreSQL',
-        ], 'sqlite');
-
-        $config = ['DB_DRIVER' => $driver];
-
-        if ($driver === 'sqlite') {
-            $dbPath = $this->ask('Database path', 'storage/database.sqlite');
-            $config['DB_DATABASE'] = $dbPath;
+        if ($force) {
+            // Non-interactive: default to SQLite
+            $driver = 'sqlite';
+            $dbPath = 'storage/database.sqlite';
+            $config = ['DB_DRIVER' => $driver, 'DB_DATABASE' => $dbPath];
 
             if (!file_exists(BASE_PATH . '/' . $dbPath)) {
                 if (!is_dir(dirname(BASE_PATH . '/' . $dbPath))) {
@@ -176,11 +176,31 @@ final class ScaffoldSpaCommand extends Command
                 touch(BASE_PATH . '/' . $dbPath);
             }
         } else {
-            $config['DB_HOST'] = $this->ask('Database host', '127.0.0.1');
-            $config['DB_PORT'] = $this->ask('Database port', $driver === 'mysql' ? '3306' : '5432');
-            $config['DB_DATABASE'] = $this->ask('Database name', 'vibefw');
-            $config['DB_USERNAME'] = $this->ask('Database username', 'root');
-            $config['DB_PASSWORD'] = $this->secret('Database password', ''); // Hidden input
+            $driver = $this->choice('Which database driver will you use?', [
+                'sqlite' => 'SQLite',
+                'mysql' => 'MySQL',
+                'pgsql' => 'PostgreSQL',
+            ], 'sqlite');
+
+            $config = ['DB_DRIVER' => $driver];
+
+            if ($driver === 'sqlite') {
+                $dbPath = $this->ask('Database path', 'storage/database.sqlite');
+                $config['DB_DATABASE'] = $dbPath;
+
+                if (!file_exists(BASE_PATH . '/' . $dbPath)) {
+                    if (!is_dir(dirname(BASE_PATH . '/' . $dbPath))) {
+                        mkdir(dirname(BASE_PATH . '/' . $dbPath), 0o755, true);
+                    }
+                    touch(BASE_PATH . '/' . $dbPath);
+                }
+            } else {
+                $config['DB_HOST'] = $this->ask('Database host', '127.0.0.1');
+                $config['DB_PORT'] = $this->ask('Database port', $driver === 'mysql' ? '3306' : '5432');
+                $config['DB_DATABASE'] = $this->ask('Database name', 'vibefw');
+                $config['DB_USERNAME'] = $this->ask('Database username', 'root');
+                $config['DB_PASSWORD'] = $this->secret('Database password', '');
+            }
         }
 
         $this->task('Updating .env configuration', function () use ($config) {
@@ -190,7 +210,7 @@ final class ScaffoldSpaCommand extends Command
             return "Configuration updated in .env";
         });
 
-        if ($this->confirm('Would you like to run the migrations now?')) {
+        if ($force || $this->confirm('Would you like to run the migrations now?')) {
             $this->call('migrate');
         }
     }
