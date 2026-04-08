@@ -312,8 +312,15 @@ final class Migrator
             throw new RuntimeException("Migration must be a PHP file: $file");
         }
 
-        require_once $realFile;
+        $result = require $realFile;
 
+        // Anonymous class pattern: file returns a Migration instance
+        if ($result instanceof Migration) {
+            $result->setConnection($this->db);
+            return $result;
+        }
+
+        // Named class pattern: resolve class by converting filename to PascalCase
         $name = pathinfo($file, PATHINFO_FILENAME);
         $className = $this->getClassName($name);
 

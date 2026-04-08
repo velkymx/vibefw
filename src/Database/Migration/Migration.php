@@ -9,9 +9,14 @@ use RuntimeException;
 
 abstract class Migration
 {
-    protected Connection $db;
+    protected ?Connection $db = null;
 
-    public function __construct(Connection $db)
+    public function __construct(?Connection $db = null)
+    {
+        $this->db = $db;
+    }
+
+    public function setConnection(Connection $db): void
     {
         $this->db = $db;
     }
@@ -27,29 +32,70 @@ abstract class Migration
     abstract public function down(): void;
 
     /**
+     * Get the database connection, ensuring it is set.
+     */
+    protected function connection(): Connection
+    {
+        if ($this->db === null) {
+            throw new RuntimeException('Migration has no database connection. This is a framework bug.');
+        }
+
+        return $this->db;
+    }
+
+    /**
      * Execute raw SQL.
      */
     protected function execute(string $sql): void
     {
-        $this->db->getPdo()->exec($sql);
+        $this->connection()->getPdo()->exec($sql);
     }
 
     /**
      * Create a table.
      */
-    protected function createTable(string $name, callable $callback): void
+    protected function create(string $name, callable $callback): void
     {
-        $blueprint = new Blueprint($name, $this->db->driver);
+        $blueprint = new Blueprint($name, $this->connection()->driver);
         $callback($blueprint);
         $this->execute($blueprint->toSql());
     }
 
     /**
-     * Drop a table.
+     * Create a table (alias for create).
+     */
+    protected function createTable(string $name, callable $callback): void
+    {
+        $this->create($name, $callback);
+    }
+
+    /**
+     * Alter an existing table (add or drop columns).
+     */
+    protected function table(string $name, callable $callback): void
+    {
+        $blueprint = new Blueprint($name, $this->connection()->driver, alter: true);
+        $callback($blueprint);
+
+        foreach ($blueprint->toAlterStatements() as $sql) {
+            $this->execute($sql);
+        }
+    }
+
+    /**
+     * Drop a table if it exists.
+     */
+    protected function drop(string $name): void
+    {
+        $this->execute('DROP TABLE IF EXISTS ' . $this->quote($name));
+    }
+
+    /**
+     * Drop a table if it exists (alias for drop).
      */
     protected function dropTable(string $name): void
     {
-        $this->execute('DROP TABLE IF EXISTS ' . $this->quote($name));
+        $this->drop($name);
     }
 
     /**
@@ -57,7 +103,7 @@ abstract class Migration
      */
     protected function dropTableIfExists(string $name): void
     {
-        $this->dropTable($name);
+        $this->drop($name);
     }
 
     /**
@@ -73,7 +119,7 @@ abstract class Migration
      */
     protected function quote(string $identifier): string
     {
-        return $this->db->quoteIdentifier($identifier);
+        return $this->connection()->quoteIdentifier($identifier);
     }
 
     /**
@@ -81,14 +127,14 @@ abstract class Migration
      */
     protected function tableExists(string $name): bool
     {
-        $sql = match ($this->db->driver) {
+        $sql = match ($this->connection()->driver) {
             'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
             'mysql' => "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_NAME=?",
             'pgsql' => "SELECT tablename FROM pg_tables WHERE tablename=?",
-            default => throw new RuntimeException("Unsupported driver: {$this->db->driver}"),
+            default => throw new RuntimeException("Unsupported driver: {$this->connection()->driver}"),
         };
 
-        $result = $this->db->selectOne($sql, [$name]);
+        $result = $this->connection()->selectOne($sql, [$name]);
         return $result !== null;
     }
 }
