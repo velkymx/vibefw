@@ -351,6 +351,7 @@ final class Application
 
             // Testing
             Commands\TestCommand::class,
+            Commands\TestForCommand::class,
         ];
 
         foreach ($commands as $class) {
