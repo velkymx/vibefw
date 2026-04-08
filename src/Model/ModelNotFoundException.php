@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Fw\Model;
 
+use Fw\Core\PrescriptiveException;
 use RuntimeException;
 
-/**
- * Exception thrown when a model is not found.
- */
-final class ModelNotFoundException extends RuntimeException
+final class ModelNotFoundException extends RuntimeException implements PrescriptiveException
 {
     /**
      * @param class-string<Model> $model
@@ -22,6 +20,12 @@ final class ModelNotFoundException extends RuntimeException
         parent::__construct($message ?: $this->buildMessage(), 404);
     }
 
+    public function getFixCommand(): string
+    {
+        $shortClass = basename(str_replace('\\', '/', $this->model));
+        return "php fw model:inspect {$shortClass}";
+    }
+
     private function buildMessage(): string
     {
         $shortClass = basename(str_replace('\\', '/', $this->model));
@@ -31,12 +35,10 @@ final class ModelNotFoundException extends RuntimeException
             : "{$shortClass} not found";
 
         return $msg . "\nFix: Check your ID or query conditions. Inspect with:\n"
-            . "  php fw model:inspect {$shortClass}";
+            . "  {$this->getFixCommand()}";
     }
 
     /**
-     * Create for a specific model and ID.
-     *
      * @param class-string<Model> $model
      */
     public static function forModel(string $model, mixed $id = null): self
