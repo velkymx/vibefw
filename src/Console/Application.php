@@ -352,6 +352,9 @@ final class Application
             // Testing
             Commands\TestCommand::class,
             Commands\TestForCommand::class,
+
+            // Debugging
+            Commands\ErrorExplainCommand::class,
         ];
 
         foreach ($commands as $class) {
