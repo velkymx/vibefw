@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Turnkey project setup** — `composer create-project velkymx/vibefw my-app` now automatically creates `.env` with secure keys, sets up storage directories, creates the SQLite database, and runs migrations. Zero manual configuration required.
 - **`php fw setup` command** — CLI command for first-time project initialization. Supports `--force` (overwrite .env) and `--no-migrate` (skip migrations). Also available as `php scripts/setup.php` for standalone use.
 - **`.gitattributes`** — Excludes dev-only files (tests, PHPStan, infection, CI configs) from Composer dist archives, keeping `create-project` downloads lean.
-- **`.env.example` updated** — APP_NAME changed from "Fw Framework" to "VibeFW".
+- **`.env.example` updated** — APP_NAME changed from "VibeFw Framework" to "VibeFW".
 
 ## [2.1.16] - 2026-03-08
 

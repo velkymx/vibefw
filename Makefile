@@ -1,11 +1,11 @@
-# FW Framework Makefile
+# VibeFw Framework Makefile
 # Quick commands for common development tasks
 
 .PHONY: help install test lint fix analyse validate security serve migrate fresh clean
 
 # Default target
 help:
-	@echo "FW Framework - Development Commands"
+	@echo "VibeFw Framework - Development Commands"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install      Install dependencies"

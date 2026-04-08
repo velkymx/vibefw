@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Fw\Core\Env;
 
 return [
-    'name' => Env::string('APP_NAME', 'Fw Framework'),
+    'name' => Env::string('APP_NAME', 'VibeFw Framework'),
     'env' => Env::string('APP_ENV', 'local'),
     'debug' => Env::bool('APP_DEBUG', true),
     'timezone' => Env::string('APP_TIMEZONE', 'UTC'),

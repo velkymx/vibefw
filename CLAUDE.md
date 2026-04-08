@@ -1,4 +1,4 @@
-# Fw Framework - Maintenance & Development Rules
+# VibeFw Framework - Maintenance & Development Rules
 
 This document defines the rules for AI assistants working as **maintainers** of the Fw PHP framework.
 

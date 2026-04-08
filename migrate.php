@@ -206,9 +206,9 @@ function doSeed(Connection $db): void
     // Seed posts
     $db->insert('posts', [
         'user_id' => 1,
-        'title' => 'Getting Started with Fw Framework',
+        'title' => 'Getting Started with VibeFw Framework',
         'slug' => 'getting-started-fw-framework',
-        'content' => 'Learn how to build fast and secure PHP applications with the Fw framework.',
+        'content' => 'Learn how to build fast and secure PHP applications with the VibeFw Framework.',
         'published_at' => date('Y-m-d H:i:s'),
     ]);
 

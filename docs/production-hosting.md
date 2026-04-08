@@ -1,6 +1,6 @@
 # Production Hosting Guide
 
-This guide covers optimal production deployment for the VibeFW framework on PHP 8.5.
+This guide covers optimal production deployment for the VibeFw Framework on PHP 8.5.
 
 ## System Requirements
 
