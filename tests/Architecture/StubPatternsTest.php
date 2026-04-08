@@ -153,4 +153,125 @@ final class StubPatternsTest extends TestCase
 
         $this->assertStringContainsString('// CUSTOMIZE:', $content);
     }
+
+    // --- SPA Stub Tests ---
+
+    #[Test]
+    public function spaRequestStubsUseTypedRules(): void
+    {
+        $requestStubs = glob(self::STUBS_DIR . 'spa/app/Requests/*.stub');
+        $this->assertNotEmpty($requestStubs, 'SPA request stubs should exist');
+
+        foreach ($requestStubs as $stub) {
+            $content = file_get_contents($stub);
+            $this->assertStringContainsString(
+                'function rules()',
+                $content,
+                basename($stub) . ' must define rules() method'
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/[\'"]required\|/',
+                $content,
+                basename($stub) . ' must not use string pipe validation rules'
+            );
+            $this->assertStringContainsString(
+                'FormRequest',
+                $content,
+                basename($stub) . ' must extend FormRequest'
+            );
+        }
+    }
+
+    #[Test]
+    public function spaControllerStubsUseMatchForOption(): void
+    {
+        $controllerStubs = array_merge(
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/*.stub'),
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/Auth/*.stub'),
+        );
+        $this->assertNotEmpty($controllerStubs, 'SPA controller stubs should exist');
+
+        foreach ($controllerStubs as $stub) {
+            $content = file_get_contents($stub);
+            // If the stub uses first() or find(), it must use match()
+            if (str_contains($content, '->first()') || str_contains($content, '::find(')) {
+                $this->assertStringContainsString(
+                    '->match(',
+                    $content,
+                    basename($stub) . ' must use match() for Option results'
+                );
+            }
+        }
+    }
+
+    #[Test]
+    public function spaControllerStubsReturnResponse(): void
+    {
+        $controllerStubs = array_merge(
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/*.stub'),
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/Auth/*.stub'),
+        );
+
+        foreach ($controllerStubs as $stub) {
+            $content = file_get_contents($stub);
+            $this->assertStringContainsString(
+                'Response',
+                $content,
+                basename($stub) . ' must use Response return type'
+            );
+        }
+    }
+
+    #[Test]
+    public function spaStubsHaveStrictTypes(): void
+    {
+        $phpStubs = array_merge(
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/*.stub'),
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/Auth/*.stub'),
+            glob(self::STUBS_DIR . 'spa/app/Requests/*.stub'),
+            glob(self::STUBS_DIR . 'spa/app/Models/*.stub'),
+        );
+
+        foreach ($phpStubs as $stub) {
+            $content = file_get_contents($stub);
+            $this->assertStringContainsString(
+                'declare(strict_types=1)',
+                $content,
+                basename($stub) . ' must declare strict_types=1'
+            );
+        }
+    }
+
+    #[Test]
+    public function spaUserModelHasFillable(): void
+    {
+        $content = file_get_contents(self::STUBS_DIR . 'spa/app/Models/User.php.stub');
+
+        $this->assertStringContainsString('$fillable', $content);
+        $this->assertStringNotContainsString('$guarded', $content);
+    }
+
+    #[Test]
+    public function spaStubsHaveNoVerboseDocblocks(): void
+    {
+        $phpStubs = array_merge(
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/*.stub'),
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/Auth/*.stub'),
+            glob(self::STUBS_DIR . 'spa/app/Models/*.stub'),
+        );
+        $this->assertNotEmpty($phpStubs, 'SPA PHP stubs should exist');
+
+        foreach ($phpStubs as $stub) {
+            $content = file_get_contents($stub);
+            preg_match_all('#/\*\*.*?\*/#s', $content, $matches);
+            foreach ($matches[0] as $docblock) {
+                $lineCount = substr_count($docblock, "\n") + 1;
+                $this->assertLessThanOrEqual(
+                    3,
+                    $lineCount,
+                    basename($stub) . " has a verbose docblock ($lineCount lines). V3 stubs should be clean."
+                );
+            }
+        }
+    }
 }
