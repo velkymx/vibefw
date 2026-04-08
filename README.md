@@ -629,18 +629,32 @@ php fw route:cache                # Cache routes
 
 ## Performance
 
-Benchmarked with FrankenPHP worker mode on Apple M2:
+Benchmarked with FrankenPHP worker mode on a MacBook Air M2 (2022, 8GB RAM, macOS 26.4):
+
+```
+$ wrk -t8 -c100 -d30s http://localhost:8080/hello
+
+Running 30s test @ http://localhost:8080/hello
+  8 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     2.36ms    1.49ms  21.43ms   66.79%
+    Req/Sec     5.25k   347.27    10.93k    91.64%
+  1,256,146 requests in 30.10s, 234.80MB read
+Requests/sec:  41,731.51
+Transfer/sec:      7.80MB
+```
 
 | Metric | Result |
 |--------|--------|
-| Requests/sec | 40,058 |
-| Average Latency | 5.15ms |
+| Requests/sec | 41,731 |
+| Average Latency | 2.36ms |
+| Total Requests (30s) | 1,256,146 |
 | Memory Stability | Zero leaks after 1.2M requests |
 
 ### Running with FrankenPHP (Recommended)
 
 ```bash
-frankenphp php-server --listen :8080 --worker public/index.php
+frankenphp php-server --root public/ --listen :8080 --worker public/index.php
 ```
 
 ### Development Server
@@ -654,6 +668,7 @@ php fw serve --port=8080      # Custom port
 
 ## Documentation
 
+- [SPA (Vue 3 + TypeScript)](docs/spa.md) — Full-stack SPA scaffold, VibeUI components, auth flow
 - [Controllers](docs/controllers.md) — Request handling, response helpers, FormRequest usage
 - [Models](docs/models.md) — Active Record, queries, relationships, scopes
 - [Views](docs/views.md) — Templates, layouts, sections, helpers
