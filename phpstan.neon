@@ -5,6 +5,7 @@ rules:
     - Fw\PHPStan\Rules\NoStringPipeValidationRule
     - Fw\PHPStan\Rules\ControllerReturnTypeRule
     - Fw\PHPStan\Rules\NoRemovedMethodCallRule
+    - Fw\PHPStan\Rules\NoServiceLocationRule
 
 parameters:
     level: 8
