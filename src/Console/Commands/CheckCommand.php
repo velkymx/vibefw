@@ -68,6 +68,7 @@ final class CheckCommand extends Command
             'fillable_declared' => $this->checkFillableDeclared($basePath),
             'no_string_pipe_validation' => $this->checkNoStringPipeValidation($basePath),
             'controllers_return_response' => $this->checkControllersReturnResponse($basePath),
+            'no_closure_routes' => $this->checkNoClosureRoutes($basePath),
         ];
 
         $passed = 0;
@@ -286,6 +287,36 @@ final class CheckCommand extends Command
             }
             $this->line('  Run for details: php vendor/bin/phpstan analyse');
         }
+    }
+
+    /**
+     * @return array<string>
+     */
+    private function checkNoClosureRoutes(string $basePath): array
+    {
+        $routesFile = $basePath . '/config/routes.php';
+        if (!file_exists($routesFile)) {
+            return [];
+        }
+
+        $content = file_get_contents($routesFile);
+        if ($content === false) {
+            return [];
+        }
+
+        $issues = [];
+
+        // Match closure patterns: fn() =>, fn () =>, function () {, function() {
+        if (preg_match_all('/\$router->(get|post|put|patch|delete)\s*\(\s*[\'"]([^\'"]+)[\'"]\s*,\s*(fn\s*\(|function\s*\()/m', $content, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $method = strtoupper($match[1]);
+                $path = $match[2];
+                $issues[] = "config/routes.php: closure on {$method} {$path}. "
+                    . "Fix: php fw make:controller then use [Controller::class, 'method'] syntax";
+            }
+        }
+
+        return $issues;
     }
 
     /**

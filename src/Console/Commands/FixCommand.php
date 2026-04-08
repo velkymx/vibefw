@@ -41,6 +41,7 @@ final class FixCommand extends Command
 
         $this->fixStrictTypes($basePath, $dryRun);
         $this->fixGuardedToFillable($basePath, $dryRun);
+        $this->fixClosureRoutes($basePath, $dryRun);
 
         $this->newLine();
         $this->line(str_repeat('=', 50));
@@ -143,6 +144,97 @@ final class FixCommand extends Command
                 $this->line('    ' . $this->output->color('→', 'yellow') . ' Add your fillable fields to $fillable array');
                 $this->fixCount++;
             }
+        }
+    }
+
+    private function fixClosureRoutes(string $basePath, bool $dryRun): void
+    {
+        $routesFile = $basePath . '/config/routes.php';
+        if (!file_exists($routesFile)) {
+            return;
+        }
+
+        $content = file_get_contents($routesFile);
+        if ($content === false) {
+            return;
+        }
+
+        // Match closure route patterns with their full definition
+        $pattern = '/(\$router->(get|post|put|patch|delete)\s*\(\s*[\'"]([^\'"]+)[\'"]\s*,\s*)(fn\s*\([^)]*\)\s*(?::\s*\S+\s*)?=>\s*.+?(?:;|\))|function\s*\([^)]*\)\s*(?::\s*\S+\s*)?\{[^}]+\})/ms';
+
+        if (!preg_match_all($pattern, $content, $matches, PREG_SET_ORDER)) {
+            return;
+        }
+
+        foreach ($matches as $match) {
+            $method = strtoupper($match[2]);
+            $path = $match[3];
+
+            // Derive controller name from path
+            $segments = array_values(array_filter(explode('/', trim($path, '/'))));
+            $controllerName = empty($segments)
+                ? 'HomeController'
+                : ucfirst($segments[array_key_last($segments)]) . 'Controller';
+
+            $methodName = match ($method) {
+                'GET' => 'index',
+                'POST' => 'store',
+                'PUT', 'PATCH' => 'update',
+                'DELETE' => 'destroy',
+                default => 'handle',
+            };
+
+            if ($dryRun) {
+                $this->line("  Would extract {$method} {$path} closure → App\\Controllers\\{$controllerName}::{$methodName}()");
+                $this->fixCount++;
+                continue;
+            }
+
+            // Create the controller
+            $controllerDir = $basePath . '/app/Controllers';
+            if (!is_dir($controllerDir)) {
+                mkdir($controllerDir, 0o755, true);
+            }
+
+            $controllerPath = $controllerDir . '/' . $controllerName . '.php';
+            if (!file_exists($controllerPath)) {
+                $controllerContent = <<<PHP
+                    <?php
+
+                    declare(strict_types=1);
+
+                    namespace App\Controllers;
+
+                    use Fw\Core\Controller;
+                    use Fw\Core\Request;
+                    use Fw\Core\Response;
+
+                    class {$controllerName} extends Controller
+                    {
+                        public function {$methodName}(Request \$request): Response
+                        {
+                            // TODO: Move closure logic here
+                            return \$this->json(['message' => 'Not implemented']);
+                        }
+                    }
+                    PHP;
+
+                // Remove heredoc indentation
+                $controllerContent = preg_replace('/^                    /m', '', $controllerContent);
+                file_put_contents($controllerPath, $controllerContent);
+            }
+
+            // Replace the closure in routes with controller reference
+            $replacement = $match[1] . "[App\\Controllers\\{$controllerName}::class, '{$methodName}']";
+            $content = str_replace($match[0], $replacement, $content);
+
+            $this->line('  ' . $this->output->color('✓', 'green') . " Extracted {$method} {$path} → {$controllerName}::{$methodName}()");
+            $this->line('    ' . $this->output->color('→', 'yellow') . " Created app/Controllers/{$controllerName}.php — move your closure logic there");
+            $this->fixCount++;
+        }
+
+        if (!$dryRun) {
+            file_put_contents($routesFile, $content);
         }
     }
 

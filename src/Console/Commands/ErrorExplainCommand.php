@@ -62,8 +62,8 @@ final class ErrorExplainCommand extends Command
         ],
         [
             'pattern' => '/Closure route handlers are not allowed/i',
-            'cause' => 'v3 requires [Controller::class, \'method\'] syntax for routes.',
-            'fix' => 'Move your closure logic to a controller method. Run: php fw fix',
+            'cause' => 'v3 requires [Controller::class, \'method\'] syntax for all routes. Closures are banned.',
+            'fix' => 'Run: php fw fix (auto-extracts closures into controllers). Or manually: php fw make:controller NameController then replace the closure with [NameController::class, \'method\'] in config/routes.php',
         ],
     ];
 

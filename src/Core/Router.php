@@ -473,9 +473,12 @@ final class Router
     private function addRoute(string $method, string $path, callable|array|string $handler, ?string $name): self
     {
         if ($handler instanceof Closure) {
+            $suggestion = $this->suggestControllerName($method, $path);
             throw new InvalidArgumentException(
-                "Closure route handlers are not allowed. Use [Controller::class, 'method'] syntax instead. "
-                . "Route: {$method} {$path}"
+                "Closure route handlers are not allowed. Use [Controller::class, 'method'] syntax instead.\n"
+                . "Route: {$method} {$path}\n"
+                . "Fix: php fw make:controller {$suggestion['controller']} "
+                . "then use [{$suggestion['controller']}Controller::class, '{$suggestion['method']}'] in config/routes.php"
             );
         }
 
@@ -607,5 +610,32 @@ final class Router
                 "Route constraint for '{$paramName}' is not a valid regular expression: {$constraint}"
             );
         }
+    }
+
+    /**
+     * Suggest a controller name and method from a route path.
+     *
+     * @return array{controller: string, method: string}
+     */
+    private function suggestControllerName(string $method, string $path): array
+    {
+        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
+
+        if (empty($segments)) {
+            return ['controller' => 'Home', 'method' => 'index'];
+        }
+
+        // Use the last meaningful segment as the controller name
+        $name = ucfirst($segments[array_key_last($segments)]);
+
+        $methodName = match (strtoupper($method)) {
+            'GET' => 'index',
+            'POST' => 'store',
+            'PUT', 'PATCH' => 'update',
+            'DELETE' => 'destroy',
+            default => 'handle',
+        };
+
+        return ['controller' => $name, 'method' => $methodName];
     }
 }
