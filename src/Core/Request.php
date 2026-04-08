@@ -38,6 +38,7 @@ final class Request
         ?array $files = null,
         ?array $headers = null,
         private ?string $rawBody = null,
+        private ?array $parsedJson = null,
         ?string $method = null,
         ?string $uri = null
     ) {
@@ -120,12 +121,13 @@ final class Request
 
     public function input(string $key, mixed $default = null): mixed
     {
-        return $this->post[$key] ?? $this->query[$key] ?? $default;
+        return $this->post[$key] ?? $this->json()[$key] ?? $this->query[$key] ?? $default;
     }
 
     public function all(): array
     {
-        return array_merge($this->query, $this->post);
+        $body = !empty($this->post) ? $this->post : ($this->json() ?? []);
+        return array_merge($this->query, $body);
     }
 
     public function only(array $keys): array
@@ -140,7 +142,8 @@ final class Request
 
     public function has(string $key): bool
     {
-        return isset($this->query[$key]) || isset($this->post[$key]);
+        $all = $this->all();
+        return isset($all[$key]);
     }
 
     public function query(): array
@@ -275,11 +278,14 @@ final class Request
 
     public function json(): ?array
     {
+        if ($this->parsedJson !== null) {
+            return $this->parsedJson;
+        }
         if (!$this->isJson()) {
             return null;
         }
         $data = json_decode($this->rawBody(), true);
-        return is_array($data) ? $data : null;
+        return $this->parsedJson = is_array($data) ? $data : null;
     }
 
     public function rawBody(): string
