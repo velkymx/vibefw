@@ -112,6 +112,6 @@ class PersonalAccessToken extends Model
     public function touchLastUsed(): void
     {
         $this->setAttribute('last_used_at', new DateTimeImmutable());
-        $this->save();
+        (void) $this->save();
     }
 }

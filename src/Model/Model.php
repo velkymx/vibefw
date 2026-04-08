@@ -399,7 +399,7 @@ abstract class Model implements JsonSerializable
     public static function create(array $attributes): static
     {
         $model = new static($attributes);
-        $model->save();
+        (void) $model->save();
         return $model;
     }
 

@@ -155,7 +155,7 @@ final class ModelTest extends TestCase
         $user = ModelTestUser::create(['name' => 'Original', 'email' => 'test@example.com']);
 
         $user->name = 'Updated';
-        $user->save();
+        (void) $user->save();
 
         $fresh = ModelTestUser::find($user->getKey())->unwrapOr(null);
         $this->assertEquals('Updated', $fresh->name);
@@ -166,7 +166,7 @@ final class ModelTest extends TestCase
         $user = ModelTestUser::create(['name' => 'ToDelete', 'email' => 'delete@example.com']);
         $id = $user->getKey();
 
-        $user->delete();
+        (void) $user->delete();
 
         $this->assertTrue(ModelTestUser::find($id)->isNone());
     }
@@ -189,8 +189,8 @@ final class ModelTest extends TestCase
 
     public function testWhereQuery(): void
     {
-        ModelTestUser::create(['name' => 'Active', 'email' => 'a@example.com', 'is_active' => true]);
-        ModelTestUser::create(['name' => 'Inactive', 'email' => 'b@example.com', 'is_active' => false]);
+        (void) ModelTestUser::create(['name' => 'Active', 'email' => 'a@example.com', 'is_active' => true]);
+        (void) ModelTestUser::create(['name' => 'Inactive', 'email' => 'b@example.com', 'is_active' => false]);
 
         $active = ModelTestUser::where('is_active', true)->get();
 
@@ -200,8 +200,8 @@ final class ModelTest extends TestCase
 
     public function testAllReturnsCollection(): void
     {
-        ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
-        ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
 
         $all = ModelTestUser::all();
 
@@ -211,7 +211,7 @@ final class ModelTest extends TestCase
 
     public function testFirstReturnsOption(): void
     {
-        ModelTestUser::create(['name' => 'First', 'email' => 'first@example.com']);
+        (void) ModelTestUser::create(['name' => 'First', 'email' => 'first@example.com']);
 
         $first = ModelTestUser::first();
 
@@ -221,8 +221,8 @@ final class ModelTest extends TestCase
 
     public function testOrderBy(): void
     {
-        ModelTestUser::create(['name' => 'Zebra', 'email' => 'z@example.com']);
-        ModelTestUser::create(['name' => 'Alpha', 'email' => 'a@example.com']);
+        (void) ModelTestUser::create(['name' => 'Zebra', 'email' => 'z@example.com']);
+        (void) ModelTestUser::create(['name' => 'Alpha', 'email' => 'a@example.com']);
 
         $ordered = ModelTestUser::orderBy('name', 'ASC')->get();
 
@@ -231,9 +231,9 @@ final class ModelTest extends TestCase
 
     public function testLimit(): void
     {
-        ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
-        ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
-        ModelTestUser::create(['name' => 'User 3', 'email' => 'u3@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 3', 'email' => 'u3@example.com']);
 
         $limited = ModelTestUser::limit(2)->get();
 
@@ -242,8 +242,8 @@ final class ModelTest extends TestCase
 
     public function testCount(): void
     {
-        ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
-        ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
 
         $count = ModelTestUser::count();
 
@@ -254,15 +254,15 @@ final class ModelTest extends TestCase
     {
         $this->assertFalse(ModelTestUser::exists());
 
-        ModelTestUser::create(['name' => 'User', 'email' => 'u@example.com']);
+        (void) ModelTestUser::create(['name' => 'User', 'email' => 'u@example.com']);
 
         $this->assertTrue(ModelTestUser::exists());
     }
 
     public function testPluck(): void
     {
-        ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
-        ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
 
         $names = ModelTestUser::pluck('name');
 
@@ -273,8 +273,8 @@ final class ModelTest extends TestCase
 
     public function testQueryScope(): void
     {
-        ModelTestUser::create(['name' => 'Active', 'email' => 'a@example.com', 'is_active' => true]);
-        ModelTestUser::create(['name' => 'Inactive', 'email' => 'b@example.com', 'is_active' => false]);
+        (void) ModelTestUser::create(['name' => 'Active', 'email' => 'a@example.com', 'is_active' => true]);
+        (void) ModelTestUser::create(['name' => 'Inactive', 'email' => 'b@example.com', 'is_active' => false]);
 
         $active = ModelTestUser::active()->get();
 
@@ -288,8 +288,8 @@ final class ModelTest extends TestCase
     public function testHasManyRelationship(): void
     {
         $user = ModelTestUser::create(['name' => 'Author', 'email' => 'author@example.com']);
-        ModelTestPost::create(['user_id' => $user->getKey(), 'title' => 'Post 1', 'body' => 'Body 1']);
-        ModelTestPost::create(['user_id' => $user->getKey(), 'title' => 'Post 2', 'body' => 'Body 2']);
+        (void) ModelTestPost::create(['user_id' => $user->getKey(), 'title' => 'Post 1', 'body' => 'Body 1']);
+        (void) ModelTestPost::create(['user_id' => $user->getKey(), 'title' => 'Post 2', 'body' => 'Body 2']);
 
         $posts = $user->posts()->get();
 
@@ -310,7 +310,7 @@ final class ModelTest extends TestCase
     public function testHasOneRelationship(): void
     {
         $user = ModelTestUser::create(['name' => 'User', 'email' => 'user@example.com']);
-        ModelTestProfile::create(['user_id' => $user->getKey(), 'bio' => 'Hello world']);
+        (void) ModelTestProfile::create(['user_id' => $user->getKey(), 'bio' => 'Hello world']);
 
         $profile = $user->profile()->get();
 
@@ -321,7 +321,7 @@ final class ModelTest extends TestCase
     public function testEagerLoading(): void
     {
         $user = ModelTestUser::create(['name' => 'Author', 'email' => 'author@example.com']);
-        ModelTestPost::create(['user_id' => $user->getKey(), 'title' => 'Post 1', 'body' => 'Body']);
+        (void) ModelTestPost::create(['user_id' => $user->getKey(), 'title' => 'Post 1', 'body' => 'Body']);
 
         // This would normally do eager loading
         $users = ModelTestUser::with('posts')->get();
@@ -382,8 +382,8 @@ final class ModelTest extends TestCase
 
     public function testCollectionMap(): void
     {
-        ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
-        ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
 
         $names = ModelTestUser::all()->map(fn($u) => $u->name);
 
@@ -392,8 +392,8 @@ final class ModelTest extends TestCase
 
     public function testCollectionFilter(): void
     {
-        ModelTestUser::create(['name' => 'Active', 'email' => 'a@example.com', 'is_active' => true]);
-        ModelTestUser::create(['name' => 'Inactive', 'email' => 'b@example.com', 'is_active' => false]);
+        (void) ModelTestUser::create(['name' => 'Active', 'email' => 'a@example.com', 'is_active' => true]);
+        (void) ModelTestUser::create(['name' => 'Inactive', 'email' => 'b@example.com', 'is_active' => false]);
 
         $active = ModelTestUser::all()->filter(fn($u) => $u->is_active);
 
@@ -402,7 +402,7 @@ final class ModelTest extends TestCase
 
     public function testCollectionFirst(): void
     {
-        ModelTestUser::create(['name' => 'First', 'email' => 'first@example.com']);
+        (void) ModelTestUser::create(['name' => 'First', 'email' => 'first@example.com']);
 
         $first = ModelTestUser::all()->first();
 
@@ -411,8 +411,8 @@ final class ModelTest extends TestCase
 
     public function testCollectionPluck(): void
     {
-        ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
-        ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 1', 'email' => 'u1@example.com']);
+        (void) ModelTestUser::create(['name' => 'User 2', 'email' => 'u2@example.com']);
 
         $emails = ModelTestUser::all()->pluck('email');
 
@@ -425,7 +425,7 @@ final class ModelTest extends TestCase
 
     public function testUpdateOrCreateUpdatesExisting(): void
     {
-        ModelTestUser::create(['name' => 'Original', 'email' => 'test@example.com']);
+        (void) ModelTestUser::create(['name' => 'Original', 'email' => 'test@example.com']);
 
         $user = ModelTestUser::updateOrCreate(
             ['email' => 'test@example.com'],
