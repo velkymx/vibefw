@@ -198,7 +198,7 @@ cd frontend && npm run build
 php fw optimize
 
 # Start with FrankenPHP for maximum performance
-./frankenphp php-server --listen :8080 --worker public/index.php
+frankenphp php-server --root public/ --listen :8080 --worker public/index.php
 ```
 
 ## Troubleshooting
