@@ -87,6 +87,7 @@ final class ScaffoldSpaCommand extends Command
         $files = [
             'app/Controllers/Api/Auth/LoginController.php',
             'app/Controllers/Api/Auth/RegisterController.php',
+            'app/Controllers/Api/UserController.php',
             'app/Controllers/Api/StatsController.php',
             'app/Controllers/Api/ProfileController.php',
             'app/Controllers/Api/ApiTokenController.php',
@@ -305,6 +306,7 @@ final class ScaffoldSpaCommand extends Command
             // 2. Copy controller stubs
             $this->copyAppStub('Controllers/Api/Auth/LoginController.php', $appDir . '/Controllers/Api/Auth/LoginController.php');
             $this->copyAppStub('Controllers/Api/Auth/RegisterController.php', $appDir . '/Controllers/Api/Auth/RegisterController.php');
+            $this->copyAppStub('Controllers/Api/UserController.php', $appDir . '/Controllers/Api/UserController.php');
             $this->copyAppStub('Controllers/Api/StatsController.php', $appDir . '/Controllers/Api/StatsController.php');
             $this->copyAppStub('Controllers/Api/ProfileController.php', $appDir . '/Controllers/Api/ProfileController.php');
             $this->copyAppStub('Controllers/Api/ApiTokenController.php', $appDir . '/Controllers/Api/ApiTokenController.php');

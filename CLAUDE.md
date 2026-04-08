@@ -407,14 +407,14 @@ Always follow this structure:
 
 declare(strict_types=1);
 
-use Fw\Database\Migration;
-use Fw\Database\Schema;
+use Fw\Database\Migration\Migration;
+use Fw\Database\Migration\Blueprint;
 
 return new class extends Migration
 {
-    public function up(Schema $schema): void
+    public function up(): void
     {
-        $schema->create('posts', function ($table) {
+        $this->create('posts', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('title');
@@ -429,9 +429,9 @@ return new class extends Migration
         });
     }
 
-    public function down(Schema $schema): void
+    public function down(): void
     {
-        $schema->dropIfExists('posts');
+        $this->drop('posts');
     }
 };
 ```
