@@ -344,6 +344,9 @@ final class Application
             Commands\AiContextCommand::class,
             Commands\AiNextCommand::class,
 
+            // Inspection
+            Commands\ModelInspectCommand::class,
+
             // Testing
             Commands\TestCommand::class,
         ];
