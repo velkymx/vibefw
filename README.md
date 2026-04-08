@@ -42,6 +42,16 @@ php fw check
 
 That generates: Model, Migration, Controller, FormRequests, Views, and test factory — all wired together with correct validation rules, `$fillable`, `$casts`, and route entries.
 
+### Full-Stack SPA in 60 Seconds
+
+```bash
+php fw make:spa --force    # Scaffold Vue 3 + VibeUI frontend + API backend
+php fw serve               # PHP backend on :8000
+cd frontend && npm run dev # Vite HMR on :5173
+```
+
+Generates: Auth controllers, dashboard, profile management, API token CRUD, Vue 3 SPA with routing/guards, and database migrations. Visit `http://localhost:8000`.
+
 ---
 
 ## Why "Convention Machine"?
@@ -200,7 +210,7 @@ Add fields, set types, configure modifiers:
 }
 ```
 
-**Field types:** `string`, `text`, `integer`, `boolean`, `timestamp`, `date`, `decimal`, `foreignId`, `json`
+**Field types:** `string`, `text`, `integer`, `boolean`, `timestamp`, `date`, `decimal`, `foreignId`, `json`, `datetime`
 
 **Modifiers:** `required`, `nullable`, `unique`, `default`, `length`, `constrained`, `onDelete`, `index`
 
@@ -571,10 +581,11 @@ php fw make:controller PostController -r              # Resource controller
 php fw make:migration create_posts_table              # Migration
 php fw make:middleware RateLimitMiddleware             # Middleware
 php fw make:request StorePostRequest                  # Form request
-php fw make:spa                                       # Vue 3 + TypeScript SPA
+php fw make:spa                                       # Vue 3 + TypeScript SPA (interactive)
+php fw make:spa --force                               # Vue 3 + TypeScript SPA (non-interactive, SQLite)
 ```
 
-### Database
+### Database & Migrations
 
 ```bash
 php fw migrate                    # Run pending migrations
@@ -584,6 +595,51 @@ php fw migrate:rollback --step=3  # Rollback N migrations
 php fw migrate:fresh              # Drop all + re-migrate
 php fw migrate:fresh --seed       # Fresh + seed
 php fw db:seed                    # Run seeders
+```
+
+Migrations use anonymous classes with `create()`, `drop()`, and `table()` methods:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use Fw\Database\Migration\Migration;
+use Fw\Database\Migration\Blueprint;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        $this->create('posts', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('title');
+            $table->text('content');
+            $table->boolean('is_featured')->default(false);
+            $table->timestamp('published_at')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        $this->drop('posts');
+    }
+};
+```
+
+**Blueprint column types:** `id`, `string`, `text`, `integer`, `bigInteger`, `boolean`, `decimal`, `json`, `date`, `datetime`, `timestamp`, `timestamps`, `softDeletes`, `foreignId`
+
+**Blueprint modifiers:** `nullable()`, `notNull()`, `default()`, `unique()`, `index()`, `constrained()`, `cascadeOnDelete()`, `nullOnDelete()`
+
+**Alter existing tables** with `table()` and `dropColumn()`:
+
+```php
+$this->table('posts', function (Blueprint $table): void {
+    $table->string('slug', 100)->unique();   // add column
+    $table->dropColumn('legacy_field');       // drop column
+});
 ```
 
 ### Inspection & Debugging
