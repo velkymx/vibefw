@@ -11,7 +11,7 @@ use Throwable;
  */
 final class Application
 {
-    private const VERSION = '2.1.0';
+    private const VERSION = '3.0.0';
 
     /** @var array<string, Command> */
     private array $commands = [];
