@@ -34,7 +34,7 @@ database/               # Base migrations and seeders
 
 ## Technical Standards
 
-### 1. PHP 8.4+ Excellence
+### 1. PHP 8.5+ Excellence
 - Use **Property Hooks** for computed properties in Models/DTOs.
 - Use **Asymmetric Visibility** (`public private(set)`) for read-only state.
 - Strictly adhere to `declare(strict_types=1);`.
@@ -169,6 +169,39 @@ All projects built with Fw MUST follow these patterns. This ensures every projec
 | Routes | kebab-case URLs | `/user-profile`, `/blog-posts` |
 | Tables | snake_case, plural | `users`, `blog_posts`, `order_items` |
 
+### Validation Patterns (FormRequest)
+
+Always use typed Rule objects in FormRequest classes:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Requests;
+
+use Fw\Validation\FormRequest;
+use Fw\Validation\Rule;
+use Fw\Validation\Rules\Required;
+use Fw\Validation\Rules\MinLength;
+use Fw\Validation\Rules\MaxLength;
+
+class StorePostRequest extends FormRequest
+{
+    public string $title;
+    public string $content;
+
+    /** @return array<string, list<Rule>> */
+    public function rules(): array
+    {
+        return [
+            'title'   => [new Required, new MinLength(3), new MaxLength(255)],
+            'content' => [new Required],
+        ];
+    }
+}
+```
+
 ### Controller Patterns
 
 Always follow this structure:
@@ -184,6 +217,9 @@ use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
 use App\Models\Post;
+use App\Requests\StorePostRequest;
+use App\Requests\UpdatePostRequest;
+use Fw\Validation\ValidationException;
 
 class PostController extends Controller
 {
@@ -203,73 +239,59 @@ class PostController extends Controller
     // Store new resource
     public function store(Request $request): Response
     {
-        $validation = $this->validate($request, [
-            'title' => 'required|min:3',
-            'content' => 'required',
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->view('posts.create', ['errors' => $validation->getError()]);
+        try {
+            $data = StorePostRequest::fromRequest($request);
+        } catch (ValidationException $e) {
+            return $this->view('posts.create', ['errors' => $e->errors]);
         }
 
-        $post = Post::create($validation->getValue());
+        $post = Post::create($data->toArray());
         return $this->redirect('/posts/' . $post->id);
     }
 
     // Show single resource
     public function show(Request $request, string $id): Response
     {
-        $post = Post::find((int) $id)->unwrapOr(null);
-
-        if ($post === null) {
-            return $this->notFound();
-        }
-
-        return $this->view('posts.show', ['post' => $post]);
+        return Post::find((int) $id)->match(
+            some: fn($post) => $this->view('posts.show', ['post' => $post]),
+            none: fn() => $this->notFound(),
+        );
     }
 
     // Show edit form
     public function edit(Request $request, string $id): Response
     {
-        $post = Post::find((int) $id)->unwrapOr(null);
-
-        if ($post === null) {
-            return $this->notFound();
-        }
-
-        return $this->view('posts.edit', ['post' => $post]);
+        return Post::find((int) $id)->match(
+            some: fn($post) => $this->view('posts.edit', ['post' => $post]),
+            none: fn() => $this->notFound(),
+        );
     }
 
     // Update resource
     public function update(Request $request, string $id): Response
     {
-        $post = Post::find((int) $id)->unwrapOr(null);
+        return Post::find((int) $id)->match(
+            some: function ($post) use ($request) {
+                try {
+                    $data = UpdatePostRequest::fromRequest($request);
+                } catch (ValidationException $e) {
+                    return $this->view('posts.edit', ['post' => $post, 'errors' => $e->errors]);
+                }
 
-        if ($post === null) {
-            return $this->notFound();
-        }
-
-        $validation = $this->validate($request, [
-            'title' => 'required|min:3',
-            'content' => 'required',
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->view('posts.edit', ['post' => $post, 'errors' => $validation->getError()]);
-        }
-
-        $post->fill($validation->getValue())->save();
-        return $this->redirect('/posts/' . $post->id);
+                $post->fill($data->toArray())->save();
+                return $this->redirect('/posts/' . $post->id);
+            },
+            none: fn() => $this->notFound(),
+        );
     }
 
     // Delete resource
     public function destroy(Request $request, string $id): Response
     {
-        $post = Post::find((int) $id)->unwrapOr(null);
-
-        if ($post !== null) {
-            $post->delete();
-        }
+        Post::find((int) $id)->match(
+            some: fn($post) => $post->delete(),
+            none: fn() => null,
+        );
 
         return $this->redirect('/posts');
     }
@@ -569,7 +591,7 @@ php fw serve
 
 ## Architecture Overview
 
-**PHP Version:** 8.4+ (uses property hooks, asymmetric visibility)
+**PHP Version:** 8.5+ (uses property hooks, asymmetric visibility, #[\NoDiscard])
 
 **Core Patterns:**
 - **Fiber-based async** - `EventLoop` manages non-blocking I/O
@@ -661,17 +683,13 @@ $this->execute('DROP TABLE ' . $this->quote('users'));
 
 ### Result Type (for operations that can fail)
 ```php
-public function save(): Result<static, DatabaseError>
+// Exhaustive handling with match()
+$post->save()->match(
+    ok:  fn($p) => $this->redirect('/posts/' . $p->id),
+    err: fn($e) => $this->view('create', ['error' => $e->message]),
+);
 
-// Usage
-$result = $user->save();
-if ($result->isOk()) {
-    $user = $result->getValue();
-} else {
-    $error = $result->getError();
-}
-
-// Or fluent
+// Transform values
 $user->save()
     ->map(fn($u) => $this->sendEmail($u))
     ->mapErr(fn($e) => $this->logError($e));
@@ -679,13 +697,11 @@ $user->save()
 
 ### Option Type (for nullable values)
 ```php
-public static function find(int $id): Option<static>
-
-// Usage
-$user = User::find($id);
-if ($user->isSome()) {
-    $user = $user->unwrap();
-}
+// Exhaustive handling with match()
+User::find(1)->match(
+    some: fn($user) => $this->view('users.show', ['user' => $user]),
+    none: fn()      => $this->notFound(),
+);
 
 // Or with default
 $user = User::find($id)->unwrapOr(new GuestUser());
@@ -806,6 +822,12 @@ The following rules are enforced by architecture tests:
 | No eval/create_function | `SecurityPatternTest` |
 | No hardcoded credentials | `SecurityPatternTest` |
 | No debug functions in production code | `SecurityPatternTest` |
+| All stubs have `// CUSTOMIZE:` markers | `StubPatternsTest` |
+| No string pipe validation rules | `StubPatternsTest`, `ConventionTest` |
+| All controllers return Response | `ConventionTest` |
+| All models declare $fillable | `ConventionTest` |
+| FormRequests implement rules() | `ConventionTest` |
+| No service location in app code | PHPStan `NoServiceLocationRule` |
 
 ### Writing Tests
 
@@ -924,13 +946,34 @@ The security scanner detects:
 - Hardcoded credentials
 - Debug code (`var_dump`, `dd`, etc.)
 
-### Legacy Scripts (deprecated)
+### Schema-Driven Generators
 
-These still work but prefer the `fw` CLI:
 ```bash
-php migrate.php migrate      # Use: php fw migrate
-php migrate.php fresh        # Use: php fw migrate:fresh
-php security-scan.php        # Use: php fw validate:security
+php fw make:schema Post                        # Generate JSON schema template
+php fw make:resource --schema=app/Schemas/Post.json  # Generate full CRUD from schema
+php fw add:field Post category_id foreignId --constrained  # Add field to existing resource
+php fw make:link Post Comment --hasMany        # Wire relationship between models
+php fw make:test Post                          # Generate tests from existing model
+```
+
+### Inspection & Debugging
+
+```bash
+php fw model:inspect Post    # Show model details: table, fillable, casts, relationships
+php fw route:for post        # Show routes matching a feature topic
+php fw db:status             # Show database connection state and pending migrations
+php fw test:for post         # Find and list test files for a feature topic
+php fw error:explain "Mass assignment violation on Post"  # Parse error and suggest fix
+php fw check                 # Single entry point: conventions + architecture + PHPStan
+php fw fix                   # Auto-correct common convention violations
+```
+
+### AI Context
+
+```bash
+php fw ai:map                # Auto-generate project map for AI context
+php fw ai:context posts      # Dump all files for a feature topic
+php fw ai:next               # Suggest next step based on project state
 ```
 
 ## Environment Variables
