@@ -346,6 +346,7 @@ final class Application
 
             // Inspection
             Commands\ModelInspectCommand::class,
+            Commands\RouteForCommand::class,
 
             // Testing
             Commands\TestCommand::class,
