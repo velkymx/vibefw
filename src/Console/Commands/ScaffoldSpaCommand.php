@@ -88,6 +88,7 @@ final class ScaffoldSpaCommand extends Command
             'app/Controllers/Api/Auth/LoginController.php',
             'app/Controllers/Api/Auth/RegisterController.php',
             'app/Controllers/Api/UserController.php',
+            'app/Controllers/Api/SpaController.php',
             'app/Controllers/Api/StatsController.php',
             'app/Controllers/Api/ProfileController.php',
             'app/Controllers/Api/ApiTokenController.php',
@@ -307,6 +308,7 @@ final class ScaffoldSpaCommand extends Command
             $this->copyAppStub('Controllers/Api/Auth/LoginController.php', $appDir . '/Controllers/Api/Auth/LoginController.php');
             $this->copyAppStub('Controllers/Api/Auth/RegisterController.php', $appDir . '/Controllers/Api/Auth/RegisterController.php');
             $this->copyAppStub('Controllers/Api/UserController.php', $appDir . '/Controllers/Api/UserController.php');
+            $this->copyAppStub('Controllers/Api/SpaController.php', $appDir . '/Controllers/Api/SpaController.php');
             $this->copyAppStub('Controllers/Api/StatsController.php', $appDir . '/Controllers/Api/StatsController.php');
             $this->copyAppStub('Controllers/Api/ProfileController.php', $appDir . '/Controllers/Api/ProfileController.php');
             $this->copyAppStub('Controllers/Api/ApiTokenController.php', $appDir . '/Controllers/Api/ApiTokenController.php');
@@ -332,6 +334,7 @@ final class ScaffoldSpaCommand extends Command
                 declare(strict_types=1);
 
                 use Fw\Core\Router;
+                use App\Controllers\Api\SpaController;
                 use App\Controllers\Api\UserController;
                 use App\Controllers\Api\StatsController;
                 use App\Controllers\Api\ProfileController;
@@ -341,6 +344,9 @@ final class ScaffoldSpaCommand extends Command
                 use Fw\Middleware\ApiAuthMiddleware;
 
                 return function (Router $router): void {
+                    // SPA fallback — serve frontend for non-API routes
+                    $router->get('/', [SpaController::class, 'index']);
+
                     $router->group('/api', function (Router $router): void {
 
                         // Auth (public)

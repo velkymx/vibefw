@@ -1,0 +1,22 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers\Api;
+
+use Fw\Core\Controller;
+use Fw\Core\Request;
+use Fw\Core\Response;
+
+// CUSTOMIZE: Add middleware or auth checks for the SPA shell
+final class SpaController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        return new Response(
+            file_get_contents(BASE_PATH . '/frontend/dist/index.html'),
+            200,
+            ['Content-Type' => 'text/html']
+        );
+    }
+}
