@@ -9,11 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Migration logic here
+        // CUSTOMIZE: Add migration logic here
     }
 
     public function down(): void
     {
-        // Rollback logic here
+        // CUSTOMIZE: Add rollback logic here
     }
 };

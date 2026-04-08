@@ -4,15 +4,9 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
-/**
- * {{CLASS_NAME}} command.
- *
- * Commands represent an intent to change the system state.
- * They should be immutable data transfer objects.
- */
 final readonly class {{CLASS_NAME}}
 {
     public function __construct(
-        // Add command properties here
+        // CUSTOMIZE: Add command properties here
     ) {}
 }

@@ -8,19 +8,13 @@ use Fw\Core\ServiceProvider;
 
 class {{CLASS_NAME}} extends ServiceProvider
 {
-    /**
-     * Register services in the container.
-     */
     public function register(): void
     {
-        //
+        // CUSTOMIZE: Register services in the container
     }
 
-    /**
-     * Bootstrap services after registration.
-     */
     public function boot(): void
     {
-        //
+        // CUSTOMIZE: Bootstrap services after registration
     }
 }

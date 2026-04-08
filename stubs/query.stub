@@ -4,15 +4,9 @@ declare(strict_types=1);
 
 namespace App\Queries;
 
-/**
- * {{CLASS_NAME}} query.
- *
- * Queries represent a request to read data without side effects.
- * They should be immutable data transfer objects.
- */
 final readonly class {{CLASS_NAME}}
 {
     public function __construct(
-        // Add query parameters here
+        // CUSTOMIZE: Add query parameters here
     ) {}
 }

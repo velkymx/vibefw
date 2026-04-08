@@ -6,20 +6,14 @@ namespace App\Handlers;
 
 use App\Commands\{{COMMAND_NAME}};
 
-/**
- * Handler for {{COMMAND_NAME}}.
- */
 final class {{CLASS_NAME}}
 {
     public function __construct(
-        // Inject dependencies here
+        // CUSTOMIZE: Inject dependencies here
     ) {}
 
-    /**
-     * Handle the command.
-     */
     public function handle({{COMMAND_NAME}} $command): void
     {
-        //
+        // CUSTOMIZE: Implement command handling logic
     }
 }

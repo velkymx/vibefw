@@ -12,11 +12,8 @@ class {{CLASS_NAME}}
         private Connection $db,
     ) {}
 
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        //
+        // CUSTOMIZE: Add seed data here
     }
 }

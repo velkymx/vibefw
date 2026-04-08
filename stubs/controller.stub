@@ -10,6 +10,8 @@ use Fw\Core\Response;
 
 class {{CLASS_NAME}} extends Controller
 {
+    // CUSTOMIZE: Add dependencies via constructor injection
+
     public function index(Request $request): Response
     {
         return $this->view('{{VIEW_PATH}}.index');

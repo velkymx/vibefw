@@ -16,11 +16,11 @@ class {{CLASS_NAME}} implements MiddlewareInterface
 
     public function handle(Request $request, callable $next): Response|string|array
     {
-        // Before request
+        // CUSTOMIZE: Add pre-request logic here
 
         $response = $next($request);
 
-        // After request
+        // CUSTOMIZE: Add post-request logic here
 
         return $response;
     }
