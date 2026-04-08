@@ -13,7 +13,7 @@ use Throwable;
 /**
  * Base class for async request handlers with lifecycle hooks.
  *
- * Components are the primary way to handle requests in the Fw framework.
+ * Components are the primary way to handle requests in the VibeFw Framework.
  * They provide a structured lifecycle with hooks for initialization,
  * data fetching (async), rendering, and cleanup.
  *

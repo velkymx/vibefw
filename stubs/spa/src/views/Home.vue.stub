@@ -33,7 +33,7 @@
         <div class="row justify-content-center">
           <div class="col-lg-8">
             <span class="badge bg-primary-subtle text-primary mb-3 px-3 py-2 rounded-pill fs-6">
-              PHP 8.4 + Vue 3 + VibeUI
+              PHP 8.5 + Vue 3 + VibeUI
             </span>
             <h1 class="display-3 fw-bold mb-4">
               Build fast apps<br />
@@ -67,7 +67,7 @@
                   <VibeIcon icon="lightning-charge-fill" size="3x" color="var(--bs-warning)" />
                 </div>
                 <h5 class="fw-bold">Fiber-Safe Backend</h5>
-                <p class="text-muted mb-0">Built on PHP 8.4 Fibers with a custom EventLoop. Handles 40k+ requests per second in worker mode.</p>
+                <p class="text-muted mb-0">Built on PHP 8.5 Fibers with a custom EventLoop. Handles 40k+ requests per second in worker mode.</p>
               </template>
             </VibeCard>
           </div>

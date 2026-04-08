@@ -178,7 +178,7 @@ final class Application
      */
     private function showVersion(): int
     {
-        $this->output->line('FW Framework ' . $this->output->color('v' . self::VERSION, 'green'));
+        $this->output->line('VibeFw Framework ' . $this->output->color('v' . self::VERSION, 'green'));
         return 0;
     }
 
@@ -188,7 +188,7 @@ final class Application
     private function showHelp(): int
     {
         $this->output->line('');
-        $this->output->line($this->output->color('FW Framework', 'green') . ' ' . $this->output->color('v' . self::VERSION, 'yellow'));
+        $this->output->line($this->output->color('VibeFw Framework', 'green') . ' ' . $this->output->color('v' . self::VERSION, 'yellow'));
         $this->output->line('');
         $this->output->line($this->output->color('Usage:', 'yellow'));
         $this->output->line('  command [options] [arguments]');
