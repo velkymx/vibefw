@@ -1,8 +1,12 @@
 # Models
 
-Models represent database tables and handle data persistence. They use the Active Record pattern and live in `app/Models/`.
+Models represent database tables using the Active Record pattern. They live in `app/Models/`.
 
 ## Creating a Model
+
+```bash
+php fw make:model Post -m    # Model + migration
+```
 
 ```php
 <?php
@@ -26,8 +30,8 @@ class Post extends Model
 
     protected static array $casts = [
         'published_at' => 'datetime',
-        'views' => 'int',
-        'metadata' => 'array',
+        'view_count'   => 'int',
+        'is_featured'  => 'bool',
     ];
 }
 ```
@@ -40,7 +44,7 @@ class Post extends Model
 protected static ?string $table = 'posts';
 ```
 
-If not specified, the table name is derived from the class name (e.g., `Post` → `posts`).
+If not specified, derived from class name (`Post` → `posts`).
 
 ### Primary Key
 
@@ -57,15 +61,9 @@ protected static bool $incrementing = false;
 protected static string $keyType = 'string';
 ```
 
-### Timestamps
-
-```php
-protected static bool $timestamps = true;  // Manages created_at, updated_at
-```
-
 ### Fillable Fields
 
-Mass-assignable attributes:
+Every model **must** declare `$fillable`. `$guarded` does not exist. Strict mode is permanently on.
 
 ```php
 protected static array $fillable = ['title', 'content', 'user_id'];
@@ -76,68 +74,53 @@ protected static array $fillable = ['title', 'content', 'user_id'];
 ```php
 protected static array $casts = [
     'published_at' => 'datetime',
-    'is_active' => 'bool',
-    'views' => 'int',
-    'price' => 'float',
-    'metadata' => 'array',
-    'settings' => 'json',
+    'is_active'    => 'bool',
+    'view_count'   => 'int',
+    'price'        => 'float',
+    'metadata'     => 'array',
+    'settings'     => 'json',
 ];
 ```
 
-Available cast types: `int`, `float`, `bool`, `string`, `array`, `json`, `datetime`
+Available types: `int`, `float`, `bool`, `string`, `array`, `json`, `datetime`
 
-## Querying Models
+### Timestamps
+
+```php
+protected static bool $timestamps = true;  // Manages created_at, updated_at
+```
+
+## Querying
 
 ### Basic Retrieval
 
 ```php
-// Get all records
-$posts = Post::all();  // Returns Collection
+// All records
+$posts = Post::all();
 
-// Find by ID (returns Option, not null!)
+// Find by ID — returns Option, not null
 Post::find($id)->match(
     some: fn($post) => $post->title,
-    none: fn() => 'Not found'
+    none: fn() => 'Not found',
 );
 
-// Find or create
-$post = Post::firstOrCreate(
-    ['email' => $email],           // Search criteria
-    ['name' => $name]              // Additional data if creating
+// First matching — returns Option
+Post::where('slug', '=', $slug)->first()->match(
+    some: fn($post) => $this->view('posts.show', ['post' => $post]),
+    none: fn() => $this->notFound(),
 );
 ```
 
 ### Query Builder
 
-In VibeFW v2.0.0, the **QueryBuilder is immutable**. Every method (`where`, `select`, `orderBy`, `limit`, `offset`, `join`, etc.) returns a **CLONE** of the builder. This prevents side effects when reusing builder instances but requires you to capture the result when building queries conditionally.
-
-```php
-// Chaining works as expected:
-$posts = Post::where('status', 'published')
-    ->where('user_id', $userId)
-    ->get();
-
-// Building in stages requires re-assignment:
-$query = Post::where('status', 'published');
-
-if ($request->get('category')) {
-    // MUST RE-ASSIGN:
-    $query = $query->where('category_id', $request->get('category'));
-}
-
-$posts = $query->orderBy('created_at', 'desc')->get();
-```
-
-#### Available Methods
-
 ```php
 // Where clauses
-$posts = Post::where('status', 'published')->get();
+$posts = Post::where('status', '=', 'published')->get();
 $posts = Post::where('views', '>', 100)->get();
 
 // Or where
-$posts = Post::where('status', 'published')
-    ->orWhere('featured', true)
+$posts = Post::where('status', '=', 'published')
+    ->orWhere('featured', '=', true)
     ->get();
 
 // Where in
@@ -149,41 +132,56 @@ $posts = Post::whereNotNull('published_at')->get();
 
 // Ordering
 $posts = Post::orderBy('created_at', 'desc')->get();
-$posts = Post::latest()->get();  // Order by created_at desc
-$posts = Post::oldest()->get();  // Order by created_at asc
+$posts = Post::latest()->get();    // Order by created_at desc
+$posts = Post::oldest()->get();    // Order by created_at asc
 
 // Limiting
 $posts = Post::limit(10)->get();
 $posts = Post::limit(10)->offset(20)->get();
 
-// First record
-$post = Post::where('slug', $slug)->first();  // Returns Option
-
 // Count
-$count = Post::where('status', 'published')->count();
+$count = Post::where('status', '=', 'published')->count();
+```
+
+### Conditional Query Building
+
+The QueryBuilder is immutable. Conditional steps require re-assignment:
+
+```php
+$query = Post::where('status', '=', 'published');
+
+if ($request->get('category')) {
+    $query = $query->where('category_id', '=', $request->get('category'));
+}
+
+$posts = $query->orderBy('created_at', 'desc')->get();
+```
+
+### Pagination
+
+```php
+$pagination = Post::orderBy('created_at', 'desc')->paginate(15, $page);
+// Returns: ['items' => [...], 'total' => 100, 'per_page' => 15, 'current_page' => 1, 'last_page' => 7]
 ```
 
 ### Scopes
 
-Define reusable query constraints:
-
 ```php
 class Post extends Model
 {
-    // Static scope method
-    public static function wherePublished(): static
+    public static function published(): array
     {
-        return static::whereNotNull('published_at');
+        return static::whereNotNull('published_at')
+            ->where('published_at', '<=', date('Y-m-d H:i:s'))
+            ->orderBy('published_at', 'desc')
+            ->get();
     }
 
-    public static function byAuthor(int $userId): static
+    public static function byAuthor(int $userId): array
     {
-        return static::where('user_id', $userId);
+        return static::where('user_id', '=', $userId)->get();
     }
 }
-
-// Usage
-$posts = Post::wherePublished()->byAuthor($userId)->get();
 ```
 
 ## Creating & Updating
@@ -191,40 +189,30 @@ $posts = Post::wherePublished()->byAuthor($userId)->get();
 ### Create
 
 ```php
-// Create and save
 $post = Post::create([
     'title' => 'My Post',
     'content' => 'Content here...',
     'user_id' => $userId,
 ]);
-
-// Or build and save separately
-$post = new Post();
-$post->title = 'My Post';
-$post->content = 'Content here...';
-$post->save();
 ```
 
 ### Update
 
 ```php
-// Find and update
-Post::find($id)->map(function($post) {
-    $post->update(['title' => 'New Title']);
-});
-
-// Or update attributes directly
-$post->title = 'New Title';
-$post->save();
+Post::find($id)->match(
+    some: function ($post) use ($data) {
+        $post->fill($data->toArray())->save();
+    },
+    none: fn() => null,
+);
 
 // Mass update
-Post::where('status', 'draft')->update(['status' => 'archived']);
+Post::where('status', '=', 'draft')->update(['status' => 'archived']);
 ```
 
 ### Delete
 
 ```php
-// Delete single record
 $post->delete();
 
 // Mass delete
@@ -236,63 +224,58 @@ Post::where('created_at', '<', $date)->delete();
 ### Belongs To
 
 ```php
-class Post extends Model
-{
-    public function author(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-}
+use Fw\Model\Relations\BelongsTo;
 
-// Usage
-$post->author()->get();  // Returns Option<User>
+public function author(): BelongsTo
+{
+    return $this->belongsTo(User::class, 'user_id');
+}
 ```
 
 ### Has Many
 
 ```php
-class User extends Model
-{
-    public function posts(): HasMany
-    {
-        return $this->hasMany(Post::class, 'user_id');
-    }
-}
+use Fw\Model\Relations\HasMany;
 
-// Usage
-$user->posts()->get();  // Returns Collection
+public function posts(): HasMany
+{
+    return $this->hasMany(Post::class, 'user_id');
+}
 ```
 
 ### Has One
 
 ```php
-class User extends Model
+use Fw\Model\Relations\HasOne;
+
+public function profile(): HasOne
 {
-    public function profile(): HasOne
-    {
-        return $this->hasOne(Profile::class, 'user_id');
-    }
+    return $this->hasOne(Profile::class, 'user_id');
 }
 ```
+
+### Wiring Relationships via CLI
+
+```bash
+php fw make:link Post Comment --hasMany
+php fw make:link User Profile --hasOne
+php fw make:link Post Tag --manyToMany
+```
+
+This generates migrations, updates both models, and updates `$fillable`.
 
 ### Eager Loading
 
 ```php
-// Load relationship with query
 $posts = Post::with('author')->get();
-
-// Multiple relationships
 $posts = Post::with(['author', 'comments'])->get();
 
-// Access without additional queries
 foreach ($posts as $post) {
     echo $post->author->name;  // No N+1 query
 }
 ```
 
 ## Accessors & Mutators
-
-### Custom Getters
 
 ```php
 class User extends Model
@@ -301,17 +284,7 @@ class User extends Model
     {
         return $this->first_name . ' ' . $this->last_name;
     }
-}
 
-// Usage
-echo $user->full_name;
-```
-
-### Custom Setters
-
-```php
-class User extends Model
-{
     public function setPasswordAttribute(string $value): void
     {
         $this->attributes['password'] = password_hash($value, PASSWORD_DEFAULT);
@@ -319,24 +292,25 @@ class User extends Model
 }
 
 // Usage
+echo $user->full_name;
 $user->password = 'plain-text';  // Automatically hashed
 ```
 
 ## Model Events
-
-Override these methods for lifecycle hooks:
 
 ```php
 class Post extends Model
 {
     protected function beforeSave(): void
     {
-        $this->slug = Str::slug($this->title);
+        if (empty($this->slug)) {
+            $this->slug = \Fw\Support\Str::slug($this->title);
+        }
     }
 
     protected function afterSave(): void
     {
-        Cache::forget('posts.all');
+        // Invalidate cache, etc.
     }
 
     protected function beforeDelete(): void
@@ -346,50 +320,22 @@ class Post extends Model
 }
 ```
 
-## Working with Dates
-
-```php
-// Cast to DateTime
-protected static array $casts = [
-    'published_at' => 'datetime',
-];
-
-// Usage
-$post->published_at;                    // DateTimeImmutable
-$post->published_at->format('Y-m-d');   // 2024-01-15
-```
-
 ## Serialization
-
-Models implement `\JsonSerializable`, so they serialize correctly in all contexts.
-
-### To Array
 
 ```php
 $array = $post->toArray();
-```
-
-Includes all attributes (with type casting applied for storage) and any loaded relationships.
-
-### To JSON
-
-```php
-// Explicit
 $json = $post->toJson();
-
-// Via json_encode — works correctly because Model implements JsonSerializable
-$json = json_encode($post);
-
-// Works transparently in nested structures too
-$json = json_encode(['post' => $post, 'meta' => $meta]);
-
-// Collections are also JsonSerializable
-$json = json_encode(Post::all());
+$json = json_encode($post);  // Models implement JsonSerializable
 ```
 
-`toJson()` and `json_encode()` produce identical output. Both call `toArray()` internally, which includes loaded relations.
+## Inspection
 
-## Example: Complete Model
+```bash
+php fw model:inspect Post
+# Shows: table, columns, fillable, casts, relations, row count, indexes
+```
+
+## Complete Example
 
 ```php
 <?php
@@ -416,10 +362,9 @@ class Post extends Model
 
     protected static array $casts = [
         'published_at' => 'datetime',
-        'views' => 'int',
+        'view_count'   => 'int',
     ];
 
-    // Relationships
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -430,35 +375,19 @@ class Post extends Model
         return $this->hasMany(Comment::class, 'post_id');
     }
 
-    // Scopes
-    public static function wherePublished(): static
+    public static function published(): array
     {
         return static::whereNotNull('published_at')
-            ->where('published_at', '<=', date('Y-m-d H:i:s'));
+            ->where('published_at', '<=', date('Y-m-d H:i:s'))
+            ->orderBy('published_at', 'desc')
+            ->get();
     }
 
-    public static function whereDraft(): static
-    {
-        return static::whereNull('published_at');
-    }
-
-    // Mutators
     protected function beforeSave(): void
     {
         if (empty($this->slug)) {
             $this->slug = \Fw\Support\Str::slug($this->title);
         }
-    }
-
-    // Business Logic
-    public function publish(): void
-    {
-        $this->update(['published_at' => date('Y-m-d H:i:s')]);
-    }
-
-    public function isPublished(): bool
-    {
-        return $this->published_at !== null;
     }
 }
 ```

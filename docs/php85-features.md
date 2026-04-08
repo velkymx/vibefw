@@ -39,41 +39,17 @@ PHP 8.5 adds the ability to throw exceptions on filter validation failures inste
 
 ### Validator Exception Mode
 
+FormRequests use `FILTER_FLAG_THROW_ON_FAILURE` internally for immediate error detection:
+
 ```php
-// Traditional validation (returns Result)
-$result = $this->validate($request, [
-    'email' => 'required|email',
-    'name' => 'required|min:2',
-]);
+use App\Requests\StorePostRequest;
+use Fw\Validation\ValidationException;
 
-$result->match(
-    ok: fn($data) => /* process data */,
-    err: fn($errors) => /* handle errors */
-);
-
-// PHP 8.5 exception mode
 try {
-    $data = Validator::make($request->all(), [
-        'email' => 'required|email',
-        'name' => 'required|min:2',
-    ])->validateOrFail();
-
-    // Process validated data
-    return $this->redirect('/success');
+    $data = StorePostRequest::fromRequest($request);
 } catch (ValidationException $e) {
     return $this->view('form', ['errors' => $e->errors]);
 }
-```
-
-### Filter-Level Exceptions
-
-The validator can use PHP 8.5's `FILTER_FLAG_THROW_ON_FAILURE`:
-
-```php
-$validator = Validator::make($data, $rules)
-    ->throwOnFailure();
-
-// Now filter_var internally throws ValueError on invalid input
 ```
 
 ## Pipe Operator (|>)

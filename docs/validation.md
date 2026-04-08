@@ -1,99 +1,176 @@
 # Validation
 
-VibeFW provides simple, declarative validation for request data.
+All validation uses typed Rule objects in FormRequest classes. String pipe rules (`'required|min:3'`) do not exist.
 
-## Basic Usage
+## FormRequest
+
+Create a FormRequest for every form submission:
+
+```bash
+php fw make:request StorePostRequest
+```
 
 ```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Requests;
+
+use Fw\Validation\FormRequest;
+use Fw\Validation\Rule;
+use Fw\Validation\Rules\Required;
+use Fw\Validation\Rules\MinLength;
+use Fw\Validation\Rules\MaxLength;
+use Fw\Validation\Rules\Email;
+
+class StorePostRequest extends FormRequest
+{
+    public string $title;
+    public string $content;
+    public string $email;
+
+    /** @return array<string, list<Rule>> */
+    public function rules(): array
+    {
+        return [
+            'title'   => [new Required, new MinLength(3), new MaxLength(255)],
+            'content' => [new Required],
+            'email'   => [new Required, new Email],
+        ];
+    }
+}
+```
+
+## Using in Controllers
+
+```php
+use App\Requests\StorePostRequest;
+use Fw\Validation\ValidationException;
+
 public function store(Request $request): Response
 {
-    $validation = $this->validate($request, [
-        'title' => 'required|min:3|max:200',
-        'email' => 'required|email',
-        'content' => 'required|min:10',
-    ]);
-
-    if ($validation->isErr()) {
+    try {
+        $data = StorePostRequest::fromRequest($request);
+    } catch (ValidationException $e) {
         return $this->view('posts.create', [
-            'errors' => $validation->getError(),
+            'errors' => $e->errors,
             'old' => $request->all(),
         ]);
     }
 
-    $data = $validation->getValue();
-    $post = Post::create($data);
-
+    $post = Post::create($data->toArray());
     return $this->redirect('/posts/' . $post->id);
 }
 ```
 
+`fromRequest()` validates the request data against the rules. If validation fails, it throws `ValidationException` with an `errors` array keyed by field name.
+
 ## Available Rules
 
-| Rule | Description | Example |
-|------|-------------|---------|
-| `required` | Field must be present and not empty | `'name' => 'required'` |
-| `email` | Must be valid email format | `'email' => 'email'` |
-| `min:n` | Minimum length (string) or value (numeric) | `'password' => 'min:8'` |
-| `max:n` | Maximum length (string) or value (numeric) | `'title' => 'max:200'` |
-| `numeric` | Must be numeric | `'age' => 'numeric'` |
-| `alpha` | Only alphabetic characters | `'name' => 'alpha'` |
-| `alphanumeric` | Only alphanumeric characters | `'username' => 'alphanumeric'` |
-| `url` | Must be valid URL | `'website' => 'url'` |
-| `uuid` | Must be valid UUID | `'id' => 'uuid'` |
+All rules are in `Fw\Validation\Rules`:
 
-## Combining Rules
+| Rule | Constructor | Description |
+|------|-------------|-------------|
+| `Required` | `new Required` | Field must be present and not empty |
+| `MinLength` | `new MinLength(3)` | Minimum string length |
+| `MaxLength` | `new MaxLength(255)` | Maximum string length |
+| `Email` | `new Email` | Valid email format |
+| `Url` | `new Url` | Valid URL format |
+| `In` | `new In(['draft', 'published'])` | Value must be in list |
+| `InEnum` | `new InEnum(Status::class)` | Value must be in enum |
+| `Regex` | `new Regex('/^[a-z]+$/')` | Must match pattern |
+| `Between` | `new Between(1, 100)` | Numeric range |
+| `Unique` | `new Unique('users', 'email')` | Unique in database table |
+| `Exists` | `new Exists('categories', 'id')` | Must exist in table |
+| `Confirmed` | `new Confirmed` | Must match `{field}_confirmation` |
+| `Numeric` | `new Numeric` | Must be numeric |
+| `Integer` | `new Integer` | Must be integer |
+| `Uuid` | `new Uuid` | Must be valid UUID |
+| `Date` | `new Date` | Must be valid date |
+| `Alpha` | `new Alpha` | Only alphabetic characters |
+| `AlphaNumeric` | `new AlphaNumeric` | Only alphanumeric characters |
+| `Nullable` | `new Nullable` | Allow null values |
 
-Use the pipe character `|` to combine rules:
+## Why Typed Rules?
 
+A typo in a string rule is a silent bug:
 ```php
-$validation = $this->validate($request, [
-    'username' => 'required|alphanumeric|min:3|max:20',
-    'email' => 'required|email',
-    'password' => 'required|min:8',
-    'age' => 'numeric|min:0|max:150',
-]);
+// Silent — 'requred' is ignored, field passes validation
+'title' => 'requred|min:3'
 ```
 
-## Result Type
+A typo in a typed rule is a fatal error:
+```php
+// Fatal error: Class "Fw\Validation\Rules\Requred" not found
+'title' => [new Requred, new MinLength(3)]
+```
 
-Validation returns a `Result` type:
+AI models catch fatal errors. They don't catch silent bugs.
+
+## Examples
+
+### User Registration
 
 ```php
-$validation = $this->validate($request, $rules);
+class StoreUserRequest extends FormRequest
+{
+    public string $name;
+    public string $email;
+    public string $password;
 
-// Check for errors
-if ($validation->isErr()) {
-    $errors = $validation->getError();
-    // ['email' => 'Email must be a valid email address']
+    public function rules(): array
+    {
+        return [
+            'name'     => [new Required, new MinLength(2), new MaxLength(100)],
+            'email'    => [new Required, new Email, new Unique('users', 'email')],
+            'password' => [new Required, new MinLength(8), new Confirmed],
+        ];
+    }
 }
-
-// Check for success
-if ($validation->isOk()) {
-    $data = $validation->getValue();
-    // ['email' => 'user@example.com', 'name' => 'John']
-}
-
-// Pattern matching
-return $validation->match(
-    ok: fn($data) => $this->createUser($data),
-    err: fn($errors) => $this->view('form', compact('errors'))
-);
 ```
 
-## Error Messages
-
-Default error messages are generated automatically:
+### Blog Post
 
 ```php
-$errors = $validation->getError();
-// [
-//     'title' => 'Title is required',
-//     'email' => 'Email must be a valid email address',
-//     'password' => 'Password must be at least 8 characters',
-// ]
+class StorePostRequest extends FormRequest
+{
+    public string $title;
+    public string $content;
+    public string $status;
+
+    public function rules(): array
+    {
+        return [
+            'title'   => [new Required, new MinLength(3), new MaxLength(200)],
+            'content' => [new Required, new MinLength(50)],
+            'status'  => [new Required, new In(['draft', 'published'])],
+        ];
+    }
+}
 ```
 
-## Displaying Errors
+### API Request
+
+```php
+class StorePaymentRequest extends FormRequest
+{
+    public string $user_id;
+    public string $amount;
+    public string $currency;
+
+    public function rules(): array
+    {
+        return [
+            'user_id'  => [new Required, new Uuid],
+            'amount'   => [new Required, new Numeric, new Between(0, 999999)],
+            'currency' => [new Required, new Alpha, new MaxLength(3)],
+        ];
+    }
+}
+```
+
+## Displaying Errors in Views
 
 ### All Errors
 
@@ -125,12 +202,14 @@ $errors = $validation->getError();
 
 ## Preserving Old Input
 
-Pass old input back to the view:
+Pass old input back to the view on validation failure:
 
 ```php
-if ($validation->isErr()) {
+try {
+    $data = StorePostRequest::fromRequest($request);
+} catch (ValidationException $e) {
     return $this->view('posts.create', [
-        'errors' => $validation->getError(),
+        'errors' => $e->errors,
         'old' => $request->all(),
     ]);
 }
@@ -140,105 +219,19 @@ In the view:
 
 ```php
 <input type="text" name="title" value="<?= $e($old['title'] ?? '') ?>">
-<textarea name="content"><?= $e($old['content'] ?? '') ?></textarea>
 ```
 
 ## Optional Fields
 
-Fields without `required` are optional:
+Fields without `Required` are optional. If provided, other rules still apply:
 
 ```php
-$validation = $this->validate($request, [
-    'name' => 'required|min:2',
-    'website' => 'url',        // Optional, but if provided must be valid URL
-    'bio' => 'max:500',        // Optional, but if provided must be ≤500 chars
-]);
-```
-
-## Validation Examples
-
-### User Registration
-
-```php
-$validation = $this->validate($request, [
-    'name' => 'required|min:2|max:100',
-    'email' => 'required|email',
-    'password' => 'required|min:8',
-]);
-```
-
-### Blog Post
-
-```php
-$validation = $this->validate($request, [
-    'title' => 'required|min:3|max:200',
-    'slug' => 'required|alphanumeric',
-    'content' => 'required|min:50',
-    'excerpt' => 'max:300',
-]);
-```
-
-### Contact Form
-
-```php
-$validation = $this->validate($request, [
-    'name' => 'required|min:2',
-    'email' => 'required|email',
-    'subject' => 'required|min:5|max:100',
-    'message' => 'required|min:20|max:5000',
-]);
-```
-
-### API Request
-
-```php
-$validation = $this->validate($request, [
-    'user_id' => 'required|uuid',
-    'amount' => 'required|numeric|min:0',
-    'currency' => 'required|alpha|max:3',
-]);
-```
-
-## Complete Controller Example
-
-```php
-class UserController extends Controller
+public function rules(): array
 {
-    public function store(Request $request): Response
-    {
-        $validation = $this->validate($request, [
-            'name' => 'required|min:2|max:100',
-            'email' => 'required|email',
-            'password' => 'required|min:8',
-        ]);
-
-        // Handle validation errors
-        if ($validation->isErr()) {
-            return $this->view('users.create', [
-                'errors' => $validation->getError(),
-                'old' => $this->except($request, ['password']),
-            ]);
-        }
-
-        // Get validated data
-        $data = $validation->getValue();
-
-        // Check for existing user
-        if (User::where('email', $data['email'])->first()->isSome()) {
-            return $this->view('users.create', [
-                'errors' => ['email' => 'Email already registered'],
-                'old' => $this->except($request, ['password']),
-            ]);
-        }
-
-        // Create user
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => password_hash($data['password'], PASSWORD_DEFAULT),
-        ]);
-
-        return $this->redirect('/users/' . $user->id);
-    }
+    return [
+        'name'    => [new Required, new MinLength(2)],
+        'website' => [new Url],              // Optional, but if provided must be valid URL
+        'bio'     => [new MaxLength(500)],   // Optional, max 500 chars
+    ];
 }
 ```

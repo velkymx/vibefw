@@ -230,7 +230,7 @@ class PostController extends Controller
 ### User-Specific Caching
 
 ```php
-$userId = $this->user()->unwrap()->id;
+$userId = $this->user()->unwrapOr(null)->id;
 $cacheKey = "user:{$userId}:dashboard";
 
 $data = $cache->remember($cacheKey, function () use ($userId) {

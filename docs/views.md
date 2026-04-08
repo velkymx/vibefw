@@ -1,15 +1,13 @@
 # Views
 
-Views are plain PHP templates that render HTML. They live in `app/Views/` and use simple, familiar PHP syntax.
+Views are plain PHP templates. They live in `app/Views/` and use built-in helper functions.
 
 ## Directory Structure
 
 ```
 app/Views/
 ├── layouts/
-│   └── app.php           # Main layout template
-├── home/
-│   └── index.php
+│   └── main.php
 ├── posts/
 │   ├── index.php
 │   ├── create.php
@@ -20,33 +18,17 @@ app/Views/
     └── footer.php
 ```
 
-## Basic Usage
-
-### Rendering from Controller
+## Rendering from Controllers
 
 ```php
+return $this->view('posts.index', ['posts' => $posts]);
 // Renders app/Views/posts/index.php
-return $this->view('posts.index', ['posts' => $posts]);
 
-// With layout
-return $this->view('posts.index', ['posts' => $posts]);
-// Layout is set in the view or controller
-```
+return $this->cachedView('pages.about', [], 3600);
+// Full-page cache for 1 hour
 
-### View Structure
-
-```php
-<?php $title = 'All Posts'; ?>
-
-<h1>Posts</h1>
-
-<?php foreach ($posts as $post): ?>
-    <article>
-        <h2><?= $e($post->title) ?></h2>
-        <p><?= $strLimit($post->content, 200) ?></p>
-        <a href="/posts/<?= $post->id ?>">Read more</a>
-    </article>
-<?php endforeach; ?>
+return $this->streamedView('reports.large', ['data' => $data]);
+// Streamed render (lower memory, faster TTFB)
 ```
 
 ## Layouts
@@ -54,70 +36,70 @@ return $this->view('posts.index', ['posts' => $posts]);
 ### Creating a Layout
 
 ```php
-<!-- app/Views/layouts/app.php -->
+<!-- app/Views/layouts/main.php -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title><?= $title ?? 'My App' ?></title>
-    <link href="/css/app.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $e($title ?? 'Fw App') ?></title>
 </head>
 <body>
-    <nav>
-        <!-- Navigation -->
-    </nav>
+    <nav><!-- Navigation --></nav>
 
-    <main class="container">
-        <?= $content ?>
+    <main>
+        <?= $yield('content') ?>
     </main>
 
-    <footer>
-        <!-- Footer -->
-    </footer>
-
-    <script src="/js/app.js"></script>
+    <aside>
+        <?= $yield('sidebar', '<p>Default sidebar</p>') ?>
+    </aside>
 </body>
 </html>
 ```
 
-### Using Layouts in Controller
-
-While you can define the layout within your view template, you can also specify it in your controller. The `Response` object is an immutable value object, and methods like `layout()` return a new instance with the updated configuration.
+### Using Layouts in Views
 
 ```php
-public function index(Request $request): Response
-{
-    $posts = Post::all();
-    
-    // Set the layout and pass data to the view
-    return $this->view('posts.index', compact('posts'))
-        ->layout('app');
-}
+<?php $this->layout('main'); ?>
+<?php $title = 'All Posts'; ?>
+
+<?php $section('content'); ?>
+    <h1>Posts</h1>
+    <?php foreach ($posts['items'] as $post): ?>
+        <article>
+            <h2><a href="<?= $url('posts.show', ['id' => $post->id]) ?>"><?= $e($post->title) ?></a></h2>
+            <p><?= $strLimit($post->content, 150) ?></p>
+            <time><?= $timeAgo($post->created_at) ?></time>
+        </article>
+    <?php endforeach; ?>
+<?php $endSection(); ?>
 ```
 
-### Setting Title
+### Setting Layout in Controller
 
 ```php
-<?php $title = 'Edit Post'; ?>
-
-<!-- Rest of view content -->
+return $this->view('posts.index', ['posts' => $posts])
+    ->layout('app');
 ```
 
 ## Helper Functions
 
-### Escaping Output
+### Escaping — `$e()`
 
 ```php
-// Using $e() helper
 <h1><?= $e($post->title) ?></h1>
-
-// Or htmlspecialchars directly
-<p><?= htmlspecialchars($post->content, ENT_QUOTES, 'UTF-8') ?></p>
 ```
 
-**Always escape user-generated content to prevent XSS attacks.**
+Always escape user-generated content. Wraps `htmlspecialchars()` with `ENT_QUOTES`.
 
-### CSRF Token
+### URL Generation — `$url()`
+
+```php
+<a href="<?= $url('posts.show', ['id' => $post->id]) ?>">View Post</a>
+```
+
+### CSRF Token — `$csrf()`
 
 ```php
 <form method="POST" action="/posts">
@@ -126,88 +108,57 @@ public function index(Request $request): Response
 </form>
 ```
 
-Outputs: `<input type="hidden" name="_csrf_token" value="...">`
+### Old Input — `$old()`
+
+```php
+<input type="text" name="title" value="<?= $e($old('title', '')) ?>">
+```
 
 ### String Helpers
 
 ```php
-// Limit string length
-<?= $strLimit($post->content, 100) ?>
-// Output: "This is a long text that gets..."
-
-// Slug
-<?= $strSlug($post->title) ?>
-// Output: "my-post-title"
-
-// Case conversion
-<?= $strUpper($text) ?>
-<?= $strLower($text) ?>
-<?= $strTitle($text) ?>
+<?= $strLimit($post->content, 100) ?>     <!-- Truncate -->
+<?= $strSlug($post->title) ?>             <!-- URL slug -->
+<?= $strUpper($text) ?>                   <!-- HELLO -->
+<?= $strLower($text) ?>                   <!-- hello -->
+<?= $strTitle($text) ?>                   <!-- Hello World -->
+<?= $strExcerpt($body, 'framework', 50) ?> <!-- ...PHP framework designed... -->
 ```
 
-### Date Formatting
+### Date Helpers
 
 ```php
-// Format date
-<?= $formatDate($post->created_at) ?>
-// Output: "January 15, 2024"
-
-<?= $formatDate($post->created_at, 'Y-m-d') ?>
-// Output: "2024-01-15"
-
-// Time ago
-<?= $timeAgo($post->created_at) ?>
-// Output: "2 hours ago"
+<?= $formatDate($post->created_at) ?>              <!-- January 15, 2024 -->
+<?= $formatDate($post->created_at, 'Y-m-d') ?>     <!-- 2024-01-15 -->
+<?= $timeAgo($post->created_at) ?>                  <!-- 2 hours ago -->
 ```
 
-### URL Generation
+### Fragment Caching
 
 ```php
-// Named route URL
-<a href="<?= $url('posts.show', ['id' => $post->id]) ?>">View</a>
-```
-
-## Conditionals
-
-```php
-<?php if ($posts->isEmpty()): ?>
-    <p>No posts found.</p>
-<?php else: ?>
-    <?php foreach ($posts as $post): ?>
-        <article>
-            <h2><?= $e($post->title) ?></h2>
-        </article>
-    <?php endforeach; ?>
-<?php endif; ?>
-```
-
-## Loops
-
-```php
-<?php foreach ($posts as $post): ?>
-    <article>
-        <h2><?= $e($post->title) ?></h2>
-        <p>By <?= $e($post->author->name ?? 'Unknown') ?></p>
-    </article>
-<?php endforeach; ?>
+<?php if ($cache('sidebar', 3600)): ?>
+    <!-- Rendered only on cache miss, cached for 1 hour -->
+    <nav>
+        <?php foreach ($categories as $cat): ?>
+            <a href="<?= $url('categories.show', ['id' => $cat->id]) ?>"><?= $e($cat->name) ?></a>
+        <?php endforeach; ?>
+    </nav>
+<?php $endCache(); endif; ?>
 ```
 
 ## Including Partials
 
 ```php
-// Include another view file
 <?= $this->include('partials.header', ['title' => $title]) ?>
 
-<main>
-    <!-- Content -->
-</main>
+<main><!-- Content --></main>
 
 <?= $this->include('partials.footer') ?>
 ```
 
 ## Forms
 
-### Basic Form
+### Create Form
 
 ```php
 <form method="POST" action="/posts">
@@ -216,31 +167,26 @@ Outputs: `<input type="hidden" name="_csrf_token" value="...">`
     <div class="form-group">
         <label for="title">Title</label>
         <input type="text" id="title" name="title"
-               value="<?= $e($old['title'] ?? '') ?>" required>
+               value="<?= $e($old('title', '')) ?>" required>
     </div>
 
     <div class="form-group">
         <label for="content">Content</label>
-        <textarea id="content" name="content" required><?= $e($old['content'] ?? '') ?></textarea>
+        <textarea id="content" name="content" required><?= $e($old('content', '')) ?></textarea>
     </div>
 
     <button type="submit">Create Post</button>
 </form>
 ```
 
-### Edit Form (PUT/PATCH)
+### Edit Form (PUT)
 
 ```php
 <form method="POST" action="/posts/<?= $post->id ?>">
     <?= $csrf() ?>
     <input type="hidden" name="_method" value="PUT">
 
-    <div class="form-group">
-        <label for="title">Title</label>
-        <input type="text" id="title" name="title"
-               value="<?= $e($post->title) ?>" required>
-    </div>
-
+    <input type="text" name="title" value="<?= $e($post->title) ?>" required>
     <button type="submit">Update Post</button>
 </form>
 ```
@@ -252,7 +198,7 @@ Outputs: `<input type="hidden" name="_csrf_token" value="...">`
       onsubmit="return confirm('Are you sure?')">
     <?= $csrf() ?>
     <input type="hidden" name="_method" value="DELETE">
-    <button type="submit" class="btn-danger">Delete</button>
+    <button type="submit">Delete</button>
 </form>
 ```
 
@@ -270,84 +216,39 @@ Outputs: `<input type="hidden" name="_csrf_token" value="...">`
 <?php endif; ?>
 ```
 
-## Flash Messages
+## Pagination
 
 ```php
-<?php if (isset($_SESSION['flash']['success'])): ?>
-    <div class="alert alert-success">
-        <?= $e($_SESSION['flash']['success']) ?>
-    </div>
-    <?php unset($_SESSION['flash']['success']); ?>
+<?php if ($posts['last_page'] > 1): ?>
+    <nav>
+        <?php for ($i = 1; $i <= $posts['last_page']; $i++): ?>
+            <a href="?page=<?= $i ?>"
+               <?= $i === $posts['current_page'] ? 'class="active"' : '' ?>>
+                <?= $i ?>
+            </a>
+        <?php endfor; ?>
+    </nav>
 <?php endif; ?>
 ```
 
-## Authentication Checks
+## Support Classes
+
+Three utility classes are available in all views. See [View Helpers](helpers.md) for the full API reference.
+
+- **`$Str`** — String utilities (`Fw\Support\Str`): `$Str::slug()`, `$Str::limit()`, `$Str::uuid()`, `$Str::of()` (fluent)
+- **`$DateTime`** — DateTime utilities (`Fw\Support\DateTime`): `$DateTime::now()`, `$DateTime::parse()`, `->diffForHumans()`
+- **`$Arr`** — Array utilities (`Fw\Support\Arr`): `$Arr::get()` (dot notation), `$Arr::pluck()`, `$Arr::where()`
+
+## Reserved Variable Names
+
+These cannot be used as view data keys:
+
+`e`, `url`, `csrf`, `old`, `section`, `endSection`, `yield`, `strLimit`, `strSlug`, `strUpper`, `strLower`, `strTitle`, `strExcerpt`, `formatDate`, `timeAgo`, `Str`, `DateTime`, `Arr`, `path`, `data`, `this`, `cache`, `endCache`
+
+## Cache Invalidation
 
 ```php
-<?php if (isset($_SESSION['user'])): ?>
-    <p>Welcome, <?= $e($_SESSION['user']['name']) ?>!</p>
-    <form method="POST" action="/logout">
-        <?= $csrf() ?>
-        <button type="submit">Logout</button>
-    </form>
-<?php else: ?>
-    <a href="/login">Login</a>
-    <a href="/register">Register</a>
-<?php endif; ?>
+$view->invalidate('pages.about');           // Single page
+$view->invalidateFragment('sidebar');        // Single fragment
+$view->clearCache();                         // All cached views
 ```
-
-## Complete Example
-
-```php
-<!-- app/Views/posts/index.php -->
-<?php $title = 'All Posts'; ?>
-
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Posts</h1>
-        <a href="/posts/create" class="btn btn-primary">New Post</a>
-    </div>
-
-    <?php if (isset($errors)): ?>
-        <div class="alert alert-danger">
-            <?php foreach ($errors as $error): ?>
-                <p><?= $e($error) ?></p>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($posts->isEmpty()): ?>
-        <div class="alert alert-info">
-            No posts yet. <a href="/posts/create">Create your first post!</a>
-        </div>
-    <?php else: ?>
-        <div class="row">
-            <?php foreach ($posts as $post): ?>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title"><?= $e($post->title) ?></h5>
-                            <p class="card-text"><?= $strLimit($e($post->content), 150) ?></p>
-                            <p class="text-muted small">
-                                By <?= $e($post->author->name ?? 'Unknown') ?>
-                                &bull; <?= $timeAgo($post->created_at) ?>
-                            </p>
-                            <a href="/posts/<?= $post->id ?>" class="btn btn-sm btn-outline-primary">
-                                Read More
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</div>
-```
-
-## Tips
-
-1. **Always escape output** - Use `$e()` for any user-generated content
-2. **Keep logic minimal** - Complex logic belongs in controllers or models
-3. **Use partials** - Break large views into reusable components
-4. **Set meaningful titles** - Always set `$title` for each page
-5. **Use semantic HTML** - Proper HTML5 elements improve accessibility

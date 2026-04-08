@@ -1,8 +1,6 @@
 # Middleware
 
-Middleware filters HTTP requests before they reach your controller. They can authenticate users, validate CSRF tokens, add headers, and more.
-
-## How Middleware Works
+Middleware filters HTTP requests before they reach your controller.
 
 ```
 Request → Middleware 1 → Middleware 2 → Controller → Response
@@ -10,88 +8,58 @@ Request → Middleware 1 → Middleware 2 → Controller → Response
          (can abort)   (can modify)   (generates)
 ```
 
-Each middleware can:
-- Pass the request to the next middleware
-- Return a response early (abort the chain)
-- Modify the request or response
+## Using Middleware
+
+Middleware uses class references via `$router->with()`. No string aliases.
+
+```php
+use App\Middleware\AuthMiddleware;
+use App\Middleware\AdminMiddleware;
+
+// Wrap routes in middleware
+$router->with(AuthMiddleware::class, function (Router $r) {
+    $r->get('/dashboard', [DashboardController::class, 'index']);
+    $r->get('/posts/create', [PostController::class, 'create']);
+
+    // Nested middleware
+    $r->with(AdminMiddleware::class, function (Router $r) {
+        $r->get('/admin', [AdminController::class, 'index']);
+    });
+});
+```
 
 ## Built-in Middleware
 
-| Alias | Class | Description |
-|-------|-------|-------------|
-| `auth` | `AuthMiddleware` | Requires authenticated user |
-| `guest` | `GuestMiddleware` | Requires unauthenticated user |
-| `csrf` | `CsrfMiddleware` | Validates CSRF token |
-| `cors` | `CorsMiddleware` | Adds CORS headers |
-| `can` | `CanMiddleware` | Authorization check |
-| `throttle` | `RateLimitMiddleware` | Rate limiting |
-| `secure` | `SecurityHeadersMiddleware` | Security headers |
-| `api.auth` | `ApiAuthMiddleware` | API token authentication |
-| `spa.auth` | `SpaAuthMiddleware` | SPA cookie authentication |
-| `ability` | `TokenAbilityMiddleware` | Token ability check |
+| Class | Description |
+|-------|-------------|
+| `AuthMiddleware` | Requires authenticated user |
+| `GuestMiddleware` | Requires unauthenticated user |
+| `CsrfMiddleware` | Validates CSRF token |
+| `CorsMiddleware` | Adds CORS headers |
+| `RateLimitMiddleware` | Rate limiting |
+| `SecurityHeadersMiddleware` | Security headers |
+| `ApiAuthMiddleware` | API token authentication |
+| `SpaAuthMiddleware` | SPA cookie authentication |
+| `TokenAbilityMiddleware` | Token ability check |
 
-## Configuration
+## Global Middleware
 
-Middleware is configured in `config/middleware.php`:
+Global middleware runs on every request. Configure in `config/middleware.php`:
 
 ```php
 return [
-    // Applied to every request
     'global' => [
         SecurityHeadersMiddleware::class,
         GuestPageCacheMiddleware::class,
     ],
-
-    // Short aliases
-    'aliases' => [
-        'auth' => AuthMiddleware::class,
-        'guest' => GuestMiddleware::class,
-        'csrf' => CsrfMiddleware::class,
-        'can' => CanMiddleware::class,
-        'throttle' => RateLimitMiddleware::class,
-    ],
-
-    // Named groups
-    'groups' => [
-        'web' => ['csrf'],
-        'api' => ['throttle'],
-        'authenticated' => ['auth', 'csrf'],
-    ],
 ];
 ```
 
-## Using Middleware
-
-### In Routes
-
-```php
-// Single middleware
-$router->get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware('auth');
-
-// Multiple middleware
-$router->post('/posts', [PostController::class, 'store'])
-    ->middleware(['auth', 'csrf']);
-
-// Middleware group
-$router->post('/posts', [PostController::class, 'store'])
-    ->middleware('authenticated');
-
-// With parameters
-$router->get('/admin', [AdminController::class, 'index'])
-    ->middleware('can:admin');
-```
-
-### In Route Groups
-
-```php
-$router->group('/admin', function (Router $router) {
-    $router->get('/dashboard', [AdminController::class, 'dashboard']);
-    $router->get('/users', [AdminController::class, 'users']);
-}, ['auth', 'can:admin']);
-```
-
 ## Creating Middleware
+
+```bash
+php fw make:middleware RateLimitMiddleware
+```
 
 ### Basic Middleware
 
@@ -121,11 +89,6 @@ class LogRequestMiddleware implements MiddlewareInterface
         // Pass to next middleware
         $response = $next($request);
 
-        // Ensure we have a Response object (VibeFW v2.0.0 controllers return Response)
-        if (!$response instanceof Response) {
-            $response = new Response((string) $response);
-        }
-
         // After response
         $duration = microtime(true) - $start;
         $this->app->log->info('Request completed', [
@@ -139,53 +102,12 @@ class LogRequestMiddleware implements MiddlewareInterface
 }
 ```
 
-### Middleware with Parameters
-
-```php
-<?php
-
-declare(strict_types=1);
-
-namespace App\Middleware;
-
-use Fw\Core\Application;
-use Fw\Core\Request;
-use Fw\Core\Response;
-use Fw\Middleware\MiddlewareInterface;
-
-class RoleMiddleware implements MiddlewareInterface
-{
-    private string $role;
-
-    public function __construct(
-        private Application $app,
-        string $role = 'user',
-    ) {
-        $this->role = $role;
-    }
-
-    public function handle(Request $request, callable $next): Response
-    {
-        $user = $_SESSION['user'] ?? null;
-
-        if (!$user || $user['role'] !== $this->role) {
-            return new Response('Forbidden', 403);
-        }
-
-        return $next($request);
-    }
-}
-```
-
-Usage: `->middleware('role:admin')`
-
 ### Early Return (Abort)
 
 ```php
 public function handle(Request $request, callable $next): Response
 {
     if (!$this->isAuthorized($request)) {
-        // Return early - don't call $next()
         return (new Response())->redirect('/login');
     }
 
@@ -199,31 +121,28 @@ public function handle(Request $request, callable $next): Response
 public function handle(Request $request, callable $next): Response
 {
     $response = $next($request);
-
-    // Add headers to response (Response is a value object)
-    if ($response instanceof Response) {
-        $response->header('X-Custom-Header', 'value');
-    }
-
+    $response->header('X-Custom-Header', 'value');
     return $response;
 }
 ```
 
-## Registering Custom Middleware
+## Middleware Order
 
-Add to `config/middleware.php`:
+Middleware executes in nesting order. Place authentication before authorization:
 
 ```php
-'aliases' => [
-    // ... existing aliases
-    'log' => App\Middleware\LogRequestMiddleware::class,
-    'role' => App\Middleware\RoleMiddleware::class,
-],
+$router->with(AuthMiddleware::class, function (Router $r) {
+    // User is authenticated here
+    $r->with(AdminMiddleware::class, function (Router $r) {
+        // User is authenticated AND admin here
+        $r->get('/admin', [AdminController::class, 'index']);
+    });
+});
 ```
 
-## Middleware Examples
+## Examples
 
-### Authentication Check
+### Authentication
 
 ```php
 class AuthMiddleware implements MiddlewareInterface
@@ -233,35 +152,8 @@ class AuthMiddleware implements MiddlewareInterface
     public function handle(Request $request, callable $next): Response
     {
         if (!isset($_SESSION['user'])) {
-            // Store intended URL for redirect after login
             $_SESSION['intended_url'] = $request->uri;
             return (new Response())->redirect('/login');
-        }
-
-        return $next($request);
-    }
-}
-```
-
-### CSRF Protection
-
-```php
-class CsrfMiddleware implements MiddlewareInterface
-{
-    public function __construct(private Application $app) {}
-
-    public function handle(Request $request, callable $next): Response
-    {
-        // Skip for safe methods
-        if (in_array($request->method, ['GET', 'HEAD', 'OPTIONS'])) {
-            return $next($request);
-        }
-
-        $token = $request->post('_csrf_token')
-            ?? $request->header('X-CSRF-Token');
-
-        if (!$this->app->csrf->validate($token)) {
-            return new Response('Invalid CSRF token', 419);
         }
 
         return $next($request);
@@ -274,21 +166,15 @@ class CsrfMiddleware implements MiddlewareInterface
 ```php
 class RateLimitMiddleware implements MiddlewareInterface
 {
-    private int $maxRequests;
-    private int $decayMinutes;
-
     public function __construct(
         private Application $app,
-        int|string $maxRequests = 60,
-        int|string $decayMinutes = 1,
-    ) {
-        $this->maxRequests = (int) $maxRequests;
-        $this->decayMinutes = (int) $decayMinutes;
-    }
+        private int $maxRequests = 60,
+        private int $decayMinutes = 1,
+    ) {}
 
     public function handle(Request $request, callable $next): Response
     {
-        $key = $this->resolveKey($request);
+        $key = 'rate_limit:' . ($request->ip() ?? 'unknown');
         $attempts = $this->getAttempts($key);
 
         if ($attempts >= $this->maxRequests) {
@@ -297,95 +183,7 @@ class RateLimitMiddleware implements MiddlewareInterface
         }
 
         $this->incrementAttempts($key);
-
-        return $next($request);
-    }
-
-    private function resolveKey(Request $request): string
-    {
-        return 'rate_limit:' . ($request->ip() ?? 'unknown');
-    }
-    // ... increment/get methods
-}
-```
-
-### Authorization
-
-```php
-class CanMiddleware implements MiddlewareInterface
-{
-    private string $ability;
-    private ?string $model;
-
-    public function __construct(
-        private Application $app,
-        string $ability = '',
-        ?string $model = null,
-    ) {
-        $this->ability = $ability;
-        $this->model = $model;
-    }
-
-    public function handle(Request $request, callable $next): Response
-    {
-        $user = $_SESSION['user'] ?? null;
-
-        if (!$user) {
-            return (new Response())->redirect('/login');
-        }
-
-        if (!$this->authorize($user, $this->ability, $this->model)) {
-            return new Response('Forbidden', 403);
-        }
-
         return $next($request);
     }
 }
 ```
-
-## Global Middleware
-
-Global middleware runs on every request:
-
-```php
-// config/middleware.php
-'global' => [
-    SecurityHeadersMiddleware::class,  // Security headers
-    GuestPageCacheMiddleware::class,   // Page caching for guests
-],
-```
-
-## Middleware Groups
-
-Combine multiple middleware:
-
-```php
-'groups' => [
-    'web' => [
-        'csrf',
-    ],
-    'api' => [
-        'throttle:60,1',
-    ],
-    'admin' => [
-        'auth',
-        'csrf',
-        'can:admin',
-    ],
-],
-```
-
-Usage: `->middleware('admin')`
-
-## Middleware Order
-
-Middleware executes in the order specified:
-
-```php
-->middleware(['auth', 'csrf', 'can:edit'])
-// 1. auth - Check if logged in
-// 2. csrf - Validate token
-// 3. can:edit - Check permission
-```
-
-Place authentication before authorization.

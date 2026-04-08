@@ -601,27 +601,9 @@ $view->clearCache();                         // All cached views
 
 ---
 
-## Request Object
-
-The `Request` object is passed as the first argument to controller methods. In v2.0.0, the `Request` object uses PHP's `readonly` property feature to ensure data integrity during the request lifecycle.
-
-```php
-public function show(Request $request): Response
-{
-    // Access properties directly
-    $id = $request->id;
-    $user = $request->user;
-    
-    // Attempting to modify will throw an error
-    // $request->id = 5; // Error: Cannot modify readonly property
-}
-```
-
----
-
 ## Response Helpers
 
-Controllers provide a fluent interface for modifying the `Response` object before it is returned. The `Response` is an immutable value object; each method call returns a new instance with the requested change, allowing for clean method chaining.
+Controllers provide a fluent interface for modifying the `Response` object.
 
 ### Fluent Interface
 

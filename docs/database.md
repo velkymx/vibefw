@@ -1,276 +1,199 @@
 # Database & Migrations
 
-VibeFW provides a simple database layer with migrations for schema management.
-
 ## Configuration
 
-Configure your database in `config/database.php`:
-
-```php
-return [
-    'enabled' => true,
-    'driver' => Env::get('DB_DRIVER', 'sqlite'),
-    'database' => Env::get('DB_DATABASE', BASE_PATH . '/database/database.sqlite'),
-
-    // For MySQL/PostgreSQL:
-    // 'host' => Env::get('DB_HOST', 'localhost'),
-    // 'port' => Env::get('DB_PORT', '3306'),
-    // 'username' => Env::get('DB_USERNAME', 'root'),
-    // 'password' => Env::get('DB_PASSWORD', ''),
-];
-```
-
-Environment variables in `.env`:
+Configure in `config/database.php` and `.env`:
 
 ```env
+# SQLite (default)
 DB_DRIVER=sqlite
 DB_DATABASE=/path/to/database.sqlite
 
-# Or for MySQL:
+# MySQL
 DB_DRIVER=mysql
-DB_HOST=localhost
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=myapp
 DB_USERNAME=root
 DB_PASSWORD=secret
+DB_PERSISTENT=false
 ```
-
-> **Note on Env:** `Env` is now an instantiable service, but static wrappers like `Env::get()` still work for convenience.
 
 ## Migrations
 
-Migrations live in `database/migrations/` and are numbered sequentially.
+Migrations live in `database/migrations/`.
 
-### Creating a Migration
+### Creating Migrations
 
-Create a new file: `database/migrations/0001_create_users_table.php`
+```bash
+php fw make:migration create_posts_table     # Auto-detects table name
+php fw make:migration add_status_to_posts    # Generic migration
+```
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-use Fw\Database\Migration\Blueprint;
-use Fw\Database\Migration\Migration;
+use Fw\Database\Migration;
+use Fw\Database\Schema;
 
-final class CreateUsersTable extends Migration
+return new class extends Migration
 {
-    public function up(): void
+    public function up(Schema $schema): void
     {
-        $this->create('users', function (Blueprint $table) {
+        $schema->create('posts', function ($table) {
             $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->string('password');
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('title');
+            $table->text('content');
+            $table->timestamp('published_at')->nullable();
+            $table->boolean('is_featured')->default(false);
+            $table->integer('view_count')->default(0);
             $table->timestamps();
+
+            $table->index('published_at');
+            $table->index(['user_id', 'published_at']);
         });
     }
 
-    public function down(): void
+    public function down(Schema $schema): void
     {
-        $this->drop('users');
+        $schema->dropIfExists('posts');
     }
-}
+};
 ```
 
 ### Running Migrations
 
 ```bash
-# Run all pending migrations
-php migrate.php migrate
-
-# Check migration status
-php migrate.php status
-
-# Rollback last batch
-php migrate.php rollback
-
-# Rollback specific number of migrations
-php migrate.php rollback 3
-
-# Rollback all migrations
-php migrate.php reset
-
-# Rollback and re-run all migrations
-php migrate.php refresh
-
-# Drop all tables and re-run migrations
-php migrate.php fresh
-
-# Seed the database
-php migrate.php seed
+php fw migrate                    # Run pending migrations
+php fw migrate:status             # Show migration status
+php fw migrate:rollback           # Rollback last batch
+php fw migrate:rollback --step=3  # Rollback N migrations
+php fw migrate:fresh              # Drop all + re-migrate
+php fw migrate:fresh --seed       # Fresh + seed
+php fw db:status                  # Show database state
 ```
 
-## Blueprint Methods
-
-### Column Types
+## Column Types
 
 ```php
 $table->id();                           // Auto-incrementing ID
 $table->string('name');                 // VARCHAR(255)
-$table->string('code', 10);             // VARCHAR(10)
-$table->text('content');                // TEXT
-$table->integer('count');               // INTEGER
-$table->bigInteger('views');            // BIGINT
-$table->float('price');                 // FLOAT
-$table->decimal('amount', 10, 2);       // DECIMAL(10,2)
-$table->boolean('active');              // BOOLEAN
-$table->datetime('published_at');       // DATETIME
-$table->date('birth_date');             // DATE
-$table->time('start_time');             // TIME
-$table->timestamp('verified_at');       // TIMESTAMP
-$table->json('metadata');               // JSON
-$table->uuid('uuid');                   // UUID/CHAR(36)
+$table->string('code', 10);            // VARCHAR(10)
+$table->text('content');               // TEXT
+$table->integer('count');              // INTEGER
+$table->bigInteger('views');           // BIGINT
+$table->float('price');                // FLOAT
+$table->decimal('amount', 10, 2);     // DECIMAL(10,2)
+$table->boolean('active');             // BOOLEAN
+$table->datetime('published_at');      // DATETIME
+$table->date('birth_date');            // DATE
+$table->time('start_time');           // TIME
+$table->timestamp('verified_at');      // TIMESTAMP
+$table->json('metadata');              // JSON
+$table->uuid('uuid');                  // UUID/CHAR(36)
 ```
 
-### Column Modifiers
+## Column Modifiers
 
 ```php
-$table->string('name')->nullable();           // Allow NULL
-$table->string('status')->default('draft');   // Default value
-$table->integer('order')->unsigned();         // Unsigned integer
-$table->string('email')->unique();            // Unique constraint
+$table->string('name')->nullable();
+$table->string('status')->default('draft');
+$table->integer('order')->unsigned();
+$table->string('email')->unique();
 ```
 
-### Indexes
+## Indexes
 
 ```php
-$table->index('email');                       // Single column index
-$table->index(['user_id', 'created_at']);     // Composite index
+$table->index('email');                       // Single column
+$table->index(['user_id', 'created_at']);     // Composite
 $table->unique('email');                      // Unique index
 $table->unique(['user_id', 'post_id']);       // Composite unique
 ```
 
-### Foreign Keys
+## Foreign Keys
 
 ```php
-$table->foreignId('user_id');                 // Creates user_id column
+// Short form
+$table->foreignId('user_id')->constrained()->cascadeOnDelete();
 
+// Explicit form
+$table->foreignId('user_id');
 $table->foreign('user_id')
     ->references('id')
     ->on('users')
-    ->cascadeOnDelete();                      // Foreign key constraint
-
-// Or combined
-$table->foreignId('user_id')
-    ->constrained()                           // References users.id
     ->cascadeOnDelete();
 ```
 
-### Timestamps & Soft Deletes
+## Timestamps & Soft Deletes
 
 ```php
-$table->timestamps();                         // created_at, updated_at
-$table->softDeletes();                        // deleted_at
+$table->timestamps();     // created_at, updated_at
+$table->softDeletes();    // deleted_at
 ```
 
 ## Migration Examples
 
-### Posts Table
-
-```php
-final class CreatePostsTable extends Migration
-{
-    public function up(): void
-    {
-        $this->create('posts', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id');
-            $table->string('title');
-            $table->string('slug')->unique();
-            $table->text('content');
-            $table->text('excerpt')->nullable();
-            $table->datetime('published_at')->nullable();
-            $table->integer('views')->default(0);
-            $table->timestamps();
-
-            $table->foreign('user_id')
-                ->references('id')
-                ->on('users')
-                ->cascadeOnDelete();
-
-            $table->index('published_at');
-        });
-    }
-
-    public function down(): void
-    {
-        $this->drop('posts');
-    }
-}
-```
-
 ### Pivot Table
 
 ```php
-final class CreatePostTagTable extends Migration
+return new class extends Migration
 {
-    public function up(): void
+    public function up(Schema $schema): void
     {
-        $this->create('post_tag', function (Blueprint $table) {
-            $table->foreignId('post_id');
-            $table->foreignId('tag_id');
-
-            $table->foreign('post_id')
-                ->references('id')
-                ->on('posts')
-                ->cascadeOnDelete();
-
-            $table->foreign('tag_id')
-                ->references('id')
-                ->on('tags')
-                ->cascadeOnDelete();
-
+        $schema->create('post_tag', function ($table) {
+            $table->foreignId('post_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
             $table->unique(['post_id', 'tag_id']);
         });
     }
 
-    public function down(): void
+    public function down(Schema $schema): void
     {
-        $this->drop('post_tag');
+        $schema->dropIfExists('post_tag');
     }
-}
+};
 ```
 
 ### Adding Columns
 
+```bash
+php fw add:field Post category_id foreignId --constrained
+```
+
+Or manually:
+
 ```php
-final class AddStatusToPostsTable extends Migration
+return new class extends Migration
 {
-    public function up(): void
+    public function up(Schema $schema): void
     {
-        $this->table('posts', function (Blueprint $table) {
+        $schema->table('posts', function ($table) {
             $table->string('status')->default('draft');
         });
     }
 
-    public function down(): void
+    public function down(Schema $schema): void
     {
-        $this->table('posts', function (Blueprint $table) {
+        $schema->table('posts', function ($table) {
             $table->dropColumn('status');
         });
     }
-}
+};
 ```
 
-## Database Queries
+## Raw Queries
 
-### Using the Connection
+Prefer Models over raw queries. When needed:
 
 ```php
 $db = $this->app->db;
 
-// Select
 $users = $db->query('SELECT * FROM users WHERE active = ?', [1]);
-
-// Insert
 $db->execute('INSERT INTO users (name, email) VALUES (?, ?)', ['John', 'john@example.com']);
-
-// Update
-$db->execute('UPDATE users SET name = ? WHERE id = ?', ['Jane', 1]);
-
-// Delete
-$db->execute('DELETE FROM users WHERE id = ?', [1]);
 ```
 
 ### Transactions
@@ -282,70 +205,45 @@ $db->transaction(function () use ($db) {
 });
 ```
 
-### Using Models
-
-Prefer using Models over raw queries. In VibeFW v2.0.0, the **QueryBuilder is strictly immutable**. Every method returns a **CLONE** of the builder, so you must capture the result when building queries in stages:
-
-```php
-// Select
-$users = User::where('active', true)->get();
-
-// Building in stages (MUST re-assign variable)
-$query = User::where('active', true);
-if ($role) {
-    $query = $query->where('role', $role);
-}
-$users = $query->get();
-```
-
-> **IMPORTANT:** Chaining works normally (e.g. `User::where('a', 1)->where('b', 2)->get()`), but conditional query building requires re-assignment (e.g. `$query = $query->where('status', 'active')`).
-
-$user = User::find($id);
-
-See [Models](models.md) for full documentation.
-
 ## Seeders
 
-Create seeders in `database/seeders/`:
+```bash
+php fw make:seeder DatabaseSeeder
+php fw db:seed
+```
 
 ```php
 <?php
-// database/seeders/DatabaseSeeder.php
 
 use App\Models\User;
 use App\Models\Post;
 
 return function () {
-    // Create admin user
     $admin = User::create([
         'name' => 'Admin',
         'email' => 'admin@example.com',
         'password' => password_hash('password', PASSWORD_DEFAULT),
     ]);
 
-    // Create sample posts
     for ($i = 1; $i <= 10; $i++) {
         Post::create([
             'user_id' => $admin->id,
             'title' => "Sample Post {$i}",
-            'content' => "This is the content for post {$i}.",
+            'content' => "Content for post {$i}.",
             'published_at' => date('Y-m-d H:i:s'),
         ]);
     }
 };
 ```
 
-Run seeders:
+## Database Identifier Quoting
 
-```bash
-php migrate.php seed
+MySQL uses backticks, SQLite/PostgreSQL use double quotes. Always use `$this->quote()` or `$db->quoteIdentifier()` for table/column names in raw queries:
+
+```php
+// Correct
+$this->execute('DROP TABLE ' . $this->quote('users'));
+
+// Wrong — breaks MySQL
+$this->execute('DROP TABLE "users"');
 ```
-
-## Best Practices
-
-1. **One migration per change** - Keep migrations focused
-2. **Never modify existing migrations** - Create new ones instead
-3. **Always implement down()** - Enable rollbacks
-4. **Use foreign keys** - Maintain data integrity
-5. **Index frequently queried columns** - Improve performance
-6. **Use Models for data access** - Migrations for schema only

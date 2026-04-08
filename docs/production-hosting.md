@@ -329,7 +329,7 @@ example.com {
 
 ### Worker Mode Bootstrap
 
-Create `public/index.php` for worker mode. In VibeFW v2.0.0, the `HttpKernel` automatically handles state resetting and Fiber isolation, making the worker loop much simpler:
+Create `public/index.php` for worker mode. The `HttpKernel` automatically handles state resetting and Fiber isolation:
 
 ```php
 <?php

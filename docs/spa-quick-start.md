@@ -4,7 +4,7 @@ Build a full-stack Vue 3 + PHP application with VibeFW in under 5 minutes.
 
 ## Prerequisites
 
-- PHP 8.4+
+- PHP 8.5+
 - Composer
 - Node.js 18+ and npm
 - SQLite (default) or MySQL/PostgreSQL

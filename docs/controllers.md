@@ -4,6 +4,11 @@ Controllers handle HTTP requests and return responses. They live in `app/Control
 
 ## Creating a Controller
 
+```bash
+php fw make:controller PostController -r    # Resource controller (CRUD)
+php fw make:controller Api/PostController -r  # Namespaced
+```
+
 ```php
 <?php
 
@@ -14,24 +19,23 @@ namespace App\Controllers;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
+use App\Models\Post;
 
 class PostController extends Controller
 {
     public function index(Request $request): Response
     {
-        $posts = Post::all();
-        return $this->view('posts.index', compact('posts'));
+        $posts = Post::orderBy('created_at', 'desc')->paginate(15, $request->get('page', 1));
+        return $this->view('posts.index', ['posts' => $posts]);
     }
 }
 ```
 
-## Request & Response
+Every controller method **must** return `Response`. The framework does not normalize strings or arrays.
 
-VibeFW v2.0.0 uses immutable/readonly objects for handling the HTTP lifecycle.
+## Request Object
 
-### Request Object
-
-The `Request` object provides access to all incoming data. All its public properties are **readonly**.
+The `Request` object provides access to all incoming data. Properties are `readonly`.
 
 ```php
 $request->method;           // GET, POST, PUT, etc.
@@ -43,54 +47,119 @@ $request->files;            // Readonly array of $_FILES
 $request->headers;          // Readonly array of headers
 ```
 
-#### Request Methods
+### Request Methods
 
 ```php
-$request->get('key');       // Safely get from query string
-$request->post('key');      // Safely get from POST data
-$request->all();            // Combined input (query + post)
-$request->header('Accept'); // Get specific header
-$request->isAjax();         // Boolean
-$request->ip();             // Client IP address
+$request->get('key');           // Get from query string
+$request->get('key', 'default'); // With default
+$request->post('key');          // Get from POST data
+$request->all();                // Combined input (query + post)
+$request->input('key');         // Get from combined input
+$request->has('key');           // Check if input exists
+$request->header('Accept');     // Get specific header
+$request->isAjax();            // Boolean
+$request->ip();                // Client IP address
 ```
 
-### Response Object
+## Response Helpers
 
-The `Response` object is a **value object**. Most methods return a new instance or the same instance after modification (FW uses internal mutation for performance where safe, but treats it as a value object).
+### Rendering Views
 
 ```php
-// Basic response
-return new Response('Hello World', 200);
+return $this->view('posts.index', ['posts' => $posts]);
+// Renders app/Views/posts/index.php
 
-// Using fluent interface
-return (new Response())
-    ->setStatus(201)
-    ->setBody('Created')
-    ->header('X-Resource-Id', '123')
-    ->contentType('application/json');
+return $this->cachedView('pages.about', [], 3600);
+// Full-page cache for 1 hour
 
-// Redirects
-return (new Response())->redirect('/home');
-return (new Response())->redirect('/login', 302);
-
-// Caching
-return (new Response())
-    ->setBody($content)
-    ->cache(3600); // Cache for 1 hour
+return $this->streamedView('reports.large', ['data' => $data]);
+// Streamed render (lower memory, faster TTFB)
 ```
 
-## Controller Methods
-
-### Resource Controller Pattern
+### JSON Responses
 
 ```php
+return $this->json(['success' => true, 'data' => $posts]);
+return $this->json(['error' => 'Not found'], 404);
+```
+
+### Redirects
+
+```php
+return $this->redirect('/posts');
+return $this->back();
+```
+
+### Error Responses
+
+```php
+return $this->notFound();       // 404
+return $this->forbidden();      // 403
+return $this->badRequest();     // 400
+return $this->serverError();    // 500
+return $this->noContent();      // 204
+```
+
+### Response Fluent Methods
+
+```php
+return $this->redirect('/dashboard')
+    ->with('success', 'Profile updated!');
+
+return $this->view('posts.index', ['posts' => $posts])
+    ->header('X-Custom', 'value')
+    ->cache(3600);
+
+return $this->view('dashboard')->noCache();
+```
+
+## Validation with FormRequest
+
+Use `FormRequest` classes for validation. Do not validate inline.
+
+```php
+use App\Requests\StorePostRequest;
+use Fw\Validation\ValidationException;
+
+public function store(Request $request): Response
+{
+    try {
+        $data = StorePostRequest::fromRequest($request);
+    } catch (ValidationException $e) {
+        return $this->view('posts.create', ['errors' => $e->errors]);
+    }
+
+    $post = Post::create($data->toArray());
+    return $this->redirect('/posts/' . $post->id);
+}
+```
+
+See [Validation](validation.md) for creating FormRequest classes.
+
+## Resource Controller Pattern
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers;
+
+use Fw\Core\Controller;
+use Fw\Core\Request;
+use Fw\Core\Response;
+use App\Models\Post;
+use App\Requests\StorePostRequest;
+use App\Requests\UpdatePostRequest;
+use Fw\Validation\ValidationException;
+
 class PostController extends Controller
 {
     // GET /posts
     public function index(Request $request): Response
     {
-        $posts = Post::all();
-        return $this->view('posts.index', compact('posts'));
+        $posts = Post::orderBy('created_at', 'desc')->paginate(15, $request->get('page', 1));
+        return $this->view('posts.index', ['posts' => $posts]);
     }
 
     // GET /posts/create
@@ -102,28 +171,22 @@ class PostController extends Controller
     // POST /posts
     public function store(Request $request): Response
     {
-        $validation = $this->validate($request, [
-            'title' => 'required|min:3',
-            'content' => 'required|min:10',
-        ]);
-
-        if ($validation->isErr()) {
-            return $this->view('posts.create', [
-                'errors' => $validation->getError(),
-                'old' => $request->all(),
-            ]);
+        try {
+            $data = StorePostRequest::fromRequest($request);
+        } catch (ValidationException $e) {
+            return $this->view('posts.create', ['errors' => $e->errors]);
         }
 
-        $post = Post::create($validation->getValue());
-        return $this->redirect('/posts/' . $post->getKey());
+        $post = Post::create($data->toArray());
+        return $this->redirect('/posts/' . $post->id);
     }
 
     // GET /posts/{id}
     public function show(Request $request, string $id): Response
     {
         return Post::find((int) $id)->match(
-            some: fn($post) => $this->view('posts.show', compact('post')),
-            none: fn() => $this->notFound('Post not found')
+            some: fn($post) => $this->view('posts.show', ['post' => $post]),
+            none: fn() => $this->notFound(),
         );
     }
 
@@ -131,8 +194,8 @@ class PostController extends Controller
     public function edit(Request $request, string $id): Response
     {
         return Post::find((int) $id)->match(
-            some: fn($post) => $this->view('posts.edit', compact('post')),
-            none: fn() => $this->notFound('Post not found')
+            some: fn($post) => $this->view('posts.edit', ['post' => $post]),
+            none: fn() => $this->notFound(),
         );
     }
 
@@ -140,128 +203,32 @@ class PostController extends Controller
     public function update(Request $request, string $id): Response
     {
         return Post::find((int) $id)->match(
-            some: function($post) use ($request) {
-                $validation = $this->validate($request, [
-                    'title' => 'required|min:3',
-                    'content' => 'required|min:10',
-                ]);
-
-                if ($validation->isErr()) {
-                    return $this->view('posts.edit', [
-                        'post' => $post,
-                        'errors' => $validation->getError(),
-                    ]);
+            some: function ($post) use ($request) {
+                try {
+                    $data = UpdatePostRequest::fromRequest($request);
+                } catch (ValidationException $e) {
+                    return $this->view('posts.edit', ['post' => $post, 'errors' => $e->errors]);
                 }
 
-                $post->update($validation->getValue());
-                return $this->redirect('/posts/' . $post->getKey());
+                $post->fill($data->toArray())->save();
+                return $this->redirect('/posts/' . $post->id);
             },
-            none: fn() => $this->notFound('Post not found')
+            none: fn() => $this->notFound(),
         );
     }
 
     // DELETE /posts/{id}
     public function destroy(Request $request, string $id): Response
     {
-        return Post::find((int) $id)->match(
-            some: function($post) {
-                $post->delete();
-                return $this->redirect('/posts');
-            },
-            none: fn() => $this->notFound('Post not found')
+        Post::find((int) $id)->match(
+            some: fn($post) => $post->delete(),
+            none: fn() => null,
         );
+
+        return $this->redirect('/posts');
     }
 }
 ```
-
-## Response Helpers
-
-### Rendering Views
-
-```php
-// Render a view with data
-return $this->view('posts.index', ['posts' => $posts]);
-
-// View path maps to: app/Views/posts/index.php
-```
-
-### JSON Responses
-
-```php
-// Return JSON
-return $this->json(['success' => true, 'data' => $posts]);
-
-// With status code
-return $this->json(['error' => 'Not found'], 404);
-```
-
-### Redirects
-
-```php
-// Redirect to URL
-return $this->redirect('/posts');
-
-// Redirect back to previous page
-return $this->back();
-```
-
-### Error Responses
-
-```php
-return $this->notFound('Resource not found');      // 404
-return $this->forbidden('Access denied');          // 403
-return $this->badRequest('Invalid input');         // 400
-return $this->serverError('Something went wrong'); // 500
-return $this->noContent();                         // 204
-```
-
-## Request Data
-
-### Request Input
-
-Use these controller helper methods for convenient access:
-
-```php
-// Get single value
-$title = $this->input($request, 'title');
-$title = $this->input($request, 'title', 'Default');
-
-// Get multiple values
-$data = $this->only($request, ['title', 'content']);
-
-// Get all except certain fields
-$data = $this->except($request, ['_token', '_method']);
-
-// Check if input exists
-if ($this->has($request, 'published')) {
-    // ...
-}
-```
-
-See the **Request Object** section above for low-level access via `$request`.
-
-## Validation
-
-```php
-$validation = $this->validate($request, [
-    'title' => 'required|min:3|max:200',
-    'email' => 'required|email',
-    'age' => 'numeric|min:0|max:150',
-    'website' => 'url',
-    'uuid' => 'uuid',
-]);
-
-// Check result
-if ($validation->isErr()) {
-    $errors = $validation->getError();
-    // ['title' => 'Title must be at least 3 characters']
-}
-
-// Get validated data
-$data = $validation->getValue();
-```
-
-See [Validation](validation.md) for all available rules.
 
 ## Authentication
 
@@ -274,13 +241,11 @@ if ($this->isAuthenticated()) {
 // Get current user (returns Option)
 $this->user()->match(
     some: fn($user) => "Hello, {$user->name}",
-    none: fn() => "Hello, Guest"
+    none: fn() => "Not logged in",
 );
 ```
 
 ## Dispatching Commands & Queries
-
-Using CQRS pattern:
 
 ```php
 use App\Commands\CreatePost;
@@ -288,20 +253,15 @@ use App\Queries\GetPostById;
 
 // Dispatch a command (write operation)
 $result = $this->dispatch(new CreatePost(
-    title: $data['title'],
-    content: $data['content'],
-    userId: $this->user()->unwrap()->id,
+    title: $data->title,
+    content: $data->content,
+    userId: $user->id,
 ));
 
 // Dispatch a query (read operation)
 $result = $this->query(new GetPostById($id));
-```
 
-## Emitting Events
-
-```php
-use App\Events\PostCreated;
-
+// Emit events
 $this->emit(new PostCreated($post));
 ```
 
@@ -324,32 +284,12 @@ $router->get('/api/posts', [Api\PostController::class, 'index']);
 
 ### Single Action Controllers
 
-For simple actions, use `__invoke`:
-
 ```php
 class ShowDashboard extends Controller
 {
     public function __invoke(Request $request): Response
     {
         return $this->view('dashboard');
-    }
-}
-
-// Route
-$router->get('/dashboard', ShowDashboard::class);
-```
-
-## Dependency Injection
-
-Controllers receive the `Application` instance. Access services via the container:
-
-```php
-class PostController extends Controller
-{
-    public function index(Request $request): Response
-    {
-        $cache = $this->app->getContainer()->get(CacheInterface::class);
-        // ...
     }
 }
 ```
