@@ -347,6 +347,7 @@ final class Application
             // Inspection
             Commands\ModelInspectCommand::class,
             Commands\RouteForCommand::class,
+            Commands\DbStatusCommand::class,
 
             // Testing
             Commands\TestCommand::class,
