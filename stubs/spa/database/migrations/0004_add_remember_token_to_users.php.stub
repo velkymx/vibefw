@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Fw\Database\Migration\Migration;
 
-final class AddRememberTokenToUsers extends Migration
+return new class extends Migration
 {
     public function up(): void
     {
@@ -36,4 +36,4 @@ final class AddRememberTokenToUsers extends Migration
             $this->execute("ALTER TABLE $table DROP COLUMN $column");
         }
     }
-}
+};

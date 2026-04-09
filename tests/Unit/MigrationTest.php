@@ -491,6 +491,72 @@ final class MigrationTest extends TestCase
     }
 
     // ==========================================
+    // SPA MIGRATION STUBS
+    // ==========================================
+
+    #[Test]
+    public function spaMigrationStubsReturnAnonymousClassInstances(): void
+    {
+        $stubDir = __DIR__ . '/../../stubs/spa/database/migrations';
+        $stubs = glob($stubDir . '/*.php.stub');
+
+        $this->assertNotEmpty($stubs, 'No SPA migration stubs found');
+
+        foreach ($stubs as $stub) {
+            $name = basename($stub, '.php.stub');
+            // Copy stub to temp dir as .php
+            $target = $this->tempDir . '/database/migrations/' . $name . '.php';
+            copy($stub, $target);
+
+            $result = require $target;
+            $this->assertInstanceOf(
+                Migration::class,
+                $result,
+                "Stub {$name} must return an anonymous Migration instance"
+            );
+        }
+    }
+
+    #[Test]
+    public function spaMigrationStubsRunFullSequence(): void
+    {
+        $stubDir = __DIR__ . '/../../stubs/spa/database/migrations';
+        $stubs = glob($stubDir . '/*.php.stub');
+
+        foreach ($stubs as $stub) {
+            $name = basename($stub, '.php.stub');
+            $target = $this->tempDir . '/database/migrations/' . $name . '.php';
+            copy($stub, $target);
+        }
+
+        $migrator = new Migrator($this->db, $this->tempDir . '/database/migrations');
+        $ran = $migrator->run();
+
+        $this->assertCount(count($stubs), $ran, 'All SPA migration stubs should run');
+
+        // Verify core tables exist
+        $expectedTables = ['users', 'jobs', 'password_resets', 'personal_access_tokens', 'email_verifications'];
+        foreach ($expectedTables as $table) {
+            $result = $this->db->selectOne(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                [$table]
+            );
+            $this->assertNotNull($result, "Table '{$table}' should exist after migrations");
+        }
+
+        // Verify users table has remember_token column (from 0004 alter migration)
+        $this->db->getPdo()->exec(
+            "INSERT INTO users (name, email, password, remember_token) VALUES ('Test', 'test@test.com', 'hash', 'tok')"
+        );
+        $row = $this->db->selectOne("SELECT remember_token FROM users WHERE email = 'test@test.com'");
+        $this->assertSame('tok', $row['remember_token']);
+
+        // Verify rollback works
+        $rolledBack = $migrator->reset();
+        $this->assertCount(count($stubs), $rolledBack, 'All migrations should roll back');
+    }
+
+    // ==========================================
     // HELPERS
     // ==========================================
 

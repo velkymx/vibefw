@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Fw\Database\Migration\Blueprint;
 use Fw\Database\Migration\Migration;
 
-final class CreateJobsTable extends Migration
+return new class extends Migration
 {
     public function up(): void
     {
@@ -32,4 +32,4 @@ final class CreateJobsTable extends Migration
     {
         $this->drop('jobs');
     }
-}
+};
