@@ -3,7 +3,7 @@
  *
  * Bootstraps Vue 3 with Pinia, Router, and VibeUI.
  * Auth state is managed by the Pinia auth store (@/stores/auth).
- * API calls use the preconfigured axios instance (@/lib/axios).
+ * API calls use the fetch wrapper from @/lib/api.
  */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

@@ -7,6 +7,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { ApiError } from '@/lib/api'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -26,11 +27,11 @@ const handleLogin = async () => {
   try {
     await auth.login(form.value.email, form.value.password)
     router.push('/dashboard')
-  } catch (error: any) {
-    if (error.response?.status === 422) {
-      errors.value = error.response.data.errors ?? {}
-    } else {
-      alertMessage.value = error.response?.data?.message ?? 'Authentication failed. Please try again.'
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 422) {
+      errors.value = error.data.errors ?? {}
+    } else if (error instanceof ApiError) {
+      alertMessage.value = error.data?.message ?? 'Authentication failed. Please try again.'
       showAlert.value = true
     }
   } finally {

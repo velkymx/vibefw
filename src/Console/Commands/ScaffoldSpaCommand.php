@@ -110,7 +110,7 @@ final class ScaffoldSpaCommand extends Command
             'frontend/src/views/profile/Profile.vue',
             'frontend/src/layouts/MainLayout.vue',
             'frontend/src/stores/auth.ts',
-            'frontend/src/lib/axios.ts',
+            'frontend/src/lib/api.ts',
         ];
 
         foreach ($files as $file) {
@@ -415,7 +415,6 @@ final class ScaffoldSpaCommand extends Command
                     'vue' => '^3.5.32',
                     'vue-router' => '^5.0.4',
                     'pinia' => '^3.0.4',
-                    'axios' => '^1.15.0',
                     '@velkymx/vibeui' => '^0.8.1',
                     'bootstrap' => '^5.3.8',
                     'bootstrap-icons' => '^1.13.1',
@@ -508,7 +507,7 @@ final class ScaffoldSpaCommand extends Command
             $this->copyStub('src/views/errors/NotFound.vue', $frontendDir . '/src/views/errors/NotFound.vue');
             $this->copyStub('src/types/api.ts', $frontendDir . '/src/types/api.ts');
             $this->copyStub('src/stores/auth.ts', $frontendDir . '/src/stores/auth.ts');
-            $this->copyStub('src/lib/axios.ts', $frontendDir . '/src/lib/axios.ts');
+            $this->copyStub('src/lib/api.ts', $frontendDir . '/src/lib/api.ts');
 
             // 5. Copy README
             $readmeStub = BASE_PATH . '/stubs/spa/README.md.stub';

@@ -1,0 +1,73 @@
+/**
+ * Thin fetch wrapper for API calls.
+ *
+ * - Automatically adds Bearer token from localStorage
+ * - Redirects to /login on 401 responses
+ * - Parses JSON responses
+ *
+ * Usage:
+ *   import { api } from '@/lib/api'
+ *   const { data } = await api.get('/api/user')
+ *   const { data } = await api.post('/api/auth/login', { email, password })
+ */
+
+interface ApiResponse<T = any> {
+  data: T
+  status: number
+  ok: boolean
+}
+
+async function request<T = any>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  const token = localStorage.getItem('token')
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...(options.headers as Record<string, string> ?? {}),
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(url, { ...options, headers })
+
+  if (response.status === 401) {
+    localStorage.removeItem('token')
+    window.location.href = '/login'
+    throw new ApiError('Unauthorized', 401, {})
+  }
+
+  const data = response.headers.get('content-type')?.includes('application/json')
+    ? await response.json()
+    : await response.text()
+
+  if (!response.ok) {
+    throw new ApiError(data.message ?? 'Request failed', response.status, data)
+  }
+
+  return { data, status: response.status, ok: response.ok }
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public data: any,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+export const api = {
+  get: <T = any>(url: string) => request<T>(url),
+
+  post: <T = any>(url: string, body?: unknown) =>
+    request<T>(url, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+
+  put: <T = any>(url: string, body?: unknown) =>
+    request<T>(url, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
+
+  delete: <T = any>(url: string, body?: unknown) =>
+    request<T>(url, { method: 'DELETE', body: body ? JSON.stringify(body) : undefined }),
+}

@@ -5,7 +5,7 @@
  * API: GET /api/dashboard/stats → { users, uptime, requestsPerSecond }
  */
 import { ref, onMounted } from 'vue'
-import api from '@/lib/axios'
+import { api, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import type { DashboardStats } from '@/types/api'
 
@@ -20,11 +20,11 @@ const showAlert = ref(false)
 
 onMounted(async () => {
   try {
-    const response = await api.get('/api/dashboard/stats')
-    stats.value = response.data
-  } catch (error: any) {
+    const { data } = await api.get<DashboardStats>('/api/dashboard/stats')
+    stats.value = data
+  } catch (error) {
     loadError.value = true
-    alertMessage.value = error.response?.data?.message ?? 'Could not load dashboard stats.'
+    alertMessage.value = error instanceof ApiError ? error.data?.message ?? error.message : 'Could not load dashboard stats.'
     showAlert.value = true
   } finally {
     loading.value = false

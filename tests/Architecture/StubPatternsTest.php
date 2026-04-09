@@ -267,7 +267,7 @@ final class StubPatternsTest extends TestCase
             'src/views/profile/Profile.vue',
             'src/types/api.ts',
             'src/stores/auth.ts',
-            'src/lib/axios.ts',
+            'src/lib/api.ts',
         ];
 
         foreach ($requiredStubs as $stub) {
@@ -279,22 +279,23 @@ final class StubPatternsTest extends TestCase
     }
 
     #[Test]
-    public function spaFrontendStubsUseAxiosInstance(): void
+    public function spaFrontendStubsDoNotUseAxios(): void
     {
         $viewStubs = $this->allSpaVueStubs();
         $this->assertNotEmpty($viewStubs, 'SPA Vue stubs should exist');
 
         foreach ($viewStubs as $stub) {
             $content = file_get_contents($stub);
-            // If it makes API calls, it should import from @/lib/axios, not bare 'axios'
-            if (str_contains($content, 'axios.get') || str_contains($content, 'axios.post')
-                || str_contains($content, 'axios.put') || str_contains($content, 'axios.delete')) {
-                $this->assertStringContainsString(
-                    '@/lib/axios',
-                    $content,
-                    basename($stub) . ' must import from @/lib/axios, not bare axios'
-                );
-            }
+            $this->assertStringNotContainsString(
+                'from \'axios\'',
+                $content,
+                basename($stub) . ' must not import axios — use @/lib/api instead'
+            );
+            $this->assertStringNotContainsString(
+                'from "axios"',
+                $content,
+                basename($stub) . ' must not import axios — use @/lib/api instead'
+            );
         }
     }
 

@@ -12,7 +12,7 @@
  */
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '@/lib/axios'
+import { api, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import type { PersonalAccessToken } from '@/types/api'
 
@@ -70,12 +70,12 @@ async function updateProfile() {
   profileSuccess.value = false
 
   try {
-    const response = await api.put('/api/profile', profileForm.value)
-    auth.user = response.data.user ?? response.data
+    const { data } = await api.put('/api/profile', profileForm.value)
+    auth.user = data.user ?? data
     profileSuccess.value = true
-  } catch (error: any) {
-    if (error.response?.status === 422) {
-      profileErrors.value = error.response.data.errors ?? {}
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 422) {
+      profileErrors.value = error.data.errors ?? {}
     }
   } finally {
     profileSaving.value = false
@@ -91,9 +91,9 @@ async function updatePassword() {
     await api.put('/api/profile/password', passwordForm.value)
     passwordForm.value = { current_password: '', password: '', password_confirmation: '' }
     passwordSuccess.value = true
-  } catch (error: any) {
-    if (error.response?.status === 422) {
-      passwordErrors.value = error.response.data.errors ?? {}
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 422) {
+      passwordErrors.value = error.data.errors ?? {}
     }
   } finally {
     passwordSaving.value = false
@@ -103,8 +103,8 @@ async function updatePassword() {
 async function fetchTokens() {
   tokensLoading.value = true
   try {
-    const response = await api.get('/api/tokens')
-    tokens.value = response.data.tokens ?? response.data
+    const { data } = await api.get('/api/tokens')
+    tokens.value = data.tokens ?? data
   } catch {
     // Silent — tokens section will show empty
   } finally {
@@ -115,14 +115,14 @@ async function fetchTokens() {
 async function createToken() {
   creatingSaving.value = true
   try {
-    const response = await api.post('/api/tokens', { name: newTokenName.value })
-    newTokenValue.value = response.data.token
+    const { data } = await api.post('/api/tokens', { name: newTokenName.value })
+    newTokenValue.value = data.token
     showCreateModal.value = false
     showTokenModal.value = true
     newTokenName.value = ''
     await fetchTokens()
   } catch {
-    // Handled by 422 interceptor
+    // Handled by error display
   } finally {
     creatingSaving.value = false
   }
@@ -150,11 +150,11 @@ async function deleteAccount() {
   deleting.value = true
   deleteError.value = ''
   try {
-    await api.delete('/api/profile', { data: { password: deletePassword.value } })
+    await api.delete('/api/profile', { password: deletePassword.value })
     auth.clearAuth()
     router.push('/login')
-  } catch (error: any) {
-    deleteError.value = error.response?.data?.message ?? 'Failed to delete account.'
+  } catch (error) {
+    deleteError.value = error instanceof ApiError ? error.data?.message ?? 'Failed to delete account.' : 'Failed to delete account.'
   } finally {
     deleting.value = false
   }
