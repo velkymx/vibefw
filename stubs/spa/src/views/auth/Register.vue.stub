@@ -2,34 +2,18 @@
 /**
  * Register View — Creates a new user account via the VibeFW API
  *
- * API contract:
- *   POST /api/auth/register
- *   Body:    { name: string, email: string, password: string, password_confirmation: string }
- *   Success: { user: User, token: string }         → 201
- *   Invalid: { message: string, errors: object }   → 422 (validation)
- *
- * On success, the user is logged in immediately (token stored in
- * localStorage) and redirected to /dashboard.
- *
- * Server-side validation rules (see RegisterController.php):
- *   - name:     required, min:2
- *   - email:    required, email, unique:users
- *   - password: required, min:8, confirmed (must match password_confirmation)
+ * API: POST /api/auth/register { name, email, password, password_confirmation } → { user, token }
  */
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
 
-// Form state — password_confirmation is required by the "confirmed" rule
 const form = ref({ name: '', email: '', password: '', password_confirmation: '' })
 const loading = ref(false)
-
-// Per-field validation errors from the server (422 response)
 const errors = ref<Record<string, string>>({})
-
-// General error alert (non-field errors)
 const alertMessage = ref('')
 const showAlert = ref(false)
 
@@ -40,16 +24,10 @@ const handleRegister = async () => {
   showAlert.value = false
 
   try {
-    const response = await axios.post('/api/auth/register', form.value)
-
-    // Store the Bearer token — user is now authenticated
-    localStorage.setItem('token', response.data.token)
-
-    // Navigate to the protected dashboard
+    await auth.register(form.value)
     router.push('/dashboard')
   } catch (error: any) {
     if (error.response?.status === 422) {
-      // Map server validation errors to form fields
       errors.value = error.response.data.errors ?? {}
     } else {
       alertMessage.value = error.response?.data?.message ?? 'Registration failed. Please try again.'
@@ -69,7 +47,6 @@ const handleRegister = async () => {
           <h4 class="fw-bold mb-1">Create Account</h4>
           <p class="text-muted mb-4">Join the platform today</p>
 
-          <!-- General error alert -->
           <VibeAlert v-model="showAlert" variant="danger" :message="alertMessage" dismissable />
 
           <form @submit.prevent="handleRegister">
@@ -112,7 +89,6 @@ const handleRegister = async () => {
               />
             </VibeFormGroup>
 
-            <!-- :loading shows a spinner and disables the button during submission -->
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :loading="loading">
               Register
             </VibeButton>

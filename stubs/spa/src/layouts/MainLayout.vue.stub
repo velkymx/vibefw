@@ -2,101 +2,23 @@
 /**
  * MainLayout — Authenticated shell layout
  *
- * This layout wraps all authenticated pages with:
- *   - A collapsible sidebar (navigation + user info)
- *   - A top header bar (breadcrumb, dark mode toggle)
- *   - A <router-view> content area
- *
- * Auth flow:
- *   On mount, fetchUser() calls GET /api/user with the Bearer token.
- *   If the token is invalid (401), the global axios interceptor in main.ts
- *   clears localStorage and redirects to /login automatically.
- *
- * Dark mode:
- *   Toggling dark mode sets `data-bs-theme="dark"` on <html>, which
- *   Bootstrap 5.3 uses to switch all CSS variables. The preference is
- *   persisted in localStorage under the key "theme".
- *
- * Extending the sidebar:
- *   Add new <router-link> elements in the <nav> section below.
- *   Use <VibeIcon icon="icon-name" custom-class="me-2" /> for the icon.
- *   See Bootstrap Icons: https://icons.getbootstrap.com
+ * Wraps all authenticated pages with a collapsible sidebar and top header bar.
+ * User state comes from the Pinia auth store, not direct API calls.
  */
-import { ref, computed, onMounted, provide } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
+import { useColorMode } from '@velkymx/vibeui'
 
 const router = useRouter()
+const auth = useAuthStore()
+const { isDark, toggle: toggleDarkMode } = useColorMode()
 
-// User state — loaded from API on mount
-const user = ref<any>(null)
-
-// Sidebar toggle state
 const isSidebarOpen = ref(true)
 
-// Dark mode — persisted in localStorage
-const isDarkMode = ref(localStorage.getItem('theme') === 'dark')
-
-// provide() must be called synchronously during setup — calling it inside an
-// async function (after an await) silently does nothing in Vue 3.
-const userName = computed(() => user.value?.name ?? user.value?.email ?? '')
-provide('userName', userName)
-
-/**
- * Helper to build auth headers for API requests.
- * The token is stored in localStorage by the Login/Register views.
- */
-const authHeaders = () => ({
-  Authorization: `Bearer ${localStorage.getItem('token')}`
-})
-
-/**
- * Apply the dark mode theme to the document.
- * Bootstrap 5.3 uses `data-bs-theme` on <html> to toggle light/dark.
- */
-const updateTheme = () => {
-  if (isDarkMode.value) {
-    document.documentElement.setAttribute('data-bs-theme', 'dark')
-    localStorage.setItem('theme', 'dark')
-  } else {
-    document.documentElement.removeAttribute('data-bs-theme')
-    localStorage.setItem('theme', 'light')
-  }
-}
-
-const toggleDarkMode = () => {
-  isDarkMode.value = !isDarkMode.value
-  updateTheme()
-}
-
-/**
- * Fetch the authenticated user from the API.
- * Called on mount. If the token is expired/invalid, the global
- * axios 401 interceptor (main.ts) handles the redirect to /login.
- */
-const fetchUser = async () => {
-  try {
-    const response = await axios.get('/api/user', { headers: authHeaders() })
-    user.value = response.data.user ?? response.data
-  } catch {
-    localStorage.removeItem('token')
-    router.push('/login')
-  }
-}
-
-/**
- * Logout: call the API to invalidate the token server-side,
- * then clear local state regardless of whether the API call succeeds.
- */
 const handleLogout = async () => {
-  try {
-    await axios.post('/api/auth/logout', {}, { headers: authHeaders() })
-  } catch {
-    // Proceed with client-side logout even if the API call fails
-  } finally {
-    localStorage.removeItem('token')
-    router.push('/login')
-  }
+  await auth.logout()
+  router.push('/login')
 }
 
 const toggleSidebar = () => {
@@ -104,84 +26,76 @@ const toggleSidebar = () => {
 }
 
 onMounted(() => {
-  fetchUser()
-  updateTheme()
+  auth.fetchUser()
 })
 </script>
 
 <template>
   <div class="app-wrapper" :class="{ 'sidebar-closed': !isSidebarOpen }">
-    <!-- ================================================================= -->
-    <!-- Sidebar — collapsible navigation panel                            -->
-    <!-- ================================================================= -->
+    <!-- Sidebar -->
     <aside class="app-sidebar shadow-sm">
       <div class="sidebar-header p-3 d-flex align-items-center justify-content-between">
         <span class="fw-bold fs-4">Vibe<span class="text-primary">FW</span></span>
-        <button class="btn btn-sm d-lg-none" @click="toggleSidebar">
+        <VibeButton size="sm" variant="light" class="d-lg-none" @click="toggleSidebar">
           <VibeIcon icon="x-lg" />
-        </button>
+        </VibeButton>
       </div>
 
-      <!-- Navigation links — add your own routes here -->
-      <nav class="sidebar-nav p-2 flex-grow-1">
+      <VibeNav vertical class="sidebar-nav p-2 flex-grow-1">
         <router-link to="/dashboard" class="nav-link py-2 px-3 rounded mb-1" active-class="active">
           <VibeIcon icon="speedometer2" custom-class="me-2" /> Dashboard
         </router-link>
-
-        <!-- Example: add more links like this -->
-        <!-- <router-link to="/settings" class="nav-link py-2 px-3 rounded mb-1" active-class="active">
-          <VibeIcon icon="gear" custom-class="me-2" /> Settings
-        </router-link> -->
+        <router-link to="/profile" class="nav-link py-2 px-3 rounded mb-1" active-class="active">
+          <VibeIcon icon="person" custom-class="me-2" /> Profile
+        </router-link>
 
         <div class="border-top my-2"></div>
 
-        <button
+        <VibeButton
+          variant="link"
+          class="nav-link w-100 text-start py-2 px-3 rounded text-danger"
           @click="handleLogout"
-          class="nav-link w-100 text-start py-2 px-3 rounded text-danger border-0 bg-transparent"
         >
           <VibeIcon icon="box-arrow-right" custom-class="me-2" /> Logout
-        </button>
-      </nav>
+        </VibeButton>
+      </VibeNav>
 
-      <!-- User info footer — shown when user data is loaded -->
-      <div class="sidebar-footer p-3 border-top" v-if="user">
+      <div class="sidebar-footer p-3 border-top" v-if="auth.user">
         <div class="d-flex align-items-center">
           <div class="user-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0">
-            {{ user.name?.charAt(0)?.toUpperCase() ?? '?' }}
+            {{ auth.user.name?.charAt(0)?.toUpperCase() ?? '?' }}
           </div>
           <div class="overflow-hidden">
-            <div class="fw-semibold text-truncate">{{ user.name ?? user.email }}</div>
-            <div class="small text-muted text-truncate">{{ user.email }}</div>
+            <div class="fw-semibold text-truncate">{{ auth.user.name ?? auth.user.email }}</div>
+            <div class="small text-muted text-truncate">{{ auth.user.email }}</div>
           </div>
         </div>
       </div>
     </aside>
 
-    <!-- ================================================================= -->
-    <!-- Main content area                                                 -->
-    <!-- ================================================================= -->
+    <!-- Main content area -->
     <main class="app-main d-flex flex-column">
-      <!-- Top header bar -->
       <header class="app-header shadow-sm p-3 d-flex align-items-center">
-        <button class="btn btn-sm btn-light me-3" @click="toggleSidebar">
+        <VibeButton size="sm" variant="light" class="me-3" @click="toggleSidebar">
           <VibeIcon icon="list" />
-        </button>
-        <div class="text-muted d-none d-sm-block small">
-          Home / {{ router.currentRoute.value.name }}
-        </div>
+        </VibeButton>
+        <VibeBreadcrumb :items="[
+          { text: 'Home', href: '/' },
+          { text: String(router.currentRoute.value.name ?? ''), active: true }
+        ]" />
         <div class="ms-auto d-flex align-items-center gap-2">
-          <button
-            class="btn btn-sm btn-light"
+          <VibeButton
+            size="sm"
+            variant="light"
             @click="toggleDarkMode"
-            :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+            :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
           >
-            <VibeIcon :icon="isDarkMode ? 'sun-fill' : 'moon-fill'" />
-          </button>
-          <span v-if="user" class="small text-muted d-none d-lg-inline">{{ user.name ?? user.email }}</span>
+            <VibeIcon :icon="isDark ? 'sun-fill' : 'moon-fill'" />
+          </VibeButton>
+          <span v-if="auth.user" class="small text-muted d-none d-lg-inline">{{ auth.userName }}</span>
         </div>
       </header>
 
-      <!-- Page content — child routes render here -->
       <section class="app-content flex-grow-1 overflow-auto bg-body-secondary">
         <router-view />
       </section>
@@ -190,7 +104,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Full-height flex layout: sidebar on the left, main content on the right */
 .app-wrapper {
   display: flex;
   height: 100vh;
@@ -198,7 +111,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* Sidebar — fixed width, collapsible via negative margin */
 .app-sidebar {
   width: 260px;
   background-color: var(--bs-body-bg);
@@ -239,12 +151,10 @@ onMounted(() => {
   font-size: 1rem;
 }
 
-/* Collapsed state — slides the sidebar off-screen */
 .sidebar-closed .app-sidebar {
   margin-left: -260px;
 }
 
-/* On mobile, sidebar overlays the content */
 @media (max-width: 991.98px) {
   .app-sidebar {
     position: fixed;

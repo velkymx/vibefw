@@ -1,48 +1,20 @@
 /**
  * VibeFW SPA — Application Entry Point
  *
- * This file bootstraps the Vue 3 application with all required plugins:
- *   - Pinia   — Global state management (user session, shared data)
- *   - Router  — Client-side routing with auth guards (see ./router/index.ts)
- *   - VibeUI  — Component library registered globally (no per-file imports needed)
- *
- * The axios interceptor below handles token expiration globally:
- * if any API call returns 401, the token is cleared and the user is
- * redirected to /login. This keeps the UI in sync with server-side
- * session state without requiring every component to handle auth errors.
+ * Bootstraps Vue 3 with Pinia, Router, and VibeUI.
+ * Auth state is managed by the Pinia auth store (@/stores/auth).
+ * API calls use the preconfigured axios instance (@/lib/axios).
  */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import axios from 'axios'
 import App from './App.vue'
 import router from './router'
 import VibeUI from '@velkymx/vibeui'
 
-// ---------------------------------------------------------------------------
-// Global 401 interceptor
-// ---------------------------------------------------------------------------
-// If the server rejects the token (revoked, expired, or tampered), clear
-// localStorage and redirect to login so the UI stays consistent.
-// This runs for EVERY axios response — individual components don't need
-// to handle 401 themselves (unless they want custom behavior).
-axios.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      router.push('/login')
-    }
-    return Promise.reject(error)
-  }
-)
-
-// ---------------------------------------------------------------------------
-// Create and mount the app
-// ---------------------------------------------------------------------------
 const app = createApp(App)
 
-app.use(createPinia())   // State management — use defineStore() in components
-app.use(router)          // Client-side routing with auth guards
-app.use(VibeUI)          // Registers all Vibe* components globally
+app.use(createPinia())
+app.use(router)
+app.use(VibeUI)
 
 app.mount('#app')

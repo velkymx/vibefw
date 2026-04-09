@@ -1,0 +1,64 @@
+/**
+ * Pinia auth store — single source of truth for authentication state.
+ *
+ * Components use this store instead of reading localStorage directly.
+ * The axios instance (@/lib/axios) handles token headers automatically.
+ */
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import api from '@/lib/axios'
+import type { User } from '@/types/api'
+
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref<User | null>(null)
+  const token = ref<string | null>(localStorage.getItem('token'))
+
+  const isAuthenticated = computed(() => !!token.value)
+  const userName = computed(() => user.value?.name ?? user.value?.email ?? '')
+
+  function setToken(newToken: string) {
+    token.value = newToken
+    localStorage.setItem('token', newToken)
+  }
+
+  function clearAuth() {
+    token.value = null
+    user.value = null
+    localStorage.removeItem('token')
+  }
+
+  async function fetchUser() {
+    try {
+      const response = await api.get('/api/user')
+      user.value = response.data.user ?? response.data
+    } catch {
+      clearAuth()
+    }
+  }
+
+  async function login(email: string, password: string) {
+    const response = await api.post('/api/auth/login', { email, password })
+    setToken(response.data.token)
+    user.value = response.data.user
+    return response.data
+  }
+
+  async function register(data: { name: string; email: string; password: string; password_confirmation: string }) {
+    const response = await api.post('/api/auth/register', data)
+    setToken(response.data.token)
+    user.value = response.data.user
+    return response.data
+  }
+
+  async function logout() {
+    try {
+      await api.post('/api/auth/logout')
+    } catch {
+      // Proceed with client-side logout even if API call fails
+    } finally {
+      clearAuth()
+    }
+  }
+
+  return { user, token, isAuthenticated, userName, setToken, clearAuth, fetchUser, login, register, logout }
+})

@@ -2,40 +2,25 @@
 /**
  * Dashboard View — Protected page showing application stats
  *
- * This component is rendered inside MainLayout (see layouts/MainLayout.vue)
- * and is only accessible to authenticated users (router guard in router/index.ts).
- *
- * API contract:
- *   GET /api/dashboard/stats  (requires Bearer token)
- *   Success: { users: number, posts: number, requestsPerSecond: string }  → 200
- *   Error:   { message: string }                                          → 4xx/5xx
- *
- * The `userName` is injected from MainLayout via Vue's provide/inject,
- * so the Dashboard doesn't need to make its own user API call.
- *
- * To add more stats cards, duplicate one of the <div class="col-md-4">
- * blocks below and bind it to a new field from the API response.
+ * API: GET /api/dashboard/stats → { users, uptime, requestsPerSecond }
  */
-import { ref, onMounted, inject } from 'vue'
-import axios from 'axios'
+import { ref, onMounted } from 'vue'
+import api from '@/lib/axios'
+import { useAuthStore } from '@/stores/auth'
+import type { DashboardStats } from '@/types/api'
 
-// Stats from the API
-const stats = ref({ users: 0, uptime: 'Just started', requestsPerSecond: '0' })
+const auth = useAuthStore()
+
+const stats = ref<DashboardStats>({ users: 0, uptime: 'Just started', requestsPerSecond: '0' })
 const loading = ref(true)
 const loadError = ref(false)
 
-// Alert for API errors
 const alertMessage = ref('')
 const showAlert = ref(false)
 
-// Injected from MainLayout — the authenticated user's display name
-const userName = inject<string>('userName', '')
-
 onMounted(async () => {
   try {
-    const response = await axios.get('/api/dashboard/stats', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    })
+    const response = await api.get('/api/dashboard/stats')
     stats.value = response.data
   } catch (error: any) {
     loadError.value = true
@@ -49,20 +34,17 @@ onMounted(async () => {
 
 <template>
   <div class="p-4">
-    <!-- Page header with personalized greeting -->
     <header class="mb-5">
       <h1 class="display-6 fw-bold">
-        Welcome back<span v-if="userName">, {{ userName }}</span>!
+        Welcome back<span v-if="auth.userName">, {{ auth.userName }}</span>!
       </h1>
       <p class="text-muted">Here's a quick overview of your application.</p>
     </header>
 
-    <!-- Error alert — shown if the stats API call fails -->
     <VibeAlert v-model="showAlert" variant="danger" :message="alertMessage" dismissable />
 
-    <!-- Stats cards — each shows a spinner while loading, error on failure -->
-    <div class="row g-4">
-      <div class="col-md-4">
+    <VibeRow class="g-4">
+      <VibeCol md="4">
         <VibeCard>
           <template #body>
             <div class="text-center">
@@ -75,8 +57,8 @@ onMounted(async () => {
             </div>
           </template>
         </VibeCard>
-      </div>
-      <div class="col-md-4">
+      </VibeCol>
+      <VibeCol md="4">
         <VibeCard>
           <template #body>
             <div class="text-center">
@@ -89,8 +71,8 @@ onMounted(async () => {
             </div>
           </template>
         </VibeCard>
-      </div>
-      <div class="col-md-4">
+      </VibeCol>
+      <VibeCol md="4">
         <VibeCard>
           <template #body>
             <div class="text-center">
@@ -105,7 +87,7 @@ onMounted(async () => {
             </div>
           </template>
         </VibeCard>
-      </div>
-    </div>
+      </VibeCol>
+    </VibeRow>
   </div>
 </template>

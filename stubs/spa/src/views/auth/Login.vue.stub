@@ -2,35 +2,18 @@
 /**
  * Login View — Authenticates users against the VibeFW API
  *
- * API contract:
- *   POST /api/auth/login
- *   Body:    { email: string, password: string }
- *   Success: { user: User, token: string }         → 200
- *   Invalid: { message: string, errors: object }   → 422 (validation)
- *   Failed:  { message: string }                   → 401 (bad credentials)
- *
- * On success, the token is saved to localStorage and the user is
- * redirected to /dashboard. The router guard (see router/index.ts)
- * prevents authenticated users from revisiting this page.
- *
- * Validation errors from the server (422) are mapped directly to
- * VibeFormInput's :validation-state and :validation-message props,
- * giving instant per-field feedback without any extra wiring.
+ * API: POST /api/auth/login { email, password } → { user, token }
  */
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
 
-// Form state
 const form = ref({ email: '', password: '' })
 const loading = ref(false)
-
-// Per-field validation errors from the server (422 response)
 const errors = ref<Record<string, string>>({})
-
-// General error alert (non-field errors like 401)
 const alertMessage = ref('')
 const showAlert = ref(false)
 
@@ -41,19 +24,12 @@ const handleLogin = async () => {
   showAlert.value = false
 
   try {
-    const response = await axios.post('/api/auth/login', form.value)
-
-    // Store the Bearer token — used by authHeaders() throughout the app
-    localStorage.setItem('token', response.data.token)
-
-    // Navigate to the protected dashboard
+    await auth.login(form.value.email, form.value.password)
     router.push('/dashboard')
   } catch (error: any) {
     if (error.response?.status === 422) {
-      // Map server validation errors to form fields
       errors.value = error.response.data.errors ?? {}
     } else {
-      // Show a general error alert (bad credentials, server error, etc.)
       alertMessage.value = error.response?.data?.message ?? 'Authentication failed. Please try again.'
       showAlert.value = true
     }
@@ -71,11 +47,9 @@ const handleLogin = async () => {
           <h4 class="fw-bold mb-1">Welcome Back</h4>
           <p class="text-muted mb-4">Log in to your account</p>
 
-          <!-- General error alert (non-field errors) -->
           <VibeAlert v-model="showAlert" variant="danger" :message="alertMessage" dismissable />
 
           <form @submit.prevent="handleLogin">
-            <!-- Email field — :validation-state maps 422 errors automatically -->
             <VibeFormGroup label="Email Address">
               <VibeFormInput
                 v-model="form.email"
@@ -86,7 +60,6 @@ const handleLogin = async () => {
               />
             </VibeFormGroup>
 
-            <!-- Password field -->
             <VibeFormGroup label="Password" class="mt-3">
               <VibeFormInput
                 v-model="form.password"
@@ -97,7 +70,6 @@ const handleLogin = async () => {
               />
             </VibeFormGroup>
 
-            <!-- Submit button — :loading shows a spinner and disables the button -->
             <VibeButton type="submit" variant="primary" class="w-100 mt-4" :loading="loading">
               Log In
             </VibeButton>

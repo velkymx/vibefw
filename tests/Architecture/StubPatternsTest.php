@@ -252,6 +252,85 @@ final class StubPatternsTest extends TestCase
     }
 
     #[Test]
+    public function spaFrontendStubsExist(): void
+    {
+        $requiredStubs = [
+            'src/main.ts',
+            'src/App.vue',
+            'src/router/index.ts',
+            'src/layouts/MainLayout.vue',
+            'src/views/Home.vue',
+            'src/views/Dashboard.vue',
+            'src/views/auth/Login.vue',
+            'src/views/auth/Register.vue',
+            'src/views/errors/NotFound.vue',
+            'src/views/profile/Profile.vue',
+            'src/types/api.ts',
+            'src/stores/auth.ts',
+            'src/lib/axios.ts',
+        ];
+
+        foreach ($requiredStubs as $stub) {
+            $this->assertFileExists(
+                self::STUBS_DIR . 'spa/' . $stub . '.stub',
+                "SPA frontend stub missing: {$stub}.stub"
+            );
+        }
+    }
+
+    #[Test]
+    public function spaFrontendStubsUseAxiosInstance(): void
+    {
+        $viewStubs = $this->allSpaVueStubs();
+        $this->assertNotEmpty($viewStubs, 'SPA Vue stubs should exist');
+
+        foreach ($viewStubs as $stub) {
+            $content = file_get_contents($stub);
+            // If it makes API calls, it should import from @/lib/axios, not bare 'axios'
+            if (str_contains($content, 'axios.get') || str_contains($content, 'axios.post')
+                || str_contains($content, 'axios.put') || str_contains($content, 'axios.delete')) {
+                $this->assertStringContainsString(
+                    '@/lib/axios',
+                    $content,
+                    basename($stub) . ' must import from @/lib/axios, not bare axios'
+                );
+            }
+        }
+    }
+
+    #[Test]
+    public function spaFrontendStubsUseAuthStore(): void
+    {
+        $viewStubs = $this->allSpaVueStubs();
+        $this->assertNotEmpty($viewStubs, 'SPA Vue stubs should exist');
+
+        foreach ($viewStubs as $stub) {
+            $content = file_get_contents($stub);
+            // No direct localStorage.getItem('token') in view stubs
+            $this->assertStringNotContainsString(
+                "localStorage.getItem('token')",
+                $content,
+                basename($stub) . ' must not read token from localStorage directly — use auth store'
+            );
+        }
+    }
+
+    /** @return list<string> */
+    private function allSpaVueStubs(): array
+    {
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(self::STUBS_DIR . 'spa/src/', \FilesystemIterator::SKIP_DOTS)
+        );
+        $stubs = [];
+        foreach ($iterator as $file) {
+            if (str_ends_with($file->getFilename(), '.vue.stub')) {
+                $stubs[] = $file->getPathname();
+            }
+        }
+        return $stubs;
+    }
+
+    #[Test]
     public function spaStubsHaveNoVerboseDocblocks(): void
     {
         $phpStubs = array_merge(

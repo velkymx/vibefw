@@ -107,7 +107,10 @@ final class ScaffoldSpaCommand extends Command
             'frontend/src/views/auth/Login.vue',
             'frontend/src/views/auth/Register.vue',
             'frontend/src/views/Dashboard.vue',
+            'frontend/src/views/profile/Profile.vue',
             'frontend/src/layouts/MainLayout.vue',
+            'frontend/src/stores/auth.ts',
+            'frontend/src/lib/axios.ts',
         ];
 
         foreach ($files as $file) {
@@ -478,7 +481,8 @@ final class ScaffoldSpaCommand extends Command
             $dirs = [
                 '/src', '/src/assets', '/src/components', '/src/layouts',
                 '/src/views', '/src/router', '/src/views/auth',
-                '/src/views/errors', '/src/tests', '/src/types', '/e2e',
+                '/src/views/errors', '/src/views/profile', '/src/tests',
+                '/src/types', '/src/stores', '/src/lib', '/e2e',
             ];
             foreach ($dirs as $dir) {
                 if (!is_dir($frontendDir . $dir)) {
@@ -500,8 +504,11 @@ final class ScaffoldSpaCommand extends Command
             $this->copyStub('src/views/Dashboard.vue', $frontendDir . '/src/views/Dashboard.vue');
             $this->copyStub('src/views/auth/Login.vue', $frontendDir . '/src/views/auth/Login.vue');
             $this->copyStub('src/views/auth/Register.vue', $frontendDir . '/src/views/auth/Register.vue');
+            $this->copyStub('src/views/profile/Profile.vue', $frontendDir . '/src/views/profile/Profile.vue');
             $this->copyStub('src/views/errors/NotFound.vue', $frontendDir . '/src/views/errors/NotFound.vue');
             $this->copyStub('src/types/api.ts', $frontendDir . '/src/types/api.ts');
+            $this->copyStub('src/stores/auth.ts', $frontendDir . '/src/stores/auth.ts');
+            $this->copyStub('src/lib/axios.ts', $frontendDir . '/src/lib/axios.ts');
 
             // 5. Copy README
             $readmeStub = BASE_PATH . '/stubs/spa/README.md.stub';

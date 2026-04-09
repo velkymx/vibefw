@@ -1,0 +1,331 @@
+<script setup lang="ts">
+/**
+ * Profile View — Edit profile, change password, manage API tokens, delete account
+ *
+ * APIs:
+ *   PUT    /api/profile          → Update name/email
+ *   PUT    /api/profile/password → Change password
+ *   DELETE /api/profile          → Delete account
+ *   GET    /api/tokens           → List API tokens
+ *   POST   /api/tokens           → Create API token
+ *   DELETE /api/tokens/{id}      → Revoke API token
+ */
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import api from '@/lib/axios'
+import { useAuthStore } from '@/stores/auth'
+import type { PersonalAccessToken } from '@/types/api'
+
+const router = useRouter()
+const auth = useAuthStore()
+
+// Profile form
+const profileForm = ref({ name: '', email: '' })
+const profileErrors = ref<Record<string, string>>({})
+const profileSaving = ref(false)
+const profileSuccess = ref(false)
+
+// Password form
+const passwordForm = ref({ current_password: '', password: '', password_confirmation: '' })
+const passwordErrors = ref<Record<string, string>>({})
+const passwordSaving = ref(false)
+const passwordSuccess = ref(false)
+
+// API tokens
+const tokens = ref<PersonalAccessToken[]>([])
+const tokensLoading = ref(true)
+const newTokenName = ref('')
+const newTokenValue = ref('')
+const showCreateModal = ref(false)
+const showTokenModal = ref(false)
+const creatingSaving = ref(false)
+
+// Delete account
+const showDeleteModal = ref(false)
+const deletePassword = ref('')
+const deleteError = ref('')
+const deleting = ref(false)
+
+// Revoke token
+const showRevokeModal = ref(false)
+const tokenToRevoke = ref<PersonalAccessToken | null>(null)
+
+const tokenColumns = [
+  { key: 'name', label: 'Name', sortable: true },
+  { key: 'last_used_at', label: 'Last Used', sortable: true },
+  { key: 'created_at', label: 'Created', sortable: true },
+  { key: 'actions', label: '' },
+]
+
+onMounted(async () => {
+  if (auth.user) {
+    profileForm.value = { name: auth.user.name, email: auth.user.email }
+  }
+  await fetchTokens()
+})
+
+async function updateProfile() {
+  profileSaving.value = true
+  profileErrors.value = {}
+  profileSuccess.value = false
+
+  try {
+    const response = await api.put('/api/profile', profileForm.value)
+    auth.user = response.data.user ?? response.data
+    profileSuccess.value = true
+  } catch (error: any) {
+    if (error.response?.status === 422) {
+      profileErrors.value = error.response.data.errors ?? {}
+    }
+  } finally {
+    profileSaving.value = false
+  }
+}
+
+async function updatePassword() {
+  passwordSaving.value = true
+  passwordErrors.value = {}
+  passwordSuccess.value = false
+
+  try {
+    await api.put('/api/profile/password', passwordForm.value)
+    passwordForm.value = { current_password: '', password: '', password_confirmation: '' }
+    passwordSuccess.value = true
+  } catch (error: any) {
+    if (error.response?.status === 422) {
+      passwordErrors.value = error.response.data.errors ?? {}
+    }
+  } finally {
+    passwordSaving.value = false
+  }
+}
+
+async function fetchTokens() {
+  tokensLoading.value = true
+  try {
+    const response = await api.get('/api/tokens')
+    tokens.value = response.data.tokens ?? response.data
+  } catch {
+    // Silent — tokens section will show empty
+  } finally {
+    tokensLoading.value = false
+  }
+}
+
+async function createToken() {
+  creatingSaving.value = true
+  try {
+    const response = await api.post('/api/tokens', { name: newTokenName.value })
+    newTokenValue.value = response.data.token
+    showCreateModal.value = false
+    showTokenModal.value = true
+    newTokenName.value = ''
+    await fetchTokens()
+  } catch {
+    // Handled by 422 interceptor
+  } finally {
+    creatingSaving.value = false
+  }
+}
+
+function confirmRevoke(token: PersonalAccessToken) {
+  tokenToRevoke.value = token
+  showRevokeModal.value = true
+}
+
+async function revokeToken() {
+  if (!tokenToRevoke.value) return
+  try {
+    await api.delete(`/api/tokens/${tokenToRevoke.value.id}`)
+    await fetchTokens()
+  } catch {
+    // Silent
+  } finally {
+    showRevokeModal.value = false
+    tokenToRevoke.value = null
+  }
+}
+
+async function deleteAccount() {
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await api.delete('/api/profile', { data: { password: deletePassword.value } })
+    auth.clearAuth()
+    router.push('/login')
+  } catch (error: any) {
+    deleteError.value = error.response?.data?.message ?? 'Failed to delete account.'
+  } finally {
+    deleting.value = false
+  }
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return 'Never'
+  return new Date(dateStr).toLocaleDateString()
+}
+</script>
+
+<template>
+  <div class="p-4">
+    <header class="mb-4">
+      <h1 class="display-6 fw-bold">Profile</h1>
+      <p class="text-muted">Manage your account settings and API tokens.</p>
+    </header>
+
+    <!-- Edit Profile -->
+    <VibeCard class="mb-4">
+      <template #header>
+        <h5 class="mb-0">Profile Information</h5>
+      </template>
+      <template #body>
+        <VibeAlert v-if="profileSuccess" :model-value="true" variant="success" message="Profile updated." dismissable @update:model-value="profileSuccess = false" />
+        <form @submit.prevent="updateProfile">
+          <VibeFormGroup label="Name">
+            <VibeFormInput
+              v-model="profileForm.name"
+              :validation-state="profileErrors.name ? 'invalid' : null"
+              :validation-message="profileErrors.name"
+            />
+          </VibeFormGroup>
+          <VibeFormGroup label="Email" class="mt-3">
+            <VibeFormInput
+              v-model="profileForm.email"
+              type="email"
+              :validation-state="profileErrors.email ? 'invalid' : null"
+              :validation-message="profileErrors.email"
+            />
+          </VibeFormGroup>
+          <VibeButton type="submit" variant="primary" class="mt-3" :loading="profileSaving">
+            Save Changes
+          </VibeButton>
+        </form>
+      </template>
+    </VibeCard>
+
+    <!-- Change Password -->
+    <VibeCard class="mb-4">
+      <template #header>
+        <h5 class="mb-0">Change Password</h5>
+      </template>
+      <template #body>
+        <VibeAlert v-if="passwordSuccess" :model-value="true" variant="success" message="Password changed." dismissable @update:model-value="passwordSuccess = false" />
+        <form @submit.prevent="updatePassword">
+          <VibeFormGroup label="Current Password">
+            <VibeFormInput
+              v-model="passwordForm.current_password"
+              type="password"
+              :validation-state="passwordErrors.current_password ? 'invalid' : null"
+              :validation-message="passwordErrors.current_password"
+            />
+          </VibeFormGroup>
+          <VibeFormGroup label="New Password" class="mt-3">
+            <VibeFormInput
+              v-model="passwordForm.password"
+              type="password"
+              :validation-state="passwordErrors.password ? 'invalid' : null"
+              :validation-message="passwordErrors.password"
+            />
+          </VibeFormGroup>
+          <VibeFormGroup label="Confirm New Password" class="mt-3">
+            <VibeFormInput
+              v-model="passwordForm.password_confirmation"
+              type="password"
+              :validation-state="passwordErrors.password_confirmation ? 'invalid' : null"
+              :validation-message="passwordErrors.password_confirmation"
+            />
+          </VibeFormGroup>
+          <VibeButton type="submit" variant="primary" class="mt-3" :loading="passwordSaving">
+            Update Password
+          </VibeButton>
+        </form>
+      </template>
+    </VibeCard>
+
+    <!-- API Tokens -->
+    <VibeCard class="mb-4">
+      <template #header>
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">API Tokens</h5>
+          <VibeButton size="sm" variant="primary" @click="showCreateModal = true">
+            <VibeIcon icon="plus-lg" custom-class="me-1" /> Create Token
+          </VibeButton>
+        </div>
+      </template>
+      <template #body>
+        <VibeSpinner v-if="tokensLoading" />
+        <p v-else-if="tokens.length === 0" class="text-muted mb-0">No API tokens yet.</p>
+        <VibeDataTable v-else :items="tokens" :fields="tokenColumns" striped hover>
+          <template #cell(last_used_at)="{ item }">
+            {{ formatDate(item.last_used_at) }}
+          </template>
+          <template #cell(created_at)="{ item }">
+            {{ formatDate(item.created_at) }}
+          </template>
+          <template #cell(actions)="{ item }">
+            <VibeButton size="sm" variant="danger" @click="confirmRevoke(item)">
+              Revoke
+            </VibeButton>
+          </template>
+        </VibeDataTable>
+      </template>
+    </VibeCard>
+
+    <!-- Danger Zone: Delete Account -->
+    <VibeCard class="border-danger">
+      <template #header>
+        <h5 class="mb-0 text-danger">Danger Zone</h5>
+      </template>
+      <template #body>
+        <p class="mb-3">Once you delete your account, there is no going back.</p>
+        <VibeButton variant="danger" @click="showDeleteModal = true">
+          Delete Account
+        </VibeButton>
+      </template>
+    </VibeCard>
+
+    <!-- Create Token Modal -->
+    <VibeModal v-model="showCreateModal" title="Create API Token">
+      <form @submit.prevent="createToken">
+        <VibeFormGroup label="Token Name">
+          <VibeFormInput v-model="newTokenName" placeholder="My API Token" />
+        </VibeFormGroup>
+      </form>
+      <template #footer>
+        <VibeButton variant="secondary" @click="showCreateModal = false">Cancel</VibeButton>
+        <VibeButton variant="primary" :loading="creatingSaving" @click="createToken">Create</VibeButton>
+      </template>
+    </VibeModal>
+
+    <!-- Show Token Modal -->
+    <VibeModal v-model="showTokenModal" title="Token Created">
+      <VibeAlert :model-value="true" variant="warning" message="Copy this token now. You won't be able to see it again." />
+      <code class="d-block p-3 bg-light rounded text-break">{{ newTokenValue }}</code>
+      <template #footer>
+        <VibeButton variant="primary" @click="showTokenModal = false">Done</VibeButton>
+      </template>
+    </VibeModal>
+
+    <!-- Revoke Token Modal -->
+    <VibeModal v-model="showRevokeModal" title="Revoke Token">
+      <p>Are you sure you want to revoke the token <strong>{{ tokenToRevoke?.name }}</strong>?</p>
+      <template #footer>
+        <VibeButton variant="secondary" @click="showRevokeModal = false">Cancel</VibeButton>
+        <VibeButton variant="danger" @click="revokeToken">Revoke</VibeButton>
+      </template>
+    </VibeModal>
+
+    <!-- Delete Account Modal -->
+    <VibeModal v-model="showDeleteModal" title="Delete Account">
+      <p>Enter your password to confirm account deletion.</p>
+      <VibeAlert v-if="deleteError" :model-value="true" variant="danger" :message="deleteError" />
+      <VibeFormGroup label="Password">
+        <VibeFormInput v-model="deletePassword" type="password" />
+      </VibeFormGroup>
+      <template #footer>
+        <VibeButton variant="secondary" @click="showDeleteModal = false">Cancel</VibeButton>
+        <VibeButton variant="danger" :loading="deleting" @click="deleteAccount">Delete My Account</VibeButton>
+      </template>
+    </VibeModal>
+  </div>
+</template>
