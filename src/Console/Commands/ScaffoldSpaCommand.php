@@ -95,6 +95,7 @@ final class ScaffoldSpaCommand extends Command
             'app/Requests/LoginRequest.php',
             'app/Requests/RegisterRequest.php',
             'app/Models/User.php',
+            'app/Models/PersonalAccessToken.php',
             'database/migrations/0001_create_users_table.php',
             'database/migrations/0003_create_jobs_table.php',
             'database/migrations/0004_add_remember_token_to_users.php',
@@ -325,6 +326,7 @@ final class ScaffoldSpaCommand extends Command
 
             // 4. Copy model stubs
             $this->copyAppStub('Models/User.php', $appDir . '/Models/User.php');
+            $this->copyAppStub('Models/PersonalAccessToken.php', $appDir . '/Models/PersonalAccessToken.php');
 
             // 5. Write fresh routes.php with typed middleware
             $routesFile = BASE_PATH . '/config/routes.php';
