@@ -15,7 +15,7 @@ final class AddRememberTokenToUsers extends Migration
 
     public function down(): void
     {
-        if ($this->db->driver === 'sqlite') {
+        if ($this->connection()->driver === 'sqlite') {
             // SQLite doesn't support DROP COLUMN easily, so we recreate the table
             $this->execute('
                 CREATE TABLE "users_new" (

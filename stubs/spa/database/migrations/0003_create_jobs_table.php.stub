@@ -9,7 +9,7 @@ final class CreateJobsTable extends Migration
 {
     public function up(): void
     {
-        $this->createTable('jobs', function (Blueprint $table): void {
+        $this->create('jobs', function (Blueprint $table): void {
             $table->string('id', 32);
             $table->string('queue')->default('default');
             $table->text('payload');
@@ -23,13 +23,13 @@ final class CreateJobsTable extends Migration
         });
 
         // Set primary key separately for SQLite compatibility
-        if ($this->db->driver !== 'sqlite') {
+        if ($this->connection()->driver !== 'sqlite') {
             $this->execute('ALTER TABLE ' . $this->quote('jobs') . ' ADD PRIMARY KEY (' . $this->quote('id') . ')');
         }
     }
 
     public function down(): void
     {
-        $this->dropTable('jobs');
+        $this->drop('jobs');
     }
 }

@@ -9,23 +9,20 @@ final class CreatePersonalAccessTokensTable extends Migration
 {
     public function up(): void
     {
-        $this->createTable('personal_access_tokens', function (Blueprint $table): void {
+        $this->create('personal_access_tokens', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('user_id');
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('token', 64)->unique();
             $table->text('abilities')->nullable();
             $table->datetime('expires_at')->nullable();
             $table->datetime('last_used_at')->nullable();
             $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->index('user_id');
         });
     }
 
     public function down(): void
     {
-        $this->dropTable('personal_access_tokens');
+        $this->drop('personal_access_tokens');
     }
 }

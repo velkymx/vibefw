@@ -9,7 +9,7 @@ final class CreateUsersTable extends Migration
 {
     public function up(): void
     {
-        $this->createTable('users', function (Blueprint $table): void {
+        $this->create('users', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
@@ -21,6 +21,6 @@ final class CreateUsersTable extends Migration
 
     public function down(): void
     {
-        $this->dropTable('users');
+        $this->drop('users');
     }
 }
