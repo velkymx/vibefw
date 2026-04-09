@@ -97,6 +97,9 @@ final class Auth
      */
     public static function login(Model $user, bool $remember = false): void
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         session_regenerate_id(true);
 
         // Regenerate CSRF token on login to prevent CSRF token fixation attacks
@@ -124,8 +127,11 @@ final class Auth
         }
 
         self::clearContextUser();
-        unset($_SESSION[self::SESSION_KEY]);
-        session_regenerate_id(true);
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            unset($_SESSION[self::SESSION_KEY]);
+            session_regenerate_id(true);
+        }
     }
 
     /**
