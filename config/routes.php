@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Fw\Core\Router;
+use App\Controllers\Api\SpaController;
 use App\Controllers\Api\UserController;
 use App\Controllers\Api\StatsController;
 use App\Controllers\Api\ProfileController;
@@ -12,6 +13,9 @@ use App\Controllers\Api\Auth\RegisterController;
 use Fw\Middleware\ApiAuthMiddleware;
 
 return function (Router $router): void {
+    // SPA fallback — serve frontend for non-API routes
+    $router->get('/', [SpaController::class, 'index']);
+
     $router->group('/api', function (Router $router): void {
 
         // Auth (public)
