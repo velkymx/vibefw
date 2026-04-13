@@ -157,6 +157,39 @@ final class StubPatternsTest extends TestCase
     // --- SPA Stub Tests ---
 
     #[Test]
+    public function spaApiTokenControllerUsesPersonalAccessTokenNotFrameworkService(): void
+    {
+        $stub = self::STUBS_DIR . 'spa/app/Controllers/Api/ApiTokenController.php.stub';
+        $this->assertFileExists($stub);
+        $content = file_get_contents($stub);
+
+        // Must use the app model, not the framework service class, for DB queries.
+        // Fw\Auth\ApiToken is a service (not a Model) — calling ::where() on it fails at runtime.
+        $this->assertStringNotContainsString(
+            'ApiToken::where(',
+            $content,
+            'ApiTokenController must not call Fw\\Auth\\ApiToken::where() — it is not a Model'
+        );
+        $this->assertStringContainsString(
+            'PersonalAccessToken',
+            $content,
+            'ApiTokenController must use App\\Models\\PersonalAccessToken for queries'
+        );
+    }
+
+    #[Test]
+    public function spaGeneratedRoutesUseNoFallbackLanguage(): void
+    {
+        // The ScaffoldSpaCommand writes routes.php inline; check the source string.
+        $commandSrc = file_get_contents(__DIR__ . '/../../src/Console/Commands/ScaffoldSpaCommand.php');
+        $this->assertStringNotContainsString(
+            'SPA fallback',
+            $commandSrc,
+            'ScaffoldSpaCommand must not use "SPA fallback" in generated routes.php comments'
+        );
+    }
+
+    #[Test]
     public function spaRequestStubsUseTypedRules(): void
     {
         $requestStubs = glob(self::STUBS_DIR . 'spa/app/Requests/*.stub');

@@ -7,9 +7,9 @@ namespace App\Controllers\Api;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
+use App\Models\PersonalAccessToken;
 use App\Requests\CreateTokenRequest;
 use Fw\Auth\Auth;
-use Fw\Auth\ApiToken;
 use Fw\Validation\ValidationException;
 
 final class ApiTokenController extends Controller
@@ -18,11 +18,9 @@ final class ApiTokenController extends Controller
     {
         $user = Auth::user();
 
-        $tokens = ApiToken::where('tokenable_id', $user->id)
-            ->where('tokenable_type', 'App\Models\User')
-            ->get();
+        $tokens = PersonalAccessToken::where('user_id', '=', $user->id)->get();
 
-        return $this->json($tokens);
+        return $this->json(['tokens' => $tokens]);
     }
 
     public function store(Request $request): Response
