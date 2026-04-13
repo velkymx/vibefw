@@ -96,7 +96,7 @@ $cache->setMany([
 
 ### Guest Page Cache
 
-FW automatically caches pages for unauthenticated users:
+FW automatically caches pages for unauthenticated users. Configure in `config/middleware.php` — see [middleware.md](middleware.md) for how global middleware is registered:
 
 ```php
 // config/middleware.php
@@ -290,7 +290,7 @@ Run periodically via cron:
 
 ```bash
 # Clear expired cache daily
-0 3 * * * php /path/to/project/gc-cache.php
+0 3 * * * cd /var/www/app && php fw cache:clear
 ```
 
 ## Cache Warming

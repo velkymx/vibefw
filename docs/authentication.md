@@ -2,6 +2,17 @@
 
 VibeFW provides session-based authentication for web apps and token-based authentication for APIs.
 
+## Scaffolding Auth
+
+Generate the controllers and form request classes:
+
+```bash
+php fw make:controller LoginController
+php fw make:controller RegisterController
+php fw make:request LoginRequest
+php fw make:request RegisterRequest
+```
+
 ## Session Authentication
 
 ### Login
@@ -169,7 +180,7 @@ $this->user()->match(
 
 ## Auth Middleware
 
-Protect routes using typed middleware:
+Protect routes using typed middleware. For how middleware works and how to write custom middleware see [middleware.md](middleware.md).
 
 ```php
 use App\Middleware\AuthMiddleware;

@@ -52,7 +52,7 @@ Visit `http://localhost:8000` to see your app. The Vite dev server on port 5173 
 
 ## What's Included
 
-### Frontend (Vue 3 + VibeUI)
+### Frontend (Vue 3 + [VibeUI](VIBE-UI-AI.md))
 
 | Page | Route | Description |
 |------|-------|-------------|
@@ -153,7 +153,7 @@ $router->get('/settings', [App\Controllers\Api\SettingsController::class, 'index
 
 ## VibeUI Component Cheat Sheet
 
-All components are globally registered — no imports needed.
+All components are globally registered — no imports needed. For full prop reference see [VIBE-UI-AI.md](VIBE-UI-AI.md).
 
 ```vue
 <!-- Buttons -->
@@ -186,7 +186,7 @@ All components are globally registered — no imports needed.
 </VibeModal>
 ```
 
-Full component reference: https://github.com/velkymx/vibeui/blob/main/docs/README.md
+Full component reference: [VIBE-UI-AI.md](VIBE-UI-AI.md) — props, slots, form validation, dark mode. Also see [spa.md](spa.md) for the complete SPA scaffold documentation.
 
 ## Production Deployment
 

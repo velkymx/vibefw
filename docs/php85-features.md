@@ -75,7 +75,7 @@ $result = $id
 
 ### Pipe Helper Class
 
-FW provides a `Pipe` helper class with common pipe-friendly operations:
+FW provides a `Pipe` helper class with common pipe-friendly operations. These examples use the `|>` operator — they require PHP 8.5 with the pipe operator enabled. Do not use this syntax in code targeting PHP < 8.5.
 
 ```php
 use Fw\Support\Pipe;

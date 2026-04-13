@@ -2,6 +2,16 @@
 
 Routes map URLs to controller actions. They're defined in `config/routes.php`.
 
+## Inspecting Routes
+
+```bash
+php fw routes:list                # All registered routes
+php fw routes:list --method=GET   # Filter by HTTP method
+php fw route:for post             # Find routes for a feature topic
+php fw route:cache                # Cache routes for production
+php fw route:clear                # Clear route cache
+```
+
 ## Basic Routing
 
 ```php
@@ -63,23 +73,47 @@ Generate URLs from names:
 
 ## Typed Middleware
 
-Middleware uses class references, not strings. Typos are fatal errors.
+Middleware uses class references, not strings. Typos are fatal errors. See [middleware.md](middleware.md) for creating and configuring middleware.
+
+`with()` accepts **exactly one middleware class**. To stack multiple middleware, nest `with()` calls — do not pass an array:
 
 ```php
-use App\Middleware\AuthMiddleware;
-use App\Middleware\AdminMiddleware;
+// ❌ Wrong — with() does not accept an array
+$router->with([AuthMiddleware::class, AdminMiddleware::class], function (Router $r) { });
 
+// ✅ Correct — nest with() calls
 $router->with(AuthMiddleware::class, function (Router $r) {
     $r->get('/dashboard', [DashboardController::class, 'index'], 'dashboard');
     $r->get('/posts/create', [PostController::class, 'create'], 'posts.create');
     $r->post('/posts', [PostController::class, 'store'], 'posts.store');
 
-    // Nested middleware
     $r->with(AdminMiddleware::class, function (Router $r) {
         $r->get('/admin', [AdminController::class, 'index'], 'admin');
     });
 });
 ```
+
+## `with()` vs `group()`
+
+| Method | Purpose | What it adds |
+|--------|---------|-------------|
+| `$router->with(Middleware::class, fn)` | Apply middleware to routes | Middleware only — no URL prefix |
+| `$router->group('/prefix', fn)` | Prefix a set of URLs | URL prefix only — no middleware |
+
+Combine them to get both:
+
+```php
+$router->group('/admin', function (Router $r) {
+    $r->with(AuthMiddleware::class, function (Router $r) {
+        $r->with(AdminMiddleware::class, function (Router $r) {
+            $r->get('/dashboard', [AdminController::class, 'index']);
+            // Final URL: /admin/dashboard, with Auth + Admin middleware
+        });
+    });
+});
+```
+
+`with()` accepts a single middleware class. Nest `with()` calls to stack multiple.
 
 ## Route Groups
 
@@ -187,7 +221,7 @@ php fw route:cache    # Cache routes for production
 php fw route:clear    # Clear route cache
 ```
 
-## Fallback Routes
+## Catch-All Routes
 
 ```php
 $router->get('/{path:.*}', [ErrorController::class, 'notFound']);

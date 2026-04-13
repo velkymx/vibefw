@@ -26,9 +26,14 @@ Migrations live in `database/migrations/`.
 ### Creating Migrations
 
 ```bash
-php fw make:migration create_posts_table     # Auto-detects table name
-php fw make:migration add_status_to_posts    # Generic migration
+php fw make:migration create_posts_table           # Auto-detects table (create_*_table pattern)
+php fw make:migration add_status_to_posts          # Generic alter migration
+php fw make:migration create_posts --create=posts  # Explicit table name
 ```
+
+Names matching `create_*_table` get the create-table stub with `$table->id()` and `$table->timestamps()` pre-filled. All others get a blank stub with empty `up()` and `down()` methods.
+
+For full resource generation (model + migration + controller + views in one step), use the schema workflow — see [schema.md](schema.md).
 
 ```php
 <?php

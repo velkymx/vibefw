@@ -2,6 +2,15 @@
 
 Views are plain PHP templates. They live in `app/Views/` and use built-in helper functions.
 
+## Generating Views
+
+Views are generated automatically as part of resource scaffolding:
+
+```bash
+php fw make:resource --schema=app/Schemas/Post.json   # Full CRUD + views from schema
+php fw make:controller PostController -r              # Resource controller (add views manually)
+```
+
 ## Directory Structure
 
 ```
@@ -135,6 +144,10 @@ Always escape user-generated content. Wraps `htmlspecialchars()` with `ENT_QUOTE
 
 ### Fragment Caching
 
+For full-page and fragment cache options see [caching.md](caching.md).
+
+`$cache(key, ttl)` returns `true` on a **cache miss** (you must render the block) and `false` on a **hit** (cached output already flushed — skip the block). Always pair with `$endCache()`:
+
 ```php
 <?php if ($cache('sidebar', 3600)): ?>
     <!-- Rendered only on cache miss, cached for 1 hour -->
@@ -202,7 +215,25 @@ Always escape user-generated content. Wraps `htmlspecialchars()` with `ENT_QUOTE
 </form>
 ```
 
-## Displaying Errors
+## Flash Messages
+
+Flash data is set by the controller via `->with('key', 'value')` on a redirect and available in the destination view as `$flash`:
+
+```php
+<?php if (isset($flash['success'])): ?>
+    <div class="alert alert-success"><?= $e($flash['success']) ?></div>
+<?php endif; ?>
+
+<?php if (isset($flash['error'])): ?>
+    <div class="alert alert-error"><?= $e($flash['error']) ?></div>
+<?php endif; ?>
+```
+
+Flash data persists for exactly one request.
+
+## Displaying Validation Errors
+
+`$errors` is `array<string, string>` — one message per field. Passed explicitly by the controller on validation failure.
 
 ```php
 <?php if (isset($errors) && !empty($errors)): ?>
@@ -214,6 +245,23 @@ Always escape user-generated content. Wraps `htmlspecialchars()` with `ENT_QUOTE
         </ul>
     </div>
 <?php endif; ?>
+```
+
+Per-field display with old-input repopulation:
+
+```php
+<div class="form-group">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title"
+           class="<?= isset($errors['title']) ? 'is-invalid' : '' ?>"
+           value="<?= $e($old('title', '')) ?>">
+    <?php if (isset($errors['title'])): ?>
+        <div class="error"><?= $e($errors['title']) ?></div>
+    <?php endif; ?>
+</div>
+```
+
+`$old('field', '')` reads from the `$old` array passed by the controller — not from session.
 ```
 
 ## Pagination

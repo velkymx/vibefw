@@ -29,6 +29,10 @@ class AppServiceProvider extends ServiceProvider
 
 ## Creating a Provider
 
+```bash
+php fw make:provider AppServiceProvider
+```
+
 ```php
 <?php
 
@@ -271,6 +275,29 @@ class AuthServiceProvider extends ServiceProvider
         $auth = $this->container->get(Auth::class);
         $this->app->view->share('currentUser', $auth->user());
     }
+}
+```
+
+### CQRS Bus Handlers
+
+To register command/query handlers explicitly instead of relying on naming convention — see [cqrs.md](cqrs.md):
+
+```php
+use Fw\Providers\BusServiceProvider as BaseBusServiceProvider;
+use App\Commands\CreatePost;
+use App\Handlers\CreatePostHandler;
+use App\Queries\GetPostById;
+use App\Handlers\GetPostByIdHandler;
+
+class BusServiceProvider extends BaseBusServiceProvider
+{
+    protected array $commands = [
+        CreatePost::class => CreatePostHandler::class,
+    ];
+
+    protected array $queries = [
+        GetPostById::class => GetPostByIdHandler::class,
+    ];
 }
 ```
 

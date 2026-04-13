@@ -5,8 +5,11 @@ Models represent database tables using the Active Record pattern. They live in `
 ## Creating a Model
 
 ```bash
-php fw make:model Post -m    # Model + migration
+php fw make:model Post       # Model only
+php fw make:model Post -m    # Model + matching migration (--migration)
 ```
+
+To generate a model alongside its controller, views, form requests, and factory in one step, use the schema workflow — see [schema.md](schema.md). For migration syntax and column types see [database.md](database.md).
 
 ```php
 <?php
@@ -44,7 +47,12 @@ class Post extends Model
 protected static ?string $table = 'posts';
 ```
 
-If not specified, derived from class name (`Post` → `posts`).
+If not set, derived by converting the class name to snake_case plural:
+- `Post` → `posts`
+- `BlogPost` → `blog_posts`
+- `UserProfile` → `user_profiles`
+
+Always set `$table` explicitly — auto-derivation exists as a fallback only.
 
 ### Primary Key
 
@@ -63,11 +71,16 @@ protected static string $keyType = 'string';
 
 ### Fillable Fields
 
-Every model **must** declare `$fillable`. `$guarded` does not exist. Strict mode is permanently on.
+Every model **must** declare `$fillable`. **`$guarded` does not exist in this framework** — do not use it. Strict mode is permanently on: any field not in `$fillable` is silently dropped on `create()` and `fill()`.
 
 ```php
 protected static array $fillable = ['title', 'content', 'user_id'];
 ```
+
+> **Wrong — `$guarded` is silently ignored:**
+> ```php
+> protected static array $guarded = [];  // ❌ has no effect
+> ```
 
 ### Type Casting
 
@@ -98,7 +111,7 @@ protected static bool $timestamps = true;  // Manages created_at, updated_at
 // All records
 $posts = Post::all();
 
-// Find by ID — returns Option, not null
+// Find by ID — returns Option, not null (see [result-option.md](result-option.md))
 Post::find($id)->match(
     some: fn($post) => $post->title,
     none: fn() => 'Not found',
@@ -221,12 +234,14 @@ Post::where('created_at', '<', $date)->delete();
 
 ## Relationships
 
+Return types on relationship methods are **required** — they enable eager loading and IDE support. Omitting the return type causes eager loading to silently fail.
+
 ### Belongs To
 
 ```php
 use Fw\Model\Relations\BelongsTo;
 
-public function author(): BelongsTo
+public function author(): BelongsTo   // ← return type required
 {
     return $this->belongsTo(User::class, 'user_id');
 }
@@ -266,13 +281,27 @@ This generates migrations, updates both models, and updates `$fillable`.
 
 ### Eager Loading
 
-```php
-$posts = Post::with('author')->get();
-$posts = Post::with(['author', 'comments'])->get();
+Without eager loading, accessing a relation inside a loop triggers one query per model (N+1):
 
+```php
+// Bad — N+1 queries
+$posts = Post::all();
 foreach ($posts as $post) {
-    echo $post->author->name;  // No N+1 query
+    echo $post->author->name;  // one query per post
 }
+
+// Good — 2 queries total (posts + authors)
+$posts = Post::with('author')->get();
+foreach ($posts as $post) {
+    echo $post->author->name;  // no extra queries
+}
+```
+
+Eager load multiple relations or nest them:
+
+```php
+$posts = Post::with(['author', 'comments'])->get();
+$posts = Post::with('author.profile')->get();  // nested
 ```
 
 ## Accessors & Mutators
@@ -324,9 +353,36 @@ class Post extends Model
 
 ```php
 $array = $post->toArray();
-$json = $post->toJson();
-$json = json_encode($post);  // Models implement JsonSerializable
+$json  = $post->toJson();
+$json  = json_encode($post);  // Models implement JsonSerializable
 ```
+
+`toArray()` returns all column values with casts applied:
+
+```php
+[
+    'id'           => 1,
+    'title'        => 'Hello World',
+    'published_at' => '2024-01-15 12:00:00',  // datetime cast → formatted string
+    'view_count'   => 42,                      // int cast → int
+    'is_featured'  => false,                   // bool cast → bool
+    'created_at'   => '2024-01-15 09:00:00',
+    'updated_at'   => '2024-01-15 12:00:00',
+]
+```
+
+Relationship data is **not** included unless explicitly appended. Hidden attributes (passwords, tokens) are excluded from `toArray()` if declared in `$hidden`.
+
+## Testing Models
+
+Generate factories and tests from your model automatically:
+
+```bash
+php fw make:test Post          # Unit + feature tests from $fillable, casts, relations
+php fw make:factory PostFactory  # Faker-based factory
+```
+
+See [testing.md](testing.md) for factory usage, `RefreshDatabase`, and architecture tests.
 
 ## Inspection
 

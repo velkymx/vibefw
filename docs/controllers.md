@@ -5,9 +5,12 @@ Controllers handle HTTP requests and return responses. They live in `app/Control
 ## Creating a Controller
 
 ```bash
-php fw make:controller PostController -r    # Resource controller (CRUD)
-php fw make:controller Api/PostController -r  # Namespaced
+php fw make:controller PostController          # Basic controller
+php fw make:controller PostController -r       # Resource controller: index/create/store/show/edit/update/destroy (--resource)
+php fw make:controller Api/PostController -r   # Namespaced (creates app/Controllers/Api/)
 ```
+
+To generate a controller alongside its model, migration, views, and form requests in one step, use the schema workflow — see [schema.md](schema.md).
 
 ```php
 <?php
@@ -30,6 +33,20 @@ class PostController extends Controller
     }
 }
 ```
+
+`paginate(perPage, page)` returns:
+
+```php
+[
+    'items'        => [...],  // array of Model instances for this page
+    'total'        => 100,    // total record count
+    'per_page'     => 15,
+    'current_page' => 1,
+    'last_page'    => 7,
+]
+```
+
+Access in views: `$posts['items']`, `$posts['total']`, `$posts['last_page']`, `$posts['current_page']`.
 
 Every controller method **must** return `Response`. The framework does not normalize strings or arrays.
 
@@ -90,15 +107,43 @@ return $this->redirect('/posts');
 return $this->back();
 ```
 
+### Flash Messages
+
+Flash data is passed on redirect and available in the next view via `$flash`:
+
+```php
+return $this->redirect('/posts')
+    ->with('success', 'Post created!');
+
+return $this->redirect('/posts')
+    ->with('error', 'Something went wrong.');
+```
+
+In views:
+
+```php
+<?php if (isset($flash['success'])): ?>
+    <div class="alert alert-success"><?= $e($flash['success']) ?></div>
+<?php endif; ?>
+
+<?php if (isset($flash['error'])): ?>
+    <div class="alert alert-error"><?= $e($flash['error']) ?></div>
+<?php endif; ?>
+```
+
+Flash data persists for exactly one request.
+
 ### Error Responses
 
 ```php
-return $this->notFound();       // 404
+return $this->notFound();       // 404 — renders app/Views/errors/404.php if it exists
 return $this->forbidden();      // 403
 return $this->badRequest();     // 400
 return $this->serverError();    // 500
-return $this->noContent();      // 204
+return $this->noContent();      // 204 (no body)
 ```
+
+For API error shapes, consistent JSON format, and how to create custom error views — see [errors.md](errors.md).
 
 ### Response Fluent Methods
 
@@ -182,6 +227,7 @@ class PostController extends Controller
     }
 
     // GET /posts/{id}
+    // Post::find() returns Option — see result-option.md for match()/unwrapOr() patterns
     public function show(Request $request, string $id): Response
     {
         return Post::find((int) $id)->match(

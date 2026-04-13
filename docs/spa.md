@@ -91,7 +91,7 @@ The scaffold includes migrations for:
 
 ## VibeUI Components
 
-All VibeUI components are globally registered — no imports needed.
+All VibeUI components are globally registered — no imports needed. Full prop reference and component API: [VIBE-UI-AI.md](VIBE-UI-AI.md).
 
 ```vue
 <!-- Buttons -->
@@ -131,7 +131,7 @@ All VibeUI components are globally registered — no imports needed.
 </VibeModal>
 ```
 
-Full component reference: https://github.com/velkymx/vibeui
+Full component reference: [VIBE-UI-AI.md](VIBE-UI-AI.md) — props, slots, validation integration, dark mode patterns.
 
 ## Adding a New Page
 

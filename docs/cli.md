@@ -9,24 +9,66 @@ php fw help <command>     # Help for a specific command
 
 ## Code Generators
 
-```bash
-php fw make:schema Post                              # JSON schema template
-php fw make:resource --schema=app/Schemas/Post.json  # Full CRUD from schema
-php fw add:field Post slug string --unique            # Add field to existing resource
-php fw make:link Post Comment --hasMany               # Wire relationship
-php fw make:test Post                                 # Generate tests from model
+### Schema-Driven (preferred)
 
-php fw make:model Post -m                             # Model + migration
-php fw make:controller PostController -r              # Resource controller
-php fw make:migration create_posts_table              # Migration
-php fw make:middleware RateLimitMiddleware             # Middleware
-php fw make:request StorePostRequest                  # FormRequest
-php fw make:command SendReminders                     # Console command
-php fw make:query GetPostById                         # CQRS query
-php fw make:factory PostFactory                       # Test factory
-php fw make:seeder DatabaseSeeder                     # Database seeder
-php fw make:provider AppServiceProvider               # Service provider
-php fw make:spa                                       # Vue 3 + TypeScript SPA
+```bash
+php fw make:schema Post                               # JSON schema template → app/Schemas/Post.json
+php fw make:resource --schema=app/Schemas/Post.json  # Full CRUD: model + migration + controller + requests + factory + views
+```
+
+See [schema.md](schema.md) for the full schema format and field type reference.
+
+### Individual Generators
+
+**`make:model`**
+```bash
+php fw make:model Post          # app/Models/Post.php
+php fw make:model Post -m       # Model + matching migration (--migration)
+```
+
+**`make:controller`**
+```bash
+php fw make:controller PostController        # Basic controller
+php fw make:controller PostController -r     # Resource controller with index/create/store/show/edit/update/destroy (--resource)
+php fw make:controller Api/PostController -r # Namespaced (creates app/Controllers/Api/)
+```
+
+**`make:migration`**
+```bash
+php fw make:migration create_posts_table           # Auto-detects table from name (create_*_table pattern)
+php fw make:migration add_status_to_posts          # Generic alter migration
+php fw make:migration create_posts --create=posts  # Explicit table name via --create
+```
+
+**`add:field`** — adds field to existing resource (migration + model + schema)
+```bash
+php fw add:field Post slug string          # Basic field
+php fw add:field Post slug string --unique --index
+php fw add:field Post category_id foreignId --constrained
+php fw add:field Post published_at timestamp --nullable
+php fw add:field Post score decimal --default=0
+```
+Options: `--nullable`, `--unique`, `--constrained` (foreignId only), `--default=value`, `--index`
+Valid types: `string`, `text`, `integer`, `boolean`, `timestamp`, `date`, `decimal`, `foreignId`, `json`
+
+**`make:link`** — wires relationships between two models
+```bash
+php fw make:link Post Comment --hasMany     # Post hasMany Comments
+php fw make:link User Profile --hasOne      # User hasOne Profile
+php fw make:link Post Tag --manyToMany      # Pivot table + both models updated
+```
+
+**Other generators**
+```bash
+php fw make:request StorePostRequest        # app/Requests/StorePostRequest.php
+php fw make:middleware RateLimitMiddleware  # app/Middleware/RateLimitMiddleware.php
+php fw make:provider AppServiceProvider    # app/Providers/AppServiceProvider.php
+php fw make:command SendReminders          # app/Console/SendReminders.php
+php fw make:query GetPostById              # app/Queries/GetPostById.php
+php fw make:factory PostFactory            # database/factories/PostFactory.php
+php fw make:seeder DatabaseSeeder          # database/seeders/DatabaseSeeder.php
+php fw make:test Post                      # Unit + feature tests from existing model
+php fw make:spa                            # Vue 3 + TypeScript SPA scaffold
 ```
 
 ## Schema-Driven Workflow

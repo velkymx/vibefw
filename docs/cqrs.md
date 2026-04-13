@@ -6,6 +6,10 @@ VibeFW supports Command Query Responsibility Segregation: commands change state,
 
 Commands represent write operations. They are `final readonly` data transfer objects.
 
+```bash
+php fw make:command CreatePost
+```
+
 ### Creating a Command
 
 ```php
@@ -90,6 +94,10 @@ public function store(Request $request): Response
 
 Queries represent read operations that don't change state.
 
+```bash
+php fw make:query GetPostById
+```
+
 ### Creating a Query
 
 ```php
@@ -153,11 +161,16 @@ public function show(Request $request, string $id): Response
 
 ### Convention-Based (Default)
 
-Handlers are discovered by naming convention:
-- `CreatePost` → `CreatePostHandler`
-- `GetPostById` → `GetPostByIdHandler`
+Handlers are discovered by naming convention — the framework appends `Handler` to the command/query class name and resolves it from the container:
+
+- `App\Commands\CreatePost` → `App\Commands\CreatePostHandler`
+- `App\Queries\GetPostById` → `App\Queries\GetPostByIdHandler`
+
+Both classes must be in the same namespace. If no handler is found, the bus throws `HandlerNotFoundException`.
 
 ### Explicit Registration
+
+Register handlers explicitly in a service provider — see [providers.md](providers.md) for how providers are structured.
 
 ```php
 <?php

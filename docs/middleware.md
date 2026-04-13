@@ -10,7 +10,7 @@ Request → Middleware 1 → Middleware 2 → Controller → Response
 
 ## Using Middleware
 
-Middleware uses class references via `$router->with()`. No string aliases.
+Middleware uses class references via `$router->with()`. No string aliases. See [routing.md](routing.md) for how `with()` and `group()` combine.
 
 ```php
 use App\Middleware\AuthMiddleware;
@@ -44,7 +44,7 @@ $router->with(AuthMiddleware::class, function (Router $r) {
 
 ## Global Middleware
 
-Global middleware runs on every request. Configure in `config/middleware.php`:
+Global middleware runs on every request. Configure in `config/middleware.php`. To register middleware as a service, see [providers.md](providers.md).
 
 ```php
 return [
@@ -104,11 +104,14 @@ class LogRequestMiddleware implements MiddlewareInterface
 
 ### Early Return (Abort)
 
+Return a Response directly without calling `$next`. The remaining middleware and the controller are skipped entirely:
+
 ```php
 public function handle(Request $request, callable $next): Response
 {
-    if (!$this->isAuthorized($request)) {
-        return (new Response())->redirect('/login');
+    if (!isset($_SESSION['user'])) {
+        $_SESSION['intended_url'] = $request->uri;
+        return (new Response())->redirect('/login');  // skips controller
     }
 
     return $next($request);
@@ -120,11 +123,29 @@ public function handle(Request $request, callable $next): Response
 ```php
 public function handle(Request $request, callable $next): Response
 {
-    $response = $next($request);
-    $response->header('X-Custom-Header', 'value');
+    $response = $next($request);                      // controller runs
+    $response->header('X-Custom-Header', 'value');    // modify after
     return $response;
 }
 ```
+
+### Exception Handling
+
+If the controller or a downstream middleware throws, the exception propagates up through the middleware stack. Catch it if you need to handle or log it:
+
+```php
+public function handle(Request $request, callable $next): Response
+{
+    try {
+        return $next($request);
+    } catch (\Throwable $e) {
+        $this->app->log->error($e->getMessage());
+        return (new Response('Internal Server Error', 500));
+    }
+}
+```
+
+Middleware itself must not throw — any uncaught exception becomes a 500 response.
 
 ## Middleware Order
 
@@ -143,6 +164,8 @@ $router->with(AuthMiddleware::class, function (Router $r) {
 ## Examples
 
 ### Authentication
+
+For the full authentication flow — login, session, and token auth — see [authentication.md](authentication.md).
 
 ```php
 class AuthMiddleware implements MiddlewareInterface

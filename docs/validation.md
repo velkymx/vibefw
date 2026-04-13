@@ -44,6 +44,15 @@ class StorePostRequest extends FormRequest
 
 ## Using in Controllers
 
+See [controllers.md](controllers.md) for the full controller pattern including error display and redirect-after-store. FormRequests have two entry points depending on context:
+
+| Method | Returns | Use in |
+|--------|---------|--------|
+| `fromRequest($request)` | validated object — throws `ValidationException` on failure | Web controllers (HTML forms) |
+| `fromArray($data)` | `Result<array, array<string,string>>` — never throws | API controllers (JSON responses) |
+
+### Web Controllers (throws on failure)
+
 ```php
 use App\Requests\StorePostRequest;
 use Fw\Validation\ValidationException;
@@ -54,8 +63,8 @@ public function store(Request $request): Response
         $data = StorePostRequest::fromRequest($request);
     } catch (ValidationException $e) {
         return $this->view('posts.create', [
-            'errors' => $e->errors,
-            'old' => $request->all(),
+            'errors' => $e->errors,   // array<string, string>
+            'old'    => $request->all(),
         ]);
     }
 
@@ -64,33 +73,102 @@ public function store(Request $request): Response
 }
 ```
 
-`fromRequest()` validates the request data against the rules. If validation fails, it throws `ValidationException` with an `errors` array keyed by field name.
+### API Controllers (Result-based, no exception)
+
+```php
+public function store(Request $request): Response
+{
+    $validated = StorePostRequest::fromArray($request->all());
+
+    if ($validated->isErr()) {
+        return $this->json(['errors' => $validated->unwrapErr()], 422);
+    }
+
+    $post = Post::create($validated->unwrapOr([]));
+    return $this->json($post, 201);
+}
+```
+
+`fromRequest()` validates and returns a typed object with public properties matching the field names. `fromArray()` validates and returns a `Result` wrapping the raw validated array.
+
+### Error Shape
+
+`$e->errors` is `array<string, string>` — **one message per field, never a list**. Rules evaluate in order; the first failure stops the chain for that field:
+
+> **Wrong assumption — errors are NOT a list:**
+> ```php
+> // ❌ This is NOT what $e->errors looks like
+> ['title' => ['Title is required.', 'Title must be at least 3 characters.']]
+> ```
+
+```php
+// $e->errors example:
+[
+    'title'   => 'The title field is required.',
+    'email'   => 'The email must be a valid email address.',
+    'user_id' => 'The selected user_id does not exist.',
+]
+```
+
+Access in views:
+
+```php
+// Check if a field has an error
+isset($errors['title'])
+
+// Display the error message
+$e($errors['title'])
+```
+
+### Passing Old Input Back
+
+Always pass `$request->all()` back on failure so form fields repopulate:
+
+```php
+return $this->view('posts.create', [
+    'errors' => $e->errors,
+    'old'    => $request->all(),
+]);
+```
+
+In views, use `$old('field', '')` — it reads from the `$old` array passed by the controller, not from session.
 
 ## Available Rules
 
 All rules are in `Fw\Validation\Rules`:
 
-| Rule | Constructor | Description |
-|------|-------------|-------------|
-| `Required` | `new Required` | Field must be present and not empty |
-| `MinLength` | `new MinLength(3)` | Minimum string length |
-| `MaxLength` | `new MaxLength(255)` | Maximum string length |
+| Rule | Constructor | Validates |
+|------|-------------|-----------|
+| `Required` | `new Required` | Present and not empty string/null |
+| `MinLength` | `new MinLength(3)` | String length ≥ N characters |
+| `MaxLength` | `new MaxLength(255)` | String length ≤ N characters |
 | `Email` | `new Email` | Valid email format |
-| `Url` | `new Url` | Valid URL format |
-| `In` | `new In(['draft', 'published'])` | Value must be in list |
-| `InEnum` | `new InEnum(Status::class)` | Value must be in enum |
-| `Regex` | `new Regex('/^[a-z]+$/')` | Must match pattern |
-| `Between` | `new Between(1, 100)` | Numeric range |
-| `Unique` | `new Unique('users', 'email')` | Unique in database table |
-| `Exists` | `new Exists('categories', 'id')` | Must exist in table |
-| `Confirmed` | `new Confirmed` | Must match `{field}_confirmation` |
-| `Numeric` | `new Numeric` | Must be numeric |
-| `Integer` | `new Integer` | Must be integer |
-| `Uuid` | `new Uuid` | Must be valid UUID |
-| `Date` | `new Date` | Must be valid date |
-| `Alpha` | `new Alpha` | Only alphabetic characters |
-| `AlphaNumeric` | `new AlphaNumeric` | Only alphanumeric characters |
-| `Nullable` | `new Nullable` | Allow null values |
+| `Url` | `new Url` | Valid URL (must include scheme) |
+| `In` | `new In(['draft', 'published'])` | Value is in the given list (strict comparison) |
+| `InEnum` | `new InEnum(Status::class)` | Value matches a backed enum case value |
+| `Regex` | `new Regex('/^[a-z]+$/')` | Value matches the pattern |
+| `Between` | `new Between(1, 100)` | Numeric value between min and max (inclusive) |
+| `Unique` | `new Unique('users', 'email')` | Value does not already exist in `table.column` |
+| `Exists` | `new Exists('categories', 'id')` | Value exists in `table.column` |
+| `Confirmed` | `new Confirmed` | Value matches `{field}_confirmation` input |
+| `Numeric` | `new Numeric` | Value is numeric (int or float string) |
+| `Integer` | `new Integer` | Value is a whole number |
+| `Uuid` | `new Uuid` | Valid UUID v4 format |
+| `Date` | `new Date` | Parseable date string |
+| `Alpha` | `new Alpha` | Only `[a-zA-Z]` characters |
+| `AlphaNumeric` | `new AlphaNumeric` | Only `[a-zA-Z0-9]` characters |
+| `Nullable` | `new Nullable` | Allows null — stops rule chain if null |
+
+### Rule Behaviour Notes
+
+- Rules run in order. The first failure stops the chain for that field — only one error per field.
+- `Nullable` must be listed **before** other rules if you want null to be valid: `[new Nullable, new MinLength(3)]`.
+- `Between` operates on **numeric values** only. Cast the input to int/float before validating strings.
+- `Unique` does a case-sensitive database lookup. It does not exclude the current record — use explicit conditional logic for update scenarios.
+- `Exists` validates that the value exists in the given column. For `foreignId` fields, use `new Exists('users', 'id')`.
+- Fields without `Required` are **optional** — if the field is absent or empty, remaining rules are skipped.
+
+For API validation patterns and the JSON error response format — see [errors.md](errors.md).
 
 ## Why Typed Rules?
 

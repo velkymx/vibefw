@@ -492,12 +492,9 @@ Request::setReadTimeout(30);                 // 30 seconds
 
 Cache compiled routes for production:
 
-```php
-// config/routes.php
-$router->setCacheFile(BASE_PATH . '/storage/cache/routes.php');
-
-// During deployment, clear cache
-unlink(BASE_PATH . '/storage/cache/routes.php');
+```bash
+php fw route:cache    # Cache routes (bypass route registration)
+php fw route:clear    # Clear route cache
 ```
 
 ### View Caching
@@ -505,7 +502,7 @@ unlink(BASE_PATH . '/storage/cache/routes.php');
 Views are automatically cached. Clear during deployment:
 
 ```bash
-rm -rf storage/cache/views/*
+php fw cache:clear --views
 ```
 
 ### OPcache Preloading
@@ -567,12 +564,11 @@ git pull origin main
 # 2. Install dependencies (no dev)
 composer install --no-dev --optimize-autoloader --no-interaction
 
-# 3. Clear caches
-rm -rf storage/cache/*
-php fw cache:clear
-
-# 4. Run migrations
+# 3. Run migrations
 php fw migrate --force
+
+# 4. Optimize for production (caches routes, config; clears stale caches)
+php fw optimize
 
 # 5. Restart PHP-FPM
 sudo systemctl restart php8.5-fpm
