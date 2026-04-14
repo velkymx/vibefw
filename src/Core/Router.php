@@ -419,21 +419,24 @@ final class Router
 
         foreach ($this->routes as $method => $routes) {
             foreach ($routes as $route) {
-                // Check if handler is a closure
+                // Check if handler cannot be serialized by var_export
                 if ($route['handler'] instanceof Closure) {
                     continue;
                 }
+                if (is_array($route['handler']) && isset($route['handler'][0]) && is_object($route['handler'][0])) {
+                    continue;
+                }
 
-                // Check if any middleware is a closure
-                $hasClosureMiddleware = false;
+                // Check if any middleware cannot be serialized by var_export
+                $hasUnserializableMiddleware = false;
                 foreach ($route['middleware'] as $m) {
-                    if ($m instanceof Closure) {
-                        $hasClosureMiddleware = true;
+                    if ($m instanceof Closure || (is_array($m) && isset($m[0]) && is_object($m[0])) || (is_object($m) && !($m instanceof Closure))) {
+                        $hasUnserializableMiddleware = true;
                         break;
                     }
                 }
 
-                if ($hasClosureMiddleware) {
+                if ($hasUnserializableMiddleware) {
                     continue;
                 }
 
