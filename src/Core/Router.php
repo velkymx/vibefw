@@ -302,7 +302,7 @@ final class Router
 
                 return Result::ok(new RouteMatch(
                     handler: $route['handler'],
-                    params: array_values($params),
+                    params: $params,
                     middleware: $route['middleware'],
                 ));
             }

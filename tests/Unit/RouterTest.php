@@ -51,7 +51,7 @@ final class RouterTest extends TestCase
 
         $this->assertTrue($result->isOk());
         $match = $result->unwrapOr(null);
-        $this->assertEquals(['1'], $match->params);
+        $this->assertEquals(['id' => '1'], $match->params);
     }
 
     public function testDeleteRouteCanBeAdded(): void
@@ -71,7 +71,7 @@ final class RouterTest extends TestCase
 
         $this->assertTrue($result->isOk());
         $match = $result->unwrapOr(null);
-        $this->assertEquals(['42'], $match->params);
+        $this->assertEquals(['id' => '42'], $match->params);
     }
 
     public function testRouteWithMultipleParametersExtractsAllValues(): void
@@ -82,7 +82,7 @@ final class RouterTest extends TestCase
 
         $this->assertTrue($result->isOk());
         $match = $result->unwrapOr(null);
-        $this->assertEquals(['10', '5'], $match->params);
+        $this->assertEquals(['postId' => '10', 'commentId' => '5'], $match->params);
     }
 
     public function testRouteWithConstraintMatchesValidPattern(): void
@@ -93,7 +93,7 @@ final class RouterTest extends TestCase
 
         $this->assertTrue($result->isOk());
         $match = $result->unwrapOr(null);
-        $this->assertEquals(['123'], $match->params);
+        $this->assertEquals(['id' => '123'], $match->params);
     }
 
     public function testRouteWithConstraintRejectsInvalidPattern(): void
