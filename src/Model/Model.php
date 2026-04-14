@@ -204,6 +204,17 @@ abstract class Model implements JsonSerializable
     }
 
     /**
+     * Reset the static connection — call from HttpKernel::resetState() in worker mode.
+     *
+     * Prevents connection from leaking across requests when Model::setConnection()
+     * is called during bootstrap in FrankenPHP worker mode.
+     */
+    public static function resetConnection(): void
+    {
+        static::$connection = null;
+    }
+
+    /**
      * Get the database connection.
      */
     public static function getConnection(): Connection

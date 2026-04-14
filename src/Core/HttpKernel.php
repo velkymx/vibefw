@@ -115,6 +115,7 @@ final class HttpKernel
         ApiToken::resetConfig();
         EmailVerification::resetConnection();
         PasswordReset::resetConnection();
+        \Fw\Model\Model::resetConnection();
         // Also flush the fiber-local container instances to prevent memory accumulation
         $this->container->flush();
     }
