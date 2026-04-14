@@ -88,14 +88,15 @@ final class ApiResponseTest extends TestCase
         $response = $api->paginated($items, 50, 2, 10, '/api/items');
         $result = $this->decode($response);
 
-        // Paginated success wraps data in another layer
-        $data = $result['data'];
-        $this->assertArrayHasKey('data', $data);
-        $this->assertArrayHasKey('meta', $data);
-        $this->assertArrayHasKey('pagination', $data['meta']);
-        $this->assertArrayHasKey('links', $data);
+        // Single envelope: data/meta/links at top level
+        $this->assertArrayHasKey('data', $result);
+        $this->assertArrayHasKey('meta', $result);
+        $this->assertArrayNotHasKey('data', $result['meta']); // no double-wrap
+        $this->assertArrayHasKey('pagination', $result['meta']);
+        $this->assertArrayHasKey('links', $result);
+        $this->assertSame($items, $result['data']);
 
-        $pagination = $data['meta']['pagination'];
+        $pagination = $result['meta']['pagination'];
         $this->assertEquals(50, $pagination['total']);
         $this->assertEquals(10, $pagination['per_page']);
         $this->assertEquals(2, $pagination['current_page']);
@@ -108,7 +109,7 @@ final class ApiResponseTest extends TestCase
 
         $response = $api->paginated([], 50, 3, 10, '/api/items');
         $result = $this->decode($response);
-        $links = $result['data']['links'];
+        $links = $result['links'];
 
         $this->assertArrayHasKey('self', $links);
         $this->assertArrayHasKey('first', $links);

@@ -180,7 +180,11 @@ final class ApiResponse
             $payload['links'] = $links;
         }
 
-        return $this->success($payload);
+        return $this->response
+            ->setStatus(200)
+            ->headers($this->headers)
+            ->contentType('application/json')
+            ->setBody(json_encode($payload, JSON_THROW_ON_ERROR));
     }
 
     /**
