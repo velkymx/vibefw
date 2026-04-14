@@ -141,16 +141,17 @@ final class AsyncHttp
         $request .= "\r\n" . $content;
 
         $written = 0;
-        $loop->addWriteStream($socket, function ($socket) use ($request, &$written, $loop, $deferred): void {
+        $writeWatcherId = null;
+        $writeWatcherId = $loop->addWriteStream($socket, function ($socket) use ($request, &$written, $loop, $deferred, &$writeWatcherId): void {
             $result = fwrite($socket, substr($request, $written));
             if ($result === false) {
-                $loop->removeWriteStream($socket, true);
+                $loop->removeWriteStream($writeWatcherId, true);
                 $deferred->reject(new RuntimeException("Write failed"));
                 return;
             }
             $written += $result;
             if ($written >= strlen($request)) {
-                $loop->removeWriteStream($socket);
+                $loop->removeWriteStream($writeWatcherId);
                 $this->waitForResponse($socket, $loop, $deferred);
             }
         });
@@ -159,17 +160,18 @@ final class AsyncHttp
     private function waitForResponse($socket, EventLoop $loop, Deferred $deferred): void
     {
         $buffer = '';
-        $loop->addReadStream($socket, function ($socket) use (&$buffer, $loop, $deferred): void {
+        $readWatcherId = null;
+        $readWatcherId = $loop->addReadStream($socket, function ($socket) use (&$buffer, $loop, $deferred, &$readWatcherId): void {
             $chunk = fread($socket, 8192);
             if ($chunk === false) {
-                $loop->removeReadStream($socket, true);
+                $loop->removeReadStream($readWatcherId, true);
                 $deferred->reject(new RuntimeException("Read failed"));
                 return;
             }
 
             if ($chunk === '') {
                 if (feof($socket)) {
-                    $loop->removeReadStream($socket, true);
+                    $loop->removeReadStream($readWatcherId, true);
                     $this->parseResponse($buffer, $deferred);
                 }
                 return;

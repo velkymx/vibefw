@@ -22,16 +22,24 @@ final class EventLoop
     /** @var SplQueue<callable> */
     private SplQueue $deferred;
 
-    /** @var array<int, array{stream: resource, callback: callable}> */
+    /** @var array<int, array{stream: resource, callback: callable}> Keyed by monotonic watcher ID */
     private array $readStreams = [];
 
-    /** @var array<int, array{stream: resource, callback: callable}> */
+    /** @var array<int, int> Maps (int)$stream → watcher ID for reverse lookup after stream_select */
+    private array $readStreamIds = [];
+
+    /** @var array<int, array{stream: resource, callback: callable}> Keyed by monotonic watcher ID */
     private array $writeStreams = [];
+
+    /** @var array<int, int> Maps (int)$stream → watcher ID for reverse lookup after stream_select */
+    private array $writeStreamIds = [];
 
     /** @var array<int, array{fiber: Fiber, timeout: float}> */
     private array $timers = [];
 
     private int $timerIdCounter = 0;
+
+    private int $streamIdCounter = 0;
 
     private bool $running = false;
 
@@ -96,22 +104,28 @@ final class EventLoop
      * Watch stream for readability.
      *
      * @param resource $stream
+     * @return int Watcher ID — pass to removeReadStream() to cancel
      */
-    public function addReadStream($stream, callable $callback): void
+    public function addReadStream($stream, callable $callback): int
     {
-        $id = (int) $stream;
+        $id = ++$this->streamIdCounter;
         $this->readStreams[$id] = ['stream' => $stream, 'callback' => $callback];
+        $this->readStreamIds[(int) $stream] = $id;
+        return $id;
     }
 
     /**
      * Watch stream for writability.
      *
      * @param resource $stream
+     * @return int Watcher ID — pass to removeWriteStream() to cancel
      */
-    public function addWriteStream($stream, callable $callback): void
+    public function addWriteStream($stream, callable $callback): int
     {
-        $id = (int) $stream;
+        $id = ++$this->streamIdCounter;
         $this->writeStreams[$id] = ['stream' => $stream, 'callback' => $callback];
+        $this->writeStreamIds[(int) $stream] = $id;
+        return $id;
     }
 
     /**
@@ -232,34 +246,40 @@ final class EventLoop
     }
 
     /**
-     * Remove and close a read stream.
+     * Remove a read stream watcher.
      *
-     * @param resource $stream
-     * @param bool $close Whether to close the stream (default: false for backwards compat)
+     * @param int $watcherId ID returned by addReadStream()
+     * @param bool $close Whether to close the underlying stream
      */
-    public function removeReadStream($stream, bool $close = false): void
+    public function removeReadStream(int $watcherId, bool $close = false): void
     {
-        $id = (int) $stream;
-        unset($this->readStreams[$id]);
+        $data = $this->readStreams[$watcherId] ?? null;
+        unset($this->readStreams[$watcherId]);
 
-        if ($close && is_resource($stream)) {
-            @fclose($stream);
+        if ($data !== null) {
+            unset($this->readStreamIds[(int) $data['stream']]);
+            if ($close && is_resource($data['stream'])) {
+                @fclose($data['stream']);
+            }
         }
     }
 
     /**
-     * Remove and close a write stream.
+     * Remove a write stream watcher.
      *
-     * @param resource $stream
-     * @param bool $close Whether to close the stream (default: false for backwards compat)
+     * @param int $watcherId ID returned by addWriteStream()
+     * @param bool $close Whether to close the underlying stream
      */
-    public function removeWriteStream($stream, bool $close = false): void
+    public function removeWriteStream(int $watcherId, bool $close = false): void
     {
-        $id = (int) $stream;
-        unset($this->writeStreams[$id]);
+        $data = $this->writeStreams[$watcherId] ?? null;
+        unset($this->writeStreams[$watcherId]);
 
-        if ($close && is_resource($stream)) {
-            @fclose($stream);
+        if ($data !== null) {
+            unset($this->writeStreamIds[(int) $data['stream']]);
+            if ($close && is_resource($data['stream'])) {
+                @fclose($data['stream']);
+            }
         }
     }
 
@@ -276,6 +296,7 @@ final class EventLoop
             }
         }
         $this->readStreams = [];
+        $this->readStreamIds = [];
 
         foreach ($this->writeStreams as $data) {
             if (is_resource($data['stream'])) {
@@ -283,6 +304,7 @@ final class EventLoop
             }
         }
         $this->writeStreams = [];
+        $this->writeStreamIds = [];
 
         $this->timers = [];
         $this->deferred = new SplQueue();
@@ -384,13 +406,13 @@ final class EventLoop
 
         // Handle readable streams
         foreach ($read as $stream) {
-            $id = (int) $stream;
-            if (isset($this->readStreams[$id])) {
+            $watcherId = $this->readStreamIds[(int) $stream] ?? null;
+            if ($watcherId !== null && isset($this->readStreams[$watcherId])) {
                 try {
-                    ($this->readStreams[$id]['callback'])($stream);
+                    ($this->readStreams[$watcherId]['callback'])($stream);
                 } catch (Throwable $e) {
                     // Remove stream on callback error to prevent infinite error loops
-                    $this->removeReadStream($stream);
+                    $this->removeReadStream($watcherId);
                     throw $e;
                 }
             }
@@ -398,13 +420,13 @@ final class EventLoop
 
         // Handle writable streams
         foreach ($write as $stream) {
-            $id = (int) $stream;
-            if (isset($this->writeStreams[$id])) {
+            $watcherId = $this->writeStreamIds[(int) $stream] ?? null;
+            if ($watcherId !== null && isset($this->writeStreams[$watcherId])) {
                 try {
-                    ($this->writeStreams[$id]['callback'])($stream);
+                    ($this->writeStreams[$watcherId]['callback'])($stream);
                 } catch (Throwable $e) {
                     // Remove stream on callback error to prevent infinite error loops
-                    $this->removeWriteStream($stream);
+                    $this->removeWriteStream($watcherId);
                     throw $e;
                 }
             }
@@ -418,20 +440,19 @@ final class EventLoop
      */
     private function cleanupBrokenStreams(): void
     {
-        foreach ($this->readStreams as $id => $data) {
+        foreach ($this->readStreams as $watcherId => $data) {
             $stream = $data['stream'];
             $isBroken = !is_resource($stream) || get_resource_type($stream) === 'Unknown';
 
             if ($isBroken) {
-                // Try to close if still a valid resource (might be in error state)
                 if (is_resource($stream)) {
                     @fclose($stream);
                 }
-                unset($this->readStreams[$id]);
+                unset($this->readStreams[$watcherId], $this->readStreamIds[(int) $stream]);
             }
         }
 
-        foreach ($this->writeStreams as $id => $data) {
+        foreach ($this->writeStreams as $watcherId => $data) {
             $stream = $data['stream'];
             $isBroken = !is_resource($stream) || get_resource_type($stream) === 'Unknown';
 
@@ -439,7 +460,7 @@ final class EventLoop
                 if (is_resource($stream)) {
                     @fclose($stream);
                 }
-                unset($this->writeStreams[$id]);
+                unset($this->writeStreams[$watcherId], $this->writeStreamIds[(int) $stream]);
             }
         }
     }
