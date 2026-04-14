@@ -184,6 +184,10 @@ final class Auth
                 self::setContextUser($userFromSession);
                 return $userFromSession;
             }
+
+            // User no longer exists in DB (e.g. account deleted while session was active).
+            // Remove the stale key so subsequent requests don't issue another DB query.
+            unset($_SESSION[self::SESSION_KEY]);
             return null;
         }
 
