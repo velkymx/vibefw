@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Fw\Tests;
 
-use Fw\Core\Application;
 use Fw\Database\Connection;
 use Fw\Core\RequestContext;
 use PHPUnit\Framework\TestCase as BaseTestCase;
@@ -14,7 +13,6 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
  */
 abstract class TestCase extends BaseTestCase
 {
-    protected ?Application $app = null;
     protected ?Connection $db = null;
 
     protected function setUp(): void
@@ -37,22 +35,12 @@ abstract class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
-        $this->app = null;
         $this->db = null;
 
         // Ensure cleanup
         RequestContext::clear();
 
         parent::tearDown();
-    }
-
-    /**
-     * Create an application instance for testing.
-     */
-    protected function createApplication(): Application
-    {
-        $this->app = new Application(BASE_PATH);
-        return $this->app;
     }
 
     /**

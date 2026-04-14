@@ -98,6 +98,18 @@ final class ControllerMethodsTest extends TestCase
     }
 
     #[Test]
+    public function testCaseDoesNotHaveDeadCreateApplicationHelper(): void
+    {
+        $ref = new ReflectionClass(\Fw\Tests\TestCase::class);
+
+        $this->assertFalse(
+            $ref->hasMethod('createApplication'),
+            'TestCase::createApplication() must be removed — it calls new Application(BASE_PATH) ' .
+            'which is fatal (private constructor, wrong arity). No tests call this helper.'
+        );
+    }
+
+    #[Test]
     #[DataProvider('busMethodProvider')]
     public function busMethodDocblockUsesFullyQualifiedThrowable(string $method): void
     {
