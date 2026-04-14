@@ -555,8 +555,9 @@ final class Router
      */
     private function validateMiddlewareClassString(string $middleware): void
     {
-        $className = str_contains($middleware, ':')
-            ? substr($middleware, 0, strpos($middleware, ':'))
+        $colonPos  = strpos($middleware, ':');
+        $className = $colonPos !== false
+            ? substr($middleware, 0, $colonPos)
             : $middleware;
 
         if (!str_contains($className, '\\') && !class_exists($className)) {

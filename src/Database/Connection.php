@@ -106,6 +106,10 @@ final class Connection
     /**
      * Compare two config arrays independent of key insertion order.
      */
+    /**
+     * @param array<string, mixed> $a
+     * @param array<string, mixed> $b
+     */
     private static function configsMatch(array $a, array $b): bool
     {
         ksort($a);

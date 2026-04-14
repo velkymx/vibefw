@@ -779,11 +779,10 @@ abstract class Model implements JsonSerializable
 
     /**
      * Save the model to the database.
+     *
+     * @return Result<$this, \Throwable>
      */
     #[\NoDiscard]
-    /**
-     * @return Result<static, \PDOException>
-     */
     public function save(): Result
     {
         return Result::try(function (): static {

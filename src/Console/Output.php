@@ -47,7 +47,11 @@ final class Output
      */
     public static function createBuffer(): self
     {
-        return new self(fopen('php://memory', 'r+'));
+        $stream = fopen('php://memory', 'r+');
+        if ($stream === false) {
+            throw new \RuntimeException('Cannot open in-memory buffer');
+        }
+        return new self($stream);
     }
 
     /**
@@ -58,9 +62,11 @@ final class Output
         $position = ftell($this->stream);
         rewind($this->stream);
         $contents = stream_get_contents($this->stream);
-        fseek($this->stream, $position);
+        if ($position !== false) {
+            fseek($this->stream, $position);
+        }
 
-        return $contents;
+        return is_string($contents) ? $contents : '';
     }
 
     public function line(string $text): void

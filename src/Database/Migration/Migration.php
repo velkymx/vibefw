@@ -74,7 +74,7 @@ abstract class Migration
      */
     protected function table(string $name, callable $callback): void
     {
-        $blueprint = new Blueprint($name, $this->connection()->driver, alter: true);
+        $blueprint = new Blueprint($name, $this->connection()->driver);
         $callback($blueprint);
 
         foreach ($blueprint->toAlterStatements() as $sql) {

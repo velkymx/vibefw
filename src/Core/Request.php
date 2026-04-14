@@ -31,6 +31,9 @@ final class Request
 
     public readonly array $headers;
 
+    /**
+     * @param array<string, mixed>|null $parsedJson
+     */
     public function __construct(
         ?array $query = null,
         ?array $post = null,

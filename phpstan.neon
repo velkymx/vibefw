@@ -34,12 +34,16 @@ parameters:
         - '#Access to an undefined property App\\Models\\.+::\$[a-zA-Z]+#'
 
         # Auth/Gate/TokenGuard use Model base type but call model-specific methods dynamically
-        - '#Call to an undefined method Fw\\Model\\Model::(findByEmail|verifyPassword|findToken|forUser|touchLastUsed|isExpired|can|user)\(\)#'
+        - '#Call to an undefined method Fw\\Model\\Model::(findByEmail|verifyPassword|findToken|forUser|touchLastUsed|isExpired|can|user|createToken)\(\)#'
         - '#Call to an undefined static method Fw\\Model\\Model::(findByEmail|findToken|forUser)\(\)#'
-        - '#Access to an undefined property Fw\\Model\\Model::\$(id|remember_token|abilities|name|expires_at|user_id|last_used_at|token)#'
+        - '#Access to an undefined property Fw\\Model\\Model::\$(id|remember_token|abilities|name|expires_at|user_id|last_used_at|token|password)#'
 
         # PDO parameter binding accepts mixed
         - '#Parameter \#2 .+ of method PDOStatement::execute\(\) expects array<int\|string, mixed>#'
+
+    # BASE_PATH is defined at runtime; provide it to PHPStan via bootstrap
+    bootstrapFiles:
+        - phpstan-bootstrap.php
 
     # Parallel processing
     parallel:

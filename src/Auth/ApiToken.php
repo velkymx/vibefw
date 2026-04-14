@@ -263,7 +263,7 @@ final class ApiToken
             return false;
         }
 
-        $token = $tokenOption->unwrapOr(null);
+        $token = $tokenOption->unwrapOrElse(fn() => throw new \LogicException('unreachable: isNone guard passed'));
         if ((string) $token->user_id !== (string) $user->id) {
             return false;
         }

@@ -12,25 +12,26 @@ final class Blueprint
 
     private string $driver;
 
-    private bool $alter;
-
+    /** @var array<string> */
     private array $columns = [];
 
+    /** @var array<string> */
     private array $indexes = [];
 
     private ?string $primaryKey = null;
 
+    /** @var array<ForeignKeyDefinition> */
     private array $foreignKeys = [];
 
+    /** @var array<string> */
     private array $dropColumns = [];
 
     private ?string $lastColumnName = null;
 
-    public function __construct(string $table, string $driver = 'sqlite', bool $alter = false)
+    public function __construct(string $table, string $driver = 'sqlite')
     {
         $this->table = $table;
         $this->driver = $driver;
-        $this->alter = $alter;
     }
 
     public function id(string $name = 'id'): self

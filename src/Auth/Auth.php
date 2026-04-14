@@ -391,7 +391,7 @@ final class Auth
             return null;
         }
 
-        $user = $userOption->unwrapOr(null);
+        $user = $userOption->unwrapOrElse(fn() => throw new \LogicException('unreachable: isNone guard passed'));
 
         // Use DUMMY_SHA256_HASH instead of '' when token is null to ensure constant-time comparison
         // Empty string vs 64-char hash would return false immediately without constant-time behavior

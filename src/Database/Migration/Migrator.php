@@ -211,7 +211,7 @@ final class Migrator
             return [];
         }
 
-        $files = glob($this->migrationsPath . '/*.php');
+        $files = glob($this->migrationsPath . '/*.php') ?: [];
         sort($files);
 
         return $files;

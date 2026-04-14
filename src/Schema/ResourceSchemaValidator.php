@@ -35,7 +35,7 @@ final class ResourceSchemaValidator
         $data = json_decode($json, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return Result::err('Invalid JSON: ' . json_last_error_msg());
+            return self::schemaError('Invalid JSON: ' . json_last_error_msg());
         }
 
         return self::validate($data);
@@ -44,6 +44,7 @@ final class ResourceSchemaValidator
     /**
      * Validate a schema data array and return a ResourceSchema or error.
      *
+     * @param array<string, mixed> $data
      * @return Result<ResourceSchema, string>
      */
     public static function validate(array $data): Result
@@ -131,5 +132,15 @@ final class ResourceSchemaValidator
         }
 
         return $bestMatch;
+    }
+
+    /**
+     * Create a schema validation error with the correct generic return type.
+     *
+     * @return Result<ResourceSchema, string>
+     */
+    private static function schemaError(string $message): Result
+    {
+        return Result::err($message);
     }
 }
