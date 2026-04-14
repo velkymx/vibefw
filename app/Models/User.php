@@ -32,7 +32,7 @@ class User extends Model
 
     public function markEmailAsVerified(): void
     {
-        (void) $this->fill(['email_verified_at' => date('Y-m-d H:i:s')])->save();
+        $this->fill(['email_verified_at' => date('Y-m-d H:i:s')])->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
     }
 
     public function createToken(string $name, array $abilities = ['*']): \Fw\Auth\NewAccessToken

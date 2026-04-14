@@ -331,7 +331,7 @@ final class MakeResourceCommand extends Command
                 if (\$validated->isErr()) {
                     return \$this->json(['errors' => \$validated->unwrapErr()], 422);
                 }
-                \${$modelVar}->fill(\$validated->unwrapOr([]))->save();
+                \${$modelVar}->fill(\$validated->unwrapOr([]))->save()->match(ok: fn () => null, err: fn (\$e) => throw \$e);
                 return \$this->json(\${$modelVar});
             }
 
@@ -421,7 +421,7 @@ final class MakeResourceCommand extends Command
                 if (\$validated->isErr()) {
                     return \$this->view('{$viewPath}.edit', ['{$modelVar}' => \${$modelVar}, 'errors' => \$validated->unwrapErr()]);
                 }
-                \${$modelVar}->fill(\$validated->unwrapOr([]))->save();
+                \${$modelVar}->fill(\$validated->unwrapOr([]))->save()->match(ok: fn () => null, err: fn (\$e) => throw \$e);
                 return \$this->redirect('/{$routePrefix}/' . \${$modelVar}->id);
             }
 

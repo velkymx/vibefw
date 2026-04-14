@@ -10,6 +10,7 @@ use Fiber;
 use Fw\Core\Container;
 use Fw\Database\Connection;
 use Fw\Support\Option;
+use Fw\Support\Result;
 use Fw\Support\Str;
 use JsonSerializable;
 use ReflectionClass;
@@ -409,7 +410,7 @@ abstract class Model implements JsonSerializable
     public static function create(array $attributes): static
     {
         $model = new static($attributes);
-        (void) $model->save();
+        $model->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
         return $model;
     }
 
@@ -438,7 +439,7 @@ abstract class Model implements JsonSerializable
         return $existing->match(
             some: function ($instance) use ($values) {
                 $instance->fill($values);
-                (void) $instance->save();
+                $instance->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
                 return $instance;
             },
             none: fn() => static::create(array_merge($attributes, $values)),
@@ -780,15 +781,22 @@ abstract class Model implements JsonSerializable
      * Save the model to the database.
      */
     #[\NoDiscard]
-    public function save(): bool
+    /**
+     * @return Result<static, \PDOException>
+     */
+    public function save(): Result
     {
-        $connection = static::resolveConnection();
+        return Result::try(function (): static {
+            $connection = static::resolveConnection();
 
-        if ($this->exists) {
-            return $this->performUpdate($connection);
-        }
+            if ($this->exists) {
+                $this->performUpdate($connection);
+            } else {
+                $this->performInsert($connection);
+            }
 
-        return $this->performInsert($connection);
+            return $this;
+        });
     }
 
     /**
@@ -1053,7 +1061,7 @@ abstract class Model implements JsonSerializable
     /**
      * Perform an insert operation.
      */
-    protected function performInsert(Connection $connection): bool
+    protected function performInsert(Connection $connection): void
     {
         $metadata = static::metadata();
 
@@ -1092,19 +1100,17 @@ abstract class Model implements JsonSerializable
 
         $this->exists = true;
         $this->original = $this->attributes;
-
-        return true;
     }
 
     /**
      * Perform an update operation.
      */
-    protected function performUpdate(Connection $connection): bool
+    protected function performUpdate(Connection $connection): void
     {
         $dirty = $this->getDirty();
 
         if (empty($dirty)) {
-            return true; // Nothing to update
+            return; // Nothing to update
         }
 
         $metadata = static::metadata();
@@ -1128,8 +1134,6 @@ abstract class Model implements JsonSerializable
         );
 
         $this->original = $this->attributes;
-
-        return true;
     }
 
     // ========================================

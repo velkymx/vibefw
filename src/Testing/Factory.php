@@ -203,7 +203,7 @@ abstract class Factory
         /** @var TModel $model */
         $model = new $this->model();
         $model->forceFill($data);
-        $model->save();
+        $model->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
 
         return $model;
     }

@@ -102,7 +102,7 @@ final class HasOne extends Relation
     public function save(Model $model): Model
     {
         $model->setAttribute($this->foreignKey, $this->parent->getAttribute($this->localKey));
-        $model->save();
+        $model->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
         return $model;
     }
 }

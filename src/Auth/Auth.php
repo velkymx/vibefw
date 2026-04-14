@@ -322,7 +322,7 @@ final class Auth
         $hashedToken = hash('sha256', $token);
 
         $user->remember_token = $hashedToken;
-        $user->save();
+        $user->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
 
         // Create cookie value with HMAC signature for integrity
         $cookieValue = $user->id . '|' . $token;
@@ -438,7 +438,7 @@ final class Auth
         self::user()->match(
             some: function (Model $user): void {
                 $user->remember_token = null;
-                $user->save();
+                $user->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
             },
             none: fn () => null,
         );
