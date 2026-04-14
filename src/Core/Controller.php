@@ -145,10 +145,22 @@ abstract class Controller
 
     /**
      * Redirect back to the previous page.
+     *
+     * Validates the Referer header is same-origin to prevent open redirects.
+     * Attacker-controlled Referer headers are rejected; falls back to '/'.
      */
     protected function back(): Response
     {
-        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
+        $referer  = $_SERVER['HTTP_REFERER'] ?? '/';
+        $refHost  = parse_url($referer, PHP_URL_HOST);
+        $appHost  = $_SERVER['HTTP_HOST'] ?? '';
+
+        // Reject any Referer that names a different host (or protocol-relative URLs
+        // which parse_url resolves to a host without a scheme).
+        if ($refHost !== null && $refHost !== $appHost) {
+            $referer = '/';
+        }
+
         return $this->redirect($referer);
     }
 
