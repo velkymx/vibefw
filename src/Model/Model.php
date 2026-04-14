@@ -411,6 +411,12 @@ abstract class Model implements JsonSerializable
      */
     public static function updateOrCreate(array $attributes, array $values = []): static
     {
+        if (empty($attributes)) {
+            throw new \InvalidArgumentException(
+                static::class . '::updateOrCreate() requires at least one search attribute to identify the record.'
+            );
+        }
+
         $model = static::where(array_key_first($attributes), $attributes[array_key_first($attributes)]);
 
         foreach (array_slice($attributes, 1) as $key => $value) {
