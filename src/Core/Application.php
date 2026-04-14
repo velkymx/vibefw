@@ -123,18 +123,32 @@ final class Application
 
     public function initSession(): void
     {
-        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
-            $secure = $this->resolveSecureCookieSetting();
-            session_set_cookie_params([
-                'lifetime' => 0,
-                'path' => '/',
-                'domain' => '',
-                'secure' => $secure,
-                'httponly' => true,
-                'samesite' => 'Strict',
-            ]);
-            session_start();
+        if (session_status() !== PHP_SESSION_NONE) {
+            // Session already active — nothing to do.
+            return;
         }
+
+        if (headers_sent($file, $line)) {
+            // Cannot start session: headers already sent. Log to aid debugging
+            // (CSRF tokens, flash data, and auth all silently fail without a session).
+            error_log(sprintf(
+                'Cannot start session: headers already sent in %s on line %d',
+                $file,
+                $line
+            ));
+            return;
+        }
+
+        $secure = $this->resolveSecureCookieSetting();
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'domain' => '',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
+        session_start();
     }
 
     public function config(string $key, mixed $default = null): mixed

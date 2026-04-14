@@ -836,10 +836,16 @@ abstract class Model implements JsonSerializable
      */
     public function replicate(array $attributes = []): static
     {
-        $clone = new static($this->attributes);
+        // Use forceFill() to bypass mass-assignment protection: replicate()
+        // must copy all attributes (including non-fillable timestamp columns
+        // and computed fields) without triggering MassAssignmentException.
+        $clone = (new static())->forceFill($this->attributes);
         unset($clone->attributes[static::$primaryKey]);
         $clone->exists = false;
-        $clone->fill($attributes);
+
+        if (!empty($attributes)) {
+            $clone->fill($attributes);
+        }
 
         return $clone;
     }

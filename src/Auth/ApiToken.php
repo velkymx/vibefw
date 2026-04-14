@@ -53,7 +53,7 @@ final class NewAccessToken
  */
 final class ApiToken
 {
-    private const int TOKEN_BYTES = 20; // 40 hex characters
+    private const int TOKEN_BYTES = 32; // 64 hex characters — 256-bit entropy, matches remember-me tokens
 
     /**
      * Dummy hash for timing-safe comparison when token doesn't exist.
