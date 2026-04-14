@@ -216,7 +216,7 @@ abstract class Controller
      * Dispatch a command through the command bus.
      *
      * @template T
-     * @return Result<T, Throwable>
+     * @return Result<T, \Throwable>
      */
     #[\NoDiscard]
     protected function dispatch(Command $command): Result
@@ -232,7 +232,7 @@ abstract class Controller
      * Dispatch a query through the query bus.
      *
      * @template T
-     * @return Result<T, Throwable>
+     * @return Result<T, \Throwable>
      */
     #[\NoDiscard]
     protected function query(Query $query): Result

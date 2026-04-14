@@ -85,4 +85,33 @@ final class ControllerMethodsTest extends TestCase
             "Controller must still have method: {$method}()"
         );
     }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function busMethodProvider(): array
+    {
+        return [
+            'dispatch' => ['dispatch'],
+            'query'    => ['query'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('busMethodProvider')]
+    public function busMethodDocblockUsesFullyQualifiedThrowable(string $method): void
+    {
+        $ref = new ReflectionClass(\Fw\Core\Controller::class);
+        $doc = $ref->getMethod($method)->getDocComment();
+
+        $this->assertNotFalse($doc, "Method {$method}() must have a docblock");
+
+        // @return Result<T, Throwable> must use \Throwable (FQCN) so PHPStan
+        // resolves the global interface, not Fw\Core\Throwable.
+        $this->assertStringContainsString(
+            '\Throwable',
+            $doc,
+            "Method {$method}() @return must reference \Throwable (FQCN), not bare Throwable"
+        );
+    }
 }
