@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controllers\Api\Auth;
 
+use App\Models\User;
 use App\Requests\LoginRequest;
-use Fw\Auth\Auth;
 use Fw\Auth\TokenGuard;
 use Fw\Core\Controller;
 use Fw\Core\Request;
@@ -25,26 +25,29 @@ final class LoginController extends Controller
             ], 422);
         }
 
-        if (Auth::attempt($data->email, $data->password)) {
-            $user = Auth::user();
-            $token = $user->createToken('spa-login')->plainTextToken;
+        // Token-only SPA auth: validate credentials without starting a session.
+        // Auth::attempt is intentionally not called here — it starts a PHP session
+        // which is incompatible with stateless API token authentication.
+        $userOption = User::findByEmail($data->email);
 
-            return $this->json([
-                'user' => $user,
-                'token' => $token,
-            ]);
+        if ($userOption->isNone() || !$userOption->unwrapOr(null)->verifyPassword($data->password)) {
+            return $this->json(['message' => 'Invalid credentials'], 401);
         }
 
-        return $this->json(['message' => 'Invalid credentials'], 401);
+        $user = $userOption->unwrapOr(null);
+        $token = $user->createToken('spa-login')->plainTextToken;
+
+        return $this->json([
+            'user' => $user,
+            'token' => $token,
+        ]);
     }
 
     public function logout(Request $request): Response
     {
-        // Revoke the Bearer token before clearing the session so the token
-        // cannot be reused after logout even if an attacker intercepted it.
+        // Revoke the Bearer token. No session to clear — SPA auth is stateless.
         TokenGuard::currentToken()?->revoke();
 
-        Auth::logout();
         return $this->json(['message' => 'Logged out successfully']);
     }
 }
