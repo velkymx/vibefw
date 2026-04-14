@@ -294,7 +294,7 @@ final class Auth
         if ($env === 'production') {
             $weakPatterns = [
                 '/^(.)\1+$/',           // All same character: "aaaaaaa..."
-                '/^(..)+$/',            // Repeated 2-char pattern: "abababab..."
+                '/^(..)\1+$/',          // Repeated 2-char pattern: "abababab..."
                 '/^[a-zA-Z]+$/',        // Only letters (no numbers/symbols)
                 '/^[0-9]+$/',           // Only numbers
                 '/^(password|secret|key|test|demo|example)/i', // Common weak prefixes
@@ -302,11 +302,10 @@ final class Auth
 
             foreach ($weakPatterns as $pattern) {
                 if (preg_match($pattern, $secret)) {
-                    error_log(
-                        'WARNING: APP_KEY appears weak. Use cryptographically random bytes: ' .
-                        'php -r "echo bin2hex(random_bytes(32));"'
+                    throw new RuntimeException(
+                        'APP_KEY is cryptographically weak. ' .
+                        'Generate a secure key with: php -r "echo bin2hex(random_bytes(32));"'
                     );
-                    break;
                 }
             }
         }
