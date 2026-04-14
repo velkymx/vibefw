@@ -20,9 +20,22 @@ final class ScaffoldSpaCommand extends Command
 
     protected string $description = 'Scaffold a modern SPA (VibeUI) + API starter kit';
 
+    private string $projectPath;
+
     public function __construct(Application $app)
     {
         parent::__construct($app);
+        $this->projectPath = BASE_PATH;
+    }
+
+    /**
+     * Override the project root used for all output paths.
+     * Stubs are always read from the real BASE_PATH/stubs/.
+     */
+    public function withProjectPath(string $path): static
+    {
+        $this->projectPath = $path;
+        return $this;
     }
 
     public function handle(): int
@@ -114,7 +127,7 @@ final class ScaffoldSpaCommand extends Command
         ];
 
         foreach ($files as $file) {
-            if (file_exists(BASE_PATH . '/' . $file)) {
+            if (file_exists($this->projectPath . '/' . $file)) {
                 $this->success("Found: $file");
             } else {
                 $this->error("Missing: $file");
@@ -150,7 +163,7 @@ final class ScaffoldSpaCommand extends Command
         // Copy migration stubs into the project's database/migrations/ directory
         $this->task('Installing database migrations', function () {
             $stubDir = BASE_PATH . '/stubs/spa/database/migrations';
-            $targetDir = BASE_PATH . '/database/migrations';
+            $targetDir = $this->projectPath . '/database/migrations';
 
             if (!is_dir($targetDir)) {
                 mkdir($targetDir, 0o755, true);
@@ -175,11 +188,11 @@ final class ScaffoldSpaCommand extends Command
             $dbPath = 'storage/database.sqlite';
             $config = ['DB_DRIVER' => $driver, 'DB_DATABASE' => $dbPath];
 
-            if (!file_exists(BASE_PATH . '/' . $dbPath)) {
-                if (!is_dir(dirname(BASE_PATH . '/' . $dbPath))) {
-                    mkdir(dirname(BASE_PATH . '/' . $dbPath), 0o755, true);
+            if (!file_exists($this->projectPath . '/' . $dbPath)) {
+                if (!is_dir(dirname($this->projectPath . '/' . $dbPath))) {
+                    mkdir(dirname($this->projectPath . '/' . $dbPath), 0o755, true);
                 }
-                touch(BASE_PATH . '/' . $dbPath);
+                touch($this->projectPath . '/' . $dbPath);
             }
         } else {
             $driver = $this->choice('Which database driver will you use?', [
@@ -194,11 +207,11 @@ final class ScaffoldSpaCommand extends Command
                 $dbPath = $this->ask('Database path', 'storage/database.sqlite');
                 $config['DB_DATABASE'] = $dbPath;
 
-                if (!file_exists(BASE_PATH . '/' . $dbPath)) {
-                    if (!is_dir(dirname(BASE_PATH . '/' . $dbPath))) {
-                        mkdir(dirname(BASE_PATH . '/' . $dbPath), 0o755, true);
+                if (!file_exists($this->projectPath . '/' . $dbPath)) {
+                    if (!is_dir(dirname($this->projectPath . '/' . $dbPath))) {
+                        mkdir(dirname($this->projectPath . '/' . $dbPath), 0o755, true);
                     }
-                    touch(BASE_PATH . '/' . $dbPath);
+                    touch($this->projectPath . '/' . $dbPath);
                 }
             } else {
                 $config['DB_HOST'] = $this->ask('Database host', '127.0.0.1');
@@ -213,7 +226,7 @@ final class ScaffoldSpaCommand extends Command
             foreach ($config as $key => $value) {
                 $this->updateEnv($key, (string) $value);
             }
-            return "Configuration updated in .env";
+            return 'Configuration updated in .env';
         });
 
         if ($force || $this->confirm('Would you like to run the migrations now?')) {
@@ -223,10 +236,10 @@ final class ScaffoldSpaCommand extends Command
 
     private function updateEnv(string $key, string $value): void
     {
-        $envFile = BASE_PATH . '/.env';
+        $envFile = $this->projectPath . '/.env';
         if (!file_exists($envFile)) {
-            if (file_exists(BASE_PATH . '/.env.example')) {
-                copy(BASE_PATH . '/.env.example', $envFile);
+            if (file_exists($this->projectPath . '/.env.example')) {
+                copy($this->projectPath . '/.env.example', $envFile);
             } else {
                 touch($envFile);
             }
@@ -264,35 +277,35 @@ final class ScaffoldSpaCommand extends Command
     {
         $this->task('Backing up and resetting "app/" directory', function () {
             $timestamp = date('Ymd_His');
-            $backupDir = BASE_PATH . '/storage/backups/app_' . $timestamp;
+            $backupDir = $this->projectPath . '/storage/backups/app_' . $timestamp;
 
             if (!is_dir(dirname($backupDir))) {
                 mkdir(dirname($backupDir), 0o755, true);
             }
 
-            if (is_dir(BASE_PATH . '/app')) {
+            if (is_dir($this->projectPath . '/app')) {
                 // Perform backup
-                $this->copyDirectory(BASE_PATH . '/app', $backupDir);
+                $this->copyDirectory($this->projectPath . '/app', $backupDir);
 
                 // Reset (Delete current app content)
-                $this->deleteDirectory(BASE_PATH . '/app');
+                $this->deleteDirectory($this->projectPath . '/app');
             }
 
             // Re-create empty app structure
-            if (!is_dir(BASE_PATH . '/app')) {
-                mkdir(BASE_PATH . '/app', 0o755);
+            if (!is_dir($this->projectPath . '/app')) {
+                mkdir($this->projectPath . '/app', 0o755);
             }
-            if (!is_dir(BASE_PATH . '/app/Controllers')) {
-                mkdir(BASE_PATH . '/app/Controllers', 0o755);
+            if (!is_dir($this->projectPath . '/app/Controllers')) {
+                mkdir($this->projectPath . '/app/Controllers', 0o755);
             }
-            if (!is_dir(BASE_PATH . '/app/Models')) {
-                mkdir(BASE_PATH . '/app/Models', 0o755);
+            if (!is_dir($this->projectPath . '/app/Models')) {
+                mkdir($this->projectPath . '/app/Models', 0o755);
             }
-            if (!is_dir(BASE_PATH . '/app/Providers')) {
-                mkdir(BASE_PATH . '/app/Providers', 0o755);
+            if (!is_dir($this->projectPath . '/app/Providers')) {
+                mkdir($this->projectPath . '/app/Providers', 0o755);
             }
 
-            return "Backup created at: storage/backups/" . basename($backupDir);
+            return 'Backup created at: storage/backups/' . basename($backupDir);
         });
     }
 
@@ -315,7 +328,7 @@ final class ScaffoldSpaCommand extends Command
     private function scaffoldBackend(): void
     {
         $this->task('Scaffolding API controllers & models', function () {
-            $appDir = BASE_PATH . '/app';
+            $appDir = $this->projectPath . '/app';
 
             // 1. Create directories
             if (!is_dir($appDir . '/Controllers/Api/Auth')) {
@@ -349,7 +362,7 @@ final class ScaffoldSpaCommand extends Command
             $this->copyAppStub('Models/PersonalAccessToken.php', $appDir . '/Models/PersonalAccessToken.php');
 
             // 5. Write fresh routes.php with typed middleware
-            $routesFile = BASE_PATH . '/config/routes.php';
+            $routesFile = $this->projectPath . '/config/routes.php';
             $routesContent = <<<'PHP'
                 <?php
 
@@ -407,8 +420,8 @@ final class ScaffoldSpaCommand extends Command
 
     private function scaffoldFrontend(): void
     {
-        $this->task("Initializing Vue 3 frontend (TypeScript)", function () {
-            $frontendDir = BASE_PATH . '/frontend';
+        $this->task('Initializing Vue 3 frontend (TypeScript)', function () {
+            $frontendDir = $this->projectPath . '/frontend';
             if (!is_dir($frontendDir)) {
                 mkdir($frontendDir, 0o755, true);
             }
@@ -570,18 +583,18 @@ final class ScaffoldSpaCommand extends Command
             $this->updateEnv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,' . $appUrl);
 
             // Ensure storage directories for backups/logs exist
-            if (!is_dir(BASE_PATH . '/storage/backups')) {
-                mkdir(BASE_PATH . '/storage/backups', 0o755, true);
+            if (!is_dir($this->projectPath . '/storage/backups')) {
+                mkdir($this->projectPath . '/storage/backups', 0o755, true);
             }
 
-            return "Configuration updated";
+            return 'Configuration updated';
         });
     }
 
     private function installFrontendDependencies(): void
     {
         $this->task('Installing frontend dependencies (npm install)', function () {
-            $frontendDir = BASE_PATH . '/frontend';
+            $frontendDir = $this->projectPath . '/frontend';
             $output = [];
             $code = 0;
             exec("cd " . escapeshellarg($frontendDir) . " && npm install 2>&1", $output, $code);
@@ -597,7 +610,7 @@ final class ScaffoldSpaCommand extends Command
     private function buildFrontend(): void
     {
         $this->task('Building frontend assets (npm run build)', function () {
-            $frontendDir = BASE_PATH . '/frontend';
+            $frontendDir = $this->projectPath . '/frontend';
             $output = [];
             $code = 0;
             exec("cd " . escapeshellarg($frontendDir) . " && npm run build 2>&1", $output, $code);

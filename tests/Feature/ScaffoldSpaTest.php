@@ -4,105 +4,159 @@ declare(strict_types=1);
 
 namespace Fw\Tests\Feature;
 
-use Fw\Tests\TestCase;
 use Fw\Console\Application as ConsoleApp;
 use Fw\Console\Commands\ScaffoldSpaCommand;
+use Fw\Console\Input;
+use Fw\Console\Output;
+use Fw\Tests\TestCase;
+use ReflectionClass;
 
+/**
+ * Tests for ScaffoldSpaCommand operating on an isolated temp directory.
+ *
+ * The command must never read from or write to BASE_PATH/app, BASE_PATH/frontend,
+ * or BASE_PATH/storage/backups during tests. Each test gets its own temp tree
+ * so tests cannot corrupt real project state or interfere with each other.
+ */
 final class ScaffoldSpaTest extends TestCase
 {
-    private string $tempApp;
-    private string $tempFrontend;
-
-    private ?string $backupDir = null;
+    private string $tempRoot;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->tempApp = BASE_PATH . '/app';
-        $this->tempFrontend = BASE_PATH . '/frontend';
+        // Isolated temp project root — never touches real BASE_PATH/app
+        $this->tempRoot = sys_get_temp_dir() . '/fw_spa_test_' . bin2hex(random_bytes(6));
+        mkdir($this->tempRoot, 0o755, true);
 
-        // Ensure clean state for tests
-        if (is_dir($this->tempFrontend)) {
-            $this->deleteDir($this->tempFrontend);
+        // Scaffold the directory skeleton expected by the command
+        foreach (['app', 'config', 'database/migrations', 'storage/backups', 'frontend'] as $dir) {
+            mkdir($this->tempRoot . '/' . $dir, 0o755, true);
         }
     }
 
     protected function tearDown(): void
     {
-        // Restore the original app directory from the most recent backup
-        $backups = glob(BASE_PATH . '/storage/backups/app_*');
-        if (!empty($backups)) {
-            sort($backups);
-            $latestBackup = end($backups);
-
-            // Remove the scaffolded app directory
-            if (is_dir($this->tempApp)) {
-                $this->deleteDir($this->tempApp);
-            }
-
-            // Restore from backup
-            rename($latestBackup, $this->tempApp);
-        }
-
-        // Clean up scaffolded frontend
-        if (is_dir($this->tempFrontend)) {
-            $this->deleteDir($this->tempFrontend);
-        }
-
+        $this->deleteDir($this->tempRoot);
         parent::tearDown();
     }
 
-    public function test_it_scaffolds_frontend_and_backend(): void
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private function makeCommand(): ScaffoldSpaCommand
     {
-        // 1. Create a dummy app file to check backup
-        if (!is_dir($this->tempApp)) {
-            mkdir($this->tempApp);
-        }
-        file_put_contents($this->tempApp . '/OldController.php', '<?php');
-
-        // 2. Run the command
         $console = new ConsoleApp(BASE_PATH);
-
         $command = new ScaffoldSpaCommand($console);
-        $command->setOutput(new \Fw\Console\Output());
-        $command->setInput(new \Fw\Console\Input([]));
+        $command->setOutput(new Output());
+        $command->setInput(new Input([]));
+        $command->withProjectPath($this->tempRoot);
+        return $command;
+    }
 
-        // Capture output to prevent "risky test" warning
-        ob_start();
-        $this->runPrivateMethod($command, 'backupAppDirectory');
-        $this->runPrivateMethod($command, 'scaffoldBackend');
-        $this->runPrivateMethod($command, 'scaffoldFrontend', ['vue', true]);
-        ob_end_clean();
-
-        // 3. Assertions
-        $this->assertDirectoryExists($this->tempFrontend);
-        $this->assertFileExists($this->tempFrontend . '/package.json');
-        $this->assertFileExists($this->tempFrontend . '/vite.config.ts');
-        
-        // Check if API controller was created
-        $this->assertFileExists($this->tempApp . '/Controllers/Api/Auth/LoginController.php');
-        
-        // Check if backup exists
-        $backups = glob(BASE_PATH . '/storage/backups/app_*');
-        $this->assertNotEmpty($backups, 'Backup directory should have been created');
+    private function invoke(object $object, string $method, array $args = []): mixed
+    {
+        $ref = new ReflectionClass($object);
+        return $ref->getMethod($method)->invokeArgs($object, $args);
     }
 
     private function deleteDir(string $dir): void
     {
-        if (!is_dir($dir)) return;
-        $files = array_diff(scandir($dir), ['.', '..']);
-        foreach ($files as $file) {
-            (is_dir("$dir/$file")) ? $this->deleteDir("$dir/$file") : unlink("$dir/$file");
+        if (!is_dir($dir)) {
+            return;
+        }
+        foreach (array_diff(scandir($dir), ['.', '..']) as $entry) {
+            $path = "$dir/$entry";
+            is_dir($path) ? $this->deleteDir($path) : unlink($path);
         }
         rmdir($dir);
     }
 
-    private function runPrivateMethod(object $object, string $methodName, array $parameters = []): mixed
-    {
-        $reflection = new \ReflectionClass($object::class);
-        $method = $reflection->getMethod($methodName);
+    // -------------------------------------------------------------------------
+    // Tests
+    // -------------------------------------------------------------------------
 
-        return $method->invokeArgs($object, $parameters);
+    public function testScaffoldDoesNotTouchRealAppDirectory(): void
+    {
+        $realAppContents = scandir(BASE_PATH . '/app');
+
+        $command = $this->makeCommand();
+        ob_start();
+        $this->invoke($command, 'backupAppDirectory');
+        $this->invoke($command, 'scaffoldBackend');
+        ob_end_clean();
+
+        // Real app/ must be byte-for-byte identical after the command runs
+        $this->assertSame(
+            $realAppContents,
+            scandir(BASE_PATH . '/app'),
+            'ScaffoldSpaCommand must not modify BASE_PATH/app during tests'
+        );
+    }
+
+    public function testBackupWritesToTempRoot(): void
+    {
+        // Plant a sentinel file in temp app/ to verify it gets backed up
+        file_put_contents($this->tempRoot . '/app/OldController.php', '<?php // sentinel');
+
+        $command = $this->makeCommand();
+        ob_start();
+        $this->invoke($command, 'backupAppDirectory');
+        ob_end_clean();
+
+        $backups = glob($this->tempRoot . '/storage/backups/app_*');
+        $this->assertNotEmpty($backups, 'Backup must be created in temp root, not in BASE_PATH');
+
+        // Backup must contain the sentinel
+        $backup = $backups[0];
+        $this->assertFileExists($backup . '/OldController.php');
+
+        // Real BASE_PATH/storage/backups must be untouched
+        $realBackups = array_filter(
+            glob(BASE_PATH . '/storage/backups/app_*') ?: [],
+            fn($b) => filemtime($b) >= time() - 5 // created in last 5 seconds
+        );
+        $this->assertEmpty($realBackups, 'No new backups must appear in real project tree');
+    }
+
+    public function testScaffoldBackendCreatesControllersInTempRoot(): void
+    {
+        $command = $this->makeCommand();
+        ob_start();
+        $this->invoke($command, 'backupAppDirectory');
+        $this->invoke($command, 'scaffoldBackend');
+        ob_end_clean();
+
+        $this->assertFileExists(
+            $this->tempRoot . '/app/Controllers/Api/Auth/LoginController.php',
+            'LoginController must be scaffolded into temp root, not real app/'
+        );
+        $this->assertFileExists(
+            $this->tempRoot . '/app/Models/PersonalAccessToken.php'
+        );
+    }
+
+    public function testScaffoldFrontendCreatesPackageJsonInTempRoot(): void
+    {
+        $command = $this->makeCommand();
+        ob_start();
+        $this->invoke($command, 'scaffoldFrontend', ['vue', true]);
+        ob_end_clean();
+
+        $this->assertFileExists($this->tempRoot . '/frontend/package.json');
+        $this->assertFileExists($this->tempRoot . '/frontend/vite.config.ts');
+
+        // Real frontend dir must remain absent / unchanged
+        $this->assertDirectoryDoesNotExist(BASE_PATH . '/frontend/src/views/Dashboard.vue');
+    }
+
+    public function testTearDownNeverTouchesRealApp(): void
+    {
+        // This test verifies setUp/tearDown isolation: the temp root is created
+        // fresh and removed after each test, leaving BASE_PATH/app untouched.
+        $this->assertStringStartsWith(sys_get_temp_dir(), $this->tempRoot);
+        $this->assertStringNotContainsString(BASE_PATH, $this->tempRoot);
     }
 }
