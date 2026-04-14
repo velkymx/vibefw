@@ -22,6 +22,9 @@ final class ModelMetadata
     /** @var array<string, string|null> Merged casts (explicit + auto-detected) */
     public readonly array $allCasts;
 
+    /** @var list<string> Non-static public property names — used by hydrate() to avoid per-row ReflectionClass */
+    public readonly array $publicPropertyNames;
+
     /**
      * @param class-string<Model> $class
      * @param array<string> $fillable
@@ -39,8 +42,8 @@ final class ModelMetadata
         public readonly array $fillable,
         public readonly array $casts,
     ) {
-        // Auto-detect property types via reflection
-        $this->propertyTypes = $this->detectPropertyTypes();
+        // Inspect public properties once and derive both propertyTypes and publicPropertyNames
+        [$this->propertyTypes, $this->publicPropertyNames] = $this->inspectPublicProperties();
 
         // Merge explicit casts with auto-detected types
         $this->allCasts = $this->mergeCasts();
@@ -81,32 +84,37 @@ final class ModelMetadata
     }
 
     /**
-     * Detect property types from class reflection.
+     * Inspect public non-static properties once, returning both:
+     *   - propertyTypes:       snake_case name → type string (for casting)
+     *   - publicPropertyNames: camelCase names (for hydrate())
      *
-     * @return array<string, string|null>
+     * Single ReflectionClass call avoids duplicate reflection per model class.
+     *
+     * @return array{array<string, string|null>, list<string>}
      */
-    private function detectPropertyTypes(): array
+    private function inspectPublicProperties(): array
     {
         $types = [];
+        $names = [];
         $reflection = new ReflectionClass($this->class);
 
         foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
-            // Skip static properties
             if ($property->isStatic()) {
                 continue;
             }
 
-            $name = Str::snake($property->getName());
+            $rawName = $property->getName();
+            $snakeName = Str::snake($rawName);
             $type = $property->getType();
 
-            if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
-                $types[$name] = $type->getName();
-            } elseif ($type instanceof ReflectionNamedType) {
-                $types[$name] = $type->getName();
+            if ($type instanceof ReflectionNamedType) {
+                $types[$snakeName] = $type->getName();
             }
+
+            $names[] = $rawName;
         }
 
-        return $types;
+        return [$types, $names];
     }
 
     /**

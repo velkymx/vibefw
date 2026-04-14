@@ -13,7 +13,6 @@ use Fw\Support\Option;
 use Fw\Support\Str;
 use JsonSerializable;
 use ReflectionClass;
-use ReflectionProperty;
 use RuntimeException;
 use stdClass;
 
@@ -499,10 +498,8 @@ abstract class Model implements JsonSerializable
 
         $model->original = $model->attributes;
 
-        // Set public properties from attributes
-        $reflection = new ReflectionClass($model);
-        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
-            $propName = $prop->getName();
+        // Set public properties from attributes using cached metadata (avoids ReflectionClass per row)
+        foreach (static::metadata()->publicPropertyNames as $propName) {
             if (array_key_exists($propName, $model->attributes)) {
                 $model->{$propName} = $model->attributes[$propName];
             }
