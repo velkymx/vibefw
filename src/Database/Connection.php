@@ -87,7 +87,7 @@ final class Connection
     public static function getInstance(?array $config = null): self
     {
         if ($config !== null) {
-            if (self::$instance !== null && self::$config !== $config) {
+            if (self::$instance !== null && !self::configsMatch(self::$config, $config)) {
                 throw new LogicException('Connection config mismatch');
             }
             self::$config = $config;
@@ -101,6 +101,16 @@ final class Connection
     public static function createFresh(?array $config = null): self
     {
         return new self($config ?? self::$config);
+    }
+
+    /**
+     * Compare two config arrays independent of key insertion order.
+     */
+    private static function configsMatch(array $a, array $b): bool
+    {
+        ksort($a);
+        ksort($b);
+        return $a === $b;
     }
 
     public static function configure(array $config): void
