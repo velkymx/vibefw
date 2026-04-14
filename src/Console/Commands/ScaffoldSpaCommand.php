@@ -233,14 +233,31 @@ final class ScaffoldSpaCommand extends Command
         }
 
         $content = file_get_contents($envFile);
+        $content = self::applyEnvValue($content, $key, $value);
+        file_put_contents($envFile, $content);
+    }
 
-        if (str_contains($content, "{$key}=")) {
-            $content = preg_replace("/^{$key}=.*/m", "{$key}=\"{$value}\"", $content);
-        } else {
-            $content .= "\n{$key}=\"{$value}\"";
+    /**
+     * Update or append a KEY="value" pair in raw .env file content.
+     *
+     * Uses preg_replace_callback so the replacement string is never interpreted
+     * for backreference tokens ($1, $2, \\). Values such as bcrypt hashes
+     * ("$2y$10$...") or Windows paths survive unchanged.
+     */
+    private static function applyEnvValue(string $content, string $key, string $value): string
+    {
+        $quotedKey = preg_quote($key, '/');
+        $line      = $key . '="' . $value . '"';
+
+        if (preg_match("/^{$quotedKey}=/m", $content)) {
+            return preg_replace_callback(
+                "/^{$quotedKey}=.*/m",
+                static fn() => $line,
+                $content
+            );
         }
 
-        file_put_contents($envFile, $content);
+        return $content . "\n" . $line;
     }
 
     private function backupAppDirectory(): void
