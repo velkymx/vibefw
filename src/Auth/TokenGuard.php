@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Auth;
 
+use Fw\Auth\Contracts\RevocableTokenInterface;
 use Fw\Core\Request;
 use Fw\Core\RequestContext;
 use Fw\Model\Model;
@@ -49,17 +50,22 @@ final class TokenGuard
             return null;
         }
 
-        // Update last used timestamp
+        // Update last used timestamp (suppressed in phpstan.neon for Model base type)
         $accessToken->touchLastUsed();
 
-        // Get the user via relationship
+        // Get the user via relationship (suppressed in phpstan.neon for Model base type)
         $user = $accessToken->user()->get()->unwrapOr(null);
 
         if ($user === null) {
             return null;
         }
 
-        // Store in RequestContext for request-scoped access
+        // Store in RequestContext — guard ensures the concrete token model implements
+        // RevocableTokenInterface as required by setContextToken's intersection type.
+        if (!$accessToken instanceof RevocableTokenInterface) {
+            return null;
+        }
+
         self::setContextUser($user);
         self::setContextToken($accessToken);
 
@@ -85,7 +91,7 @@ final class TokenGuard
     /**
      * Get the current access token.
      */
-    public static function currentToken(): ?Model
+    public static function currentToken(): ?RevocableTokenInterface
     {
         return self::getContextToken();
     }
@@ -95,17 +101,7 @@ final class TokenGuard
      */
     public static function tokenCan(string $ability): bool
     {
-        $token = self::currentToken();
-
-        if ($token === null) {
-            return false;
-        }
-
-        if (!method_exists($token, 'can')) {
-            return false;
-        }
-
-        return $token->can($ability);
+        return self::currentToken()?->can($ability) ?? false;
     }
 
     /**
@@ -118,16 +114,18 @@ final class TokenGuard
 
     /**
      * Get the abilities of the current token.
+     *
+     * Delegates to the token model's `abilities` attribute; returns [] when unauthenticated.
      */
     public static function tokenAbilities(): array
     {
         $token = self::currentToken();
-
-        if ($token === null) {
+        if (!$token instanceof Model) {
             return [];
         }
 
-        return $token->abilities ?? [];
+        $raw = $token->getAttribute('abilities');
+        return is_array($raw) ? $raw : [];
     }
 
     /**
@@ -152,7 +150,7 @@ final class TokenGuard
      *
      * Useful for testing or special authentication flows.
      */
-    public static function setUser(Model $user, ?Model $token = null): void
+    public static function setUser(Model $user, (Model&RevocableTokenInterface)|null $token = null): void
     {
         self::setContextUser($user);
         if ($token !== null) {
@@ -204,7 +202,7 @@ final class TokenGuard
     /**
      * Get token from RequestContext (request-scoped).
      */
-    private static function getContextToken(): ?Model
+    private static function getContextToken(): ?RevocableTokenInterface
     {
         $context = RequestContext::current();
         if ($context === null) {
@@ -212,13 +210,13 @@ final class TokenGuard
         }
 
         $token = $context->get(self::CONTEXT_TOKEN_KEY)->unwrapOr(null);
-        return $token instanceof Model ? $token : null;
+        return $token instanceof RevocableTokenInterface ? $token : null;
     }
 
     /**
      * Set token in RequestContext (request-scoped).
      */
-    private static function setContextToken(Model $token): void
+    private static function setContextToken(Model&RevocableTokenInterface $token): void
     {
         RequestContext::current()?->set(self::CONTEXT_TOKEN_KEY, $token);
     }

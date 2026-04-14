@@ -6,12 +6,13 @@ namespace App\Models;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use Fw\Auth\Contracts\RevocableTokenInterface;
 use Fw\Domain\UserId;
 use Fw\Model\BelongsTo;
 use Fw\Model\Collection;
 use Fw\Model\Model;
 
-class PersonalAccessToken extends Model
+class PersonalAccessToken extends Model implements RevocableTokenInterface
 {
     protected static ?string $table = 'personal_access_tokens';
 

@@ -7,6 +7,7 @@ namespace Fw\Tests\Unit;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Fw\Auth\ApiToken;
+use Fw\Auth\Contracts\RevocableTokenInterface;
 use Fw\Auth\TokenGuard;
 use Fw\Core\Request;
 use Fw\Support\Str;
@@ -289,5 +290,39 @@ final class TokenGuardTest extends TestCase
         // Refresh token from database
         $token = PersonalAccessToken::find($newToken->accessToken->id)->unwrapOr(null);
         $this->assertNotNull($token->last_used_at);
+    }
+
+    public function testCurrentTokenImplementsRevocableTokenInterface(): void
+    {
+        $user = $this->createUser();
+        $newToken = ApiToken::create($user, 'Test Token');
+        TokenGuard::setUser($user, $newToken->accessToken);
+
+        $token = TokenGuard::currentToken();
+
+        $this->assertInstanceOf(RevocableTokenInterface::class, $token);
+    }
+
+    public function testCurrentTokenRevokeDeletesRecord(): void
+    {
+        $user = $this->createUser();
+        $newToken = ApiToken::create($user, 'Test Token');
+        TokenGuard::setUser($user, $newToken->accessToken);
+
+        /** @var RevocableTokenInterface $token */
+        $token = TokenGuard::currentToken();
+        $this->assertNotNull($token);
+        $token->revoke();
+
+        $found = PersonalAccessToken::find($newToken->accessToken->id)->unwrapOr(null);
+        $this->assertNull($found);
+    }
+
+    public function testPersonalAccessTokenImplementsRevocableTokenInterface(): void
+    {
+        $user = $this->createUser();
+        $newToken = ApiToken::create($user, 'Test Token');
+
+        $this->assertInstanceOf(RevocableTokenInterface::class, $newToken->accessToken);
     }
 }
