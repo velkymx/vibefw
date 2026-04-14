@@ -340,6 +340,14 @@ final class QueryBuilder
     public function update(array $data): int
     {
         $this->requireTable();
+
+        if (empty($this->wheres)) {
+            throw new \LogicException(
+                'Refusing mass update on "' . $this->table . '" without a WHERE clause. '
+                . 'Add ->where() to scope the update, or use ->where(\'1\', \'=\', \'1\') for an intentional bulk update.'
+            );
+        }
+
         $set = [];
         $params = [];
         foreach ($data as $column => $value) {
@@ -353,6 +361,14 @@ final class QueryBuilder
     public function delete(): int
     {
         $this->requireTable();
+
+        if (empty($this->wheres)) {
+            throw new \LogicException(
+                'Refusing mass delete on "' . $this->table . '" without a WHERE clause. '
+                . 'Add ->where() to scope the delete, or use ->where(\'1\', \'=\', \'1\') for an intentional bulk delete.'
+            );
+        }
+
         $sql = sprintf('DELETE FROM %s%s', $this->quoteIdentifier($this->table), $this->compileWheres());
         return $this->connection->query($sql, $this->bindings)->rowCount();
     }
