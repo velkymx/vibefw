@@ -25,11 +25,11 @@ final class Auth
     private const string CONTEXT_USER_KEY = '_auth_user';
 
     /**
-     * Dummy hash for timing-safe comparison when user doesn't exist.
-     * This prevents user enumeration via timing attacks.
-     * Generated with password_hash('dummy', PASSWORD_DEFAULT).
+     * Cached dummy hash for timing-safe comparison when user doesn't exist.
+     * Initialized lazily with PASSWORD_DEFAULT so it always matches the
+     * algorithm used for real password hashes, regardless of PHP version.
      */
-    private const string DUMMY_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+    private static ?string $dummyHash = null;
 
     /**
      * Dummy SHA256 hash for timing-safe remember token comparison.
@@ -74,7 +74,7 @@ final class Auth
             // Timing attack mitigation: always perform password verification
             // even when user doesn't exist, using a dummy hash
             // @phpstan-ignore function.resultUnused (intentional for constant-time execution)
-            $_ = password_verify($password, self::DUMMY_HASH);
+            $_ = password_verify($password, self::getDummyHash());
             return false;
         }
 
@@ -416,6 +416,18 @@ final class Auth
         // Fallback for CLI / non-HTTP contexts (e.g. queue workers running Auth).
         return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
             || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
+    }
+
+    /**
+     * Get or lazily create the dummy hash for timing-safe comparisons.
+     *
+     * Uses PASSWORD_DEFAULT so the hash algorithm always matches whatever
+     * algorithm the application uses for real passwords, preventing timing
+     * side-channels when the default changes (e.g. bcrypt → Argon2id).
+     */
+    private static function getDummyHash(): string
+    {
+        return self::$dummyHash ??= password_hash('dummy', PASSWORD_DEFAULT);
     }
 
     private static function clearRememberToken(): void
