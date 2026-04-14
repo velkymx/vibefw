@@ -270,7 +270,7 @@ abstract class Controller
      */
     protected function user(): Option
     {
-        return Option::fromNullable($_SESSION['user'] ?? null);
+        return Option::fromNullable(\Fw\Auth\Auth::user());
     }
 
     /**
