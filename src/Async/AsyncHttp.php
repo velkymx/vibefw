@@ -145,13 +145,17 @@ final class AsyncHttp
         $writeWatcherId = $loop->addWriteStream($socket, function ($socket) use ($request, &$written, $loop, $deferred, &$writeWatcherId): void {
             $result = fwrite($socket, substr($request, $written));
             if ($result === false) {
-                $loop->removeWriteStream($writeWatcherId, true);
+                if ($writeWatcherId !== null) {
+                    $loop->removeWriteStream($writeWatcherId, true);
+                }
                 $deferred->reject(new RuntimeException("Write failed"));
                 return;
             }
             $written += $result;
             if ($written >= strlen($request)) {
-                $loop->removeWriteStream($writeWatcherId);
+                if ($writeWatcherId !== null) {
+                    $loop->removeWriteStream($writeWatcherId);
+                }
                 $this->waitForResponse($socket, $loop, $deferred);
             }
         });
@@ -164,14 +168,18 @@ final class AsyncHttp
         $readWatcherId = $loop->addReadStream($socket, function ($socket) use (&$buffer, $loop, $deferred, &$readWatcherId): void {
             $chunk = fread($socket, 8192);
             if ($chunk === false) {
-                $loop->removeReadStream($readWatcherId, true);
+                if ($readWatcherId !== null) {
+                    $loop->removeReadStream($readWatcherId, true);
+                }
                 $deferred->reject(new RuntimeException("Read failed"));
                 return;
             }
 
             if ($chunk === '') {
                 if (feof($socket)) {
-                    $loop->removeReadStream($readWatcherId, true);
+                    if ($readWatcherId !== null) {
+                        $loop->removeReadStream($readWatcherId, true);
+                    }
                     $this->parseResponse($buffer, $deferred);
                 }
                 return;
