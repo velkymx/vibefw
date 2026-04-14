@@ -311,6 +311,15 @@ final class QueryBuilder
         return $result['aggregate'] ?? null;
     }
 
+    /**
+     * Paginate results.
+     *
+     * NOTE: count() and get() are two separate queries. Under concurrent inserts
+     * or deletes the total count may not exactly match the number of items on the
+     * last page (e.g. total=16 per_page=15 last_page=2 but only 1 item on page 2
+     * because a concurrent insert happened between the two queries). For strict
+     * consistency wrap calls in a REPEATABLE READ transaction at the call site.
+     */
     public function paginate(int $perPage = 15, int $page = 1): array
     {
         if ($perPage <= 0) {
