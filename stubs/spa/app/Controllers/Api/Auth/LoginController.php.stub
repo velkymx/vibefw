@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Controllers\Api\Auth;
 
+use App\Models\User;
+use App\Requests\LoginRequest;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
-use App\Requests\LoginRequest;
-use Fw\Auth\Auth;
+use Fw\Auth\TokenGuard;
 use Fw\Validation\ValidationException;
 
+// CUSTOMIZE: Add rate limiting, remember-me, or additional login factors
 final class LoginController extends Controller
 {
     public function login(Request $request): Response
@@ -24,22 +26,31 @@ final class LoginController extends Controller
             ], 422);
         }
 
-        if (Auth::attempt($data->email, $data->password)) {
-            $user = Auth::user();
-            $token = $user->createToken('spa-login')->plainTextToken;
+        // Token-only SPA auth: validate credentials without starting a session.
+        // Session-based auth is intentionally skipped — incompatible with stateless
+        // Bearer-token authentication used by this SPA.
+        return User::findByEmail($data->email)->match(
+            some: function ($user) use ($data) {
+                if (!$user->verifyPassword($data->password)) {
+                    return $this->json(['message' => 'Invalid credentials'], 401);
+                }
 
-            return $this->json([
-                'user' => $user,
-                'token' => $token,
-            ]);
-        }
+                $token = $user->createToken('spa-login')->plainTextToken;
 
-        return $this->json(['message' => 'Invalid credentials'], 401);
+                return $this->json([
+                    'user' => $user,
+                    'token' => $token,
+                ]);
+            },
+            none: fn() => $this->json(['message' => 'Invalid credentials'], 401),
+        );
     }
 
     public function logout(Request $request): Response
     {
-        Auth::logout();
+        // Revoke the Bearer token. No session to clear — SPA auth is stateless.
+        TokenGuard::currentToken()?->revoke();
+
         return $this->json(['message' => 'Logged out successfully']);
     }
 }

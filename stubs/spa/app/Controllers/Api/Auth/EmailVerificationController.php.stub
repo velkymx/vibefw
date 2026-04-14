@@ -15,15 +15,18 @@ final class EmailVerificationController extends Controller
 {
     public function send(Request $request): Response
     {
-        $user = Auth::user();
+        return Auth::user()->match(
+            some: function ($user) {
+                if ($user->hasVerifiedEmail()) {
+                    return $this->json(['message' => 'Email already verified']);
+                }
 
-        if ($user->hasVerifiedEmail()) {
-            return $this->json(['message' => 'Email already verified']);
-        }
+                EmailVerification::createToken($user->email);
 
-        EmailVerification::createToken($user->email);
-
-        return $this->json(['message' => 'Verification link sent']);
+                return $this->json(['message' => 'Verification link sent']);
+            },
+            none: fn() => $this->json(['message' => 'Unauthenticated'], 401),
+        );
     }
 
     public function verify(Request $request): Response

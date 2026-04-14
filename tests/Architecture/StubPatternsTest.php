@@ -364,6 +364,75 @@ final class StubPatternsTest extends TestCase
         return $stubs;
     }
 
+    /**
+     * Auth::user() returns Option<Model> in v3. Stubs must unwrap via
+     * ->match() or ->unwrapOr() before accessing any model property or method.
+     * Calling ->id, ->fill(), ->delete() etc. directly on the Option is fatal.
+     */
+    #[Test]
+    public function spaControllerStubsUnwrapAuthUserBeforeUse(): void
+    {
+        $stubs = array_merge(
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/*.stub'),
+            glob(self::STUBS_DIR . 'spa/app/Controllers/Api/Auth/*.stub'),
+        );
+        $this->assertNotEmpty($stubs, 'SPA controller stubs should exist');
+
+        foreach ($stubs as $stub) {
+            $content = file_get_contents($stub);
+            if (!str_contains($content, 'Auth::user()')) {
+                continue;
+            }
+            // After Auth::user(), the result must be unwrapped via match() or unwrapOr()
+            // before any property/method access.
+            $this->assertTrue(
+                str_contains($content, 'Auth::user()->unwrapOr(') ||
+                str_contains($content, 'Auth::user()->match('),
+                basename($stub) . ': Auth::user() result must be unwrapped ' .
+                'via ->unwrapOr() or ->match() before use — it returns Option<Model>, not Model'
+            );
+        }
+    }
+
+    /**
+     * SPA uses token-only (stateless) auth. LoginController must not call
+     * Auth::attempt() which starts a PHP session incompatible with Bearer-token SPA auth.
+     */
+    #[Test]
+    public function spaLoginControllerStubUsesTokenOnlyAuth(): void
+    {
+        $stub = self::STUBS_DIR . 'spa/app/Controllers/Api/Auth/LoginController.php.stub';
+        $this->assertFileExists($stub);
+        $content = file_get_contents($stub);
+
+        $this->assertStringNotContainsString(
+            'Auth::attempt(',
+            $content,
+            'LoginController stub must not call Auth::attempt() — it starts a session ' .
+            'incompatible with stateless Bearer-token SPA auth'
+        );
+    }
+
+    /**
+     * SPA is token-only. RegisterController must not call Auth::login() —
+     * that creates a session alongside the API token, producing dual auth state
+     * with inconsistent logout semantics.
+     */
+    #[Test]
+    public function spaRegisterControllerStubDoesNotCreateSession(): void
+    {
+        $stub = self::STUBS_DIR . 'spa/app/Controllers/Api/Auth/RegisterController.php.stub';
+        $this->assertFileExists($stub);
+        $content = file_get_contents($stub);
+
+        $this->assertStringNotContainsString(
+            'Auth::login(',
+            $content,
+            'RegisterController stub must not call Auth::login() — SPA auth is token-only; ' .
+            'session creation produces dual auth state with broken logout semantics'
+        );
+    }
+
     #[Test]
     public function spaStubsHaveNoVerboseDocblocks(): void
     {

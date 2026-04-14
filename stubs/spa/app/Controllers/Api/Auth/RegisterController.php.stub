@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Controllers\Api\Auth;
 
+use App\Models\User;
+use App\Requests\RegisterRequest;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
-use App\Models\User;
-use App\Requests\RegisterRequest;
-use Fw\Auth\Auth;
 use Fw\Support\Hash;
 use Fw\Validation\ValidationException;
 
+// CUSTOMIZE: Add email verification dispatch or welcome email after registration
 final class RegisterController extends Controller
 {
     public function register(Request $request): Response
@@ -26,17 +26,29 @@ final class RegisterController extends Controller
             ], 422);
         }
 
-        $user = User::create([
-            'name' => $data->name,
-            'email' => $data->email,
-            'password' => Hash::make($data->password),
-        ]);
+        try {
+            $user = User::create([
+                'name'     => $data->name,
+                'email'    => $data->email,
+                'password' => Hash::make($data->password),
+            ]);
+        } catch (\PDOException $e) {
+            if ($e->getCode() === '23000') {
+                return $this->json([
+                    'message' => 'Registration failed',
+                    'errors'  => ['email' => 'Email already registered'],
+                ], 422);
+            }
+            throw $e;
+        }
 
-        Auth::login($user);
+        // Token-only SPA auth: return a Bearer token, no session created.
+        // Session-based auth is intentionally skipped — incompatible with
+        // stateless Bearer-token authentication used by this SPA.
         $token = $user->createToken('spa-register')->plainTextToken;
 
         return $this->json([
-            'user' => $user,
+            'user'  => $user,
             'token' => $token,
         ], 201);
     }
