@@ -14,7 +14,7 @@ class User extends Model
 
     protected static array $fillable = ['name', 'email', 'password', 'email_verified_at'];
 
-    protected static array $hidden = ['password'];
+    protected static array $hidden = ['password', 'remember_token'];
 
     protected static array $casts = [
         'email_verified_at' => 'datetime',
@@ -32,7 +32,7 @@ class User extends Model
 
     public function markEmailAsVerified(): void
     {
-        $this->fill(['email_verified_at' => date('Y-m-d H:i:s')])->save();
+        (void) $this->fill(['email_verified_at' => date('Y-m-d H:i:s')])->save();
     }
 
     public function createToken(string $name, array $abilities = ['*']): \Fw\Auth\NewAccessToken
