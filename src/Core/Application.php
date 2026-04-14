@@ -74,7 +74,7 @@ final class Application
         $this->events = new EventDispatcher($this->container->resolver());
         $this->request = new Request();
         $this->response = new Response();
-        $this->router = new Router($this->container);
+        $this->router = new Router();
         $this->csrf = new Csrf(fn () => $this->initSession());
         $this->commands = new CommandBus($this->container->resolver());
         $this->queries = new QueryBus($this->container->resolver());
