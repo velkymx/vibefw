@@ -9,7 +9,6 @@ use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Fw\Auth\ApiToken;
 use Fw\Auth\TokenGuard;
-use Fw\Core\Application;
 use Fw\Core\Request;
 use Fw\Core\RequestContext;
 use Fw\Model\Model;
@@ -39,8 +38,7 @@ final class ApiLogoutTest extends TestCase
         $this->createTokensTable();
         $this->injectDatabase();
 
-        $app = Application::getInstance();
-        $this->controller = new LoginController($app);
+        $this->controller = (new \ReflectionClass(LoginController::class))->newInstanceWithoutConstructor();
     }
 
     protected function tearDown(): void
@@ -69,9 +67,6 @@ final class ApiLogoutTest extends TestCase
 
     private function injectDatabase(): void
     {
-        $app = Application::getInstance();
-        $ref = new \ReflectionClass($app);
-        $ref->getProperty('db')->setValue($app, $this->db);
         Model::setConnection($this->db);
     }
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Fw\Tests\Unit;
 
-use Fw\Core\Application;
 use Fw\Core\Router;
 use Fw\Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
@@ -19,8 +18,14 @@ final class ApplicationRouterTest extends TestCase
     #[Test]
     public function applicationRouterIsProperlyInstantiated(): void
     {
-        $app = Application::getInstance();
-        $this->assertInstanceOf(Router::class, $app->router);
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/Core/Application.php');
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString(
+            '$this->router = new Router();',
+            $source,
+            'Application must instantiate Router with no constructor arguments.'
+        );
     }
 
     #[Test]

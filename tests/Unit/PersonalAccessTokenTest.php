@@ -6,7 +6,6 @@ namespace Fw\Tests\Unit;
 
 use App\Models\PersonalAccessToken;
 use App\Models\User;
-use Fw\Core\Application;
 use Fw\Support\Str;
 use Fw\Tests\TestCase;
 
@@ -42,12 +41,6 @@ final class PersonalAccessTokenTest extends TestCase
 
     private function injectDatabase(): void
     {
-        $app = Application::getInstance();
-        $reflection = new \ReflectionClass($app);
-        $property = $reflection->getProperty('db');
-        $property->setValue($app, $this->db);
-
-        // Also set connection on new Model system
         \Fw\Model\Model::setConnection($this->db);
     }
 

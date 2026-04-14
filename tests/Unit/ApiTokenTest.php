@@ -8,8 +8,6 @@ use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Fw\Auth\ApiToken;
 use Fw\Auth\NewAccessToken;
-use Fw\Core\Application;
-use Fw\Database\Connection;
 use Fw\Support\Str;
 use Fw\Tests\TestCase;
 
@@ -53,13 +51,6 @@ final class ApiTokenTest extends TestCase
 
     private function injectDatabase(): void
     {
-        // Use reflection to inject the database connection
-        $app = Application::getInstance();
-        $reflection = new \ReflectionClass($app);
-        $property = $reflection->getProperty('db');
-        $property->setValue($app, $this->db);
-
-        // Also set connection on new Model system
         \Fw\Model\Model::setConnection($this->db);
     }
 

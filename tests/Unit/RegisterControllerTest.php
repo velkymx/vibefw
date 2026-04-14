@@ -6,7 +6,6 @@ namespace Fw\Tests\Unit;
 
 use App\Controllers\Api\Auth\RegisterController;
 use App\Models\User;
-use Fw\Core\Application;
 use Fw\Core\Request;
 use Fw\Core\RequestContext;
 use Fw\Model\Model;
@@ -36,8 +35,7 @@ final class RegisterControllerTest extends TestCase
         $this->createTokensTable();
         $this->injectDatabase();
 
-        $app = Application::getInstance();
-        $this->controller = new RegisterController($app);
+        $this->controller = (new \ReflectionClass(RegisterController::class))->newInstanceWithoutConstructor();
     }
 
     private function createTokensTable(): void
@@ -60,9 +58,6 @@ final class RegisterControllerTest extends TestCase
 
     private function injectDatabase(): void
     {
-        $app = Application::getInstance();
-        $ref = new \ReflectionClass($app);
-        $ref->getProperty('db')->setValue($app, $this->db);
         Model::setConnection($this->db);
     }
 

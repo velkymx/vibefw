@@ -349,7 +349,7 @@ final class ScaffoldSpaCommand extends Command
                 use Fw\Middleware\ApiAuthMiddleware;
 
                 return function (Router $router): void {
-                    // SPA fallback — serve frontend for non-API routes
+                    // Serve the frontend entry point for browser visits
                     $router->get('/', [SpaController::class, 'index']);
 
                     $router->group('/api', function (Router $router): void {
@@ -357,10 +357,8 @@ final class ScaffoldSpaCommand extends Command
                         // Auth (public)
                         $router->post('/auth/login', [LoginController::class, 'login']);
                         $router->post('/auth/register', [RegisterController::class, 'register']);
-                        $router->post('/auth/logout', [LoginController::class, 'logout']);
-
-                        // Protected routes
                         $router->with(ApiAuthMiddleware::class, function (Router $router): void {
+                            $router->post('/auth/logout', [LoginController::class, 'logout']);
                             $router->get('/user', [UserController::class, 'show']);
                             $router->get('/dashboard/stats', [StatsController::class, 'index']);
                             $router->put('/profile', [ProfileController::class, 'update']);

@@ -8,7 +8,6 @@ use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Fw\Auth\ApiToken;
 use Fw\Auth\TokenGuard;
-use Fw\Core\Application;
 use Fw\Core\Request;
 use Fw\Support\Str;
 use Fw\Tests\TestCase;
@@ -58,12 +57,6 @@ final class TokenGuardTest extends TestCase
 
     private function injectDatabase(): void
     {
-        $app = Application::getInstance();
-        $reflection = new \ReflectionClass($app);
-        $property = $reflection->getProperty('db');
-        $property->setValue($app, $this->db);
-
-        // Also set connection on new Model system
         \Fw\Model\Model::setConnection($this->db);
     }
 

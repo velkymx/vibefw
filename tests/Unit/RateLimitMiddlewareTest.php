@@ -6,12 +6,12 @@ namespace Fw\Tests\Unit;
 
 use Fw\Cache\CacheInterface;
 use Fw\Core\Application;
+use Fw\Core\Config;
 use Fw\Core\Request;
 use Fw\Core\Response;
 use Fw\Middleware\RateLimitMiddleware;
 use Fw\Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
-use ReflectionClass;
 
 /**
  * M5: Cache failure must log SECURITY warning + still pass request through.
@@ -20,7 +20,13 @@ final class RateLimitMiddlewareTest extends TestCase
 {
     private function buildMiddleware(CacheInterface $cache): RateLimitMiddleware
     {
-        $app = Application::getInstance();
+        $app = (new \ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+        $config = new Config(BASE_PATH);
+
+        $appReflection = new \ReflectionClass($app);
+        $appReflection->getProperty('configRepository')->setValue($app, $config);
+        $appReflection->getProperty('response')->setValue($app, new Response());
+
         return new RateLimitMiddleware($app, $cache);
     }
 
