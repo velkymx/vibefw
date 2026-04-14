@@ -433,6 +433,35 @@ final class StubPatternsTest extends TestCase
         );
     }
 
+    /**
+     * SpaController stub must check file_get_contents() for false before passing
+     * to Response — it cannot pass false as string (TypeError).
+     * Response constructor takes only 2 args; headers go via ->header().
+     */
+    #[Test]
+    public function spaSpaControllerHandlesMissingDistFile(): void
+    {
+        $stub = self::STUBS_DIR . 'spa/app/Controllers/Api/SpaController.php.stub';
+        $this->assertFileExists($stub);
+        $content = file_get_contents($stub);
+
+        $this->assertStringContainsString(
+            '=== false',
+            $content,
+            'SpaController stub must check file_get_contents() !== false before passing to Response'
+        );
+        $this->assertStringNotContainsString(
+            'new Response(\n    file_get_contents',
+            $content,
+            'SpaController stub must not pass file_get_contents() directly to Response constructor'
+        );
+        $this->assertStringContainsString(
+            '->header(',
+            $content,
+            'SpaController stub must set Content-Type via ->header() method'
+        );
+    }
+
     #[Test]
     public function spaStubsHaveNoVerboseDocblocks(): void
     {

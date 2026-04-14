@@ -13,10 +13,13 @@ final class SpaController extends Controller
 {
     public function index(Request $request): Response
     {
-        return new Response(
-            file_get_contents(BASE_PATH . '/frontend/dist/index.html'),
-            200,
-            ['Content-Type' => 'text/html']
-        );
+        $html = file_get_contents(BASE_PATH . '/frontend/dist/index.html');
+
+        if ($html === false) {
+            return (new Response('Frontend not built. Run: npm run build in /frontend', 500))
+                ->header('Content-Type', 'text/plain');
+        }
+
+        return (new Response($html))->header('Content-Type', 'text/html');
     }
 }
