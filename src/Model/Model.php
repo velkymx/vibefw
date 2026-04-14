@@ -559,37 +559,36 @@ abstract class Model implements JsonSerializable
         // Use a unique token to detect if WE are the initializer
         $initToken = spl_object_id(new stdClass());
 
-        // If already being initialized by another Fiber, wait for it
-        $spinCount = 0;
-        $maxSpins = 1000;
+        // Outside a Fiber (traditional PHP-FPM / CLI) there is no concurrency:
+        // no other coroutine can be initializing the same class simultaneously.
+        // Skip the spin-wait entirely and claim directly.
+        if (Fiber::getCurrent() === null) {
+            self::$metadataInitializing[$class] = $initToken;
+        } else {
+            // Fiber context: another Fiber may be initializing — spin-wait.
+            $spinCount = 0;
+            $maxSpins = 1000;
 
-        while (true) {
-            // Check cache first (another Fiber may have finished)
-            if (isset(self::$metadataCache[$class])) {
-                return self::$metadataCache[$class];
-            }
+            while (true) {
+                // Check cache first (another Fiber may have finished)
+                if (isset(self::$metadataCache[$class])) {
+                    return self::$metadataCache[$class];
+                }
 
-            // Try to claim initialization
-            if (!isset(self::$metadataInitializing[$class])) {
-                // Claim it with our token
-                self::$metadataInitializing[$class] = $initToken;
-                break;
-            }
+                // Try to claim initialization
+                if (!isset(self::$metadataInitializing[$class])) {
+                    self::$metadataInitializing[$class] = $initToken;
+                    break;
+                }
 
-            // Another Fiber is initializing - wait
-            if (++$spinCount > $maxSpins) {
-                // Timeout: force proceed (initialization is idempotent anyway)
-                // This handles edge cases like a Fiber dying mid-initialization
-                self::$metadataInitializing[$class] = $initToken;
-                break;
-            }
+                // Another Fiber is initializing — yield and retry
+                if (++$spinCount > $maxSpins) {
+                    // Timeout: force proceed (initialization is idempotent)
+                    self::$metadataInitializing[$class] = $initToken;
+                    break;
+                }
 
-            // Yield to other Fibers
-            if (Fiber::getCurrent() !== null) {
                 Fiber::suspend();
-            } else {
-                // Not in a Fiber, just a tight loop - add small delay
-                usleep(100);
             }
         }
 

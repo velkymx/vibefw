@@ -283,7 +283,7 @@ final class View
             'e' => fn (string $value): string => $this->escape($value),
             'url' => fn (string $name, array $params = []): string => $this->url($name, $params),
             'csrf' => fn (): string => $this->csrfField(),
-            'old' => fn (string $key, mixed $default = null): mixed => $_SESSION['_old_input'][$key] ?? $default,
+            'old' => fn (string $key, mixed $default = null): mixed => (session_status() === PHP_SESSION_ACTIVE ? ($_SESSION['_old_input'][$key] ?? $default) : $default),
             'section' => function (string $name): void {
                 $this->section($name);
             },
