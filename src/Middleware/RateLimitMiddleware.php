@@ -45,6 +45,14 @@ final class RateLimitMiddleware implements MiddlewareInterface
 
         // increment() returns false only on driver failure; treat as unlimited
         if ($current === false) {
+            // Log security event — cache outage silently disables rate limiting.
+            // An attacker causing cache failure (OOM, poisoned cache) would
+            // bypass all rate limits with no visibility.
+            error_log(sprintf(
+                'SECURITY: Rate limit cache failure — limiting disabled for IP %s (key: %s)',
+                $request->ip(),
+                $key
+            ));
             return $next($request);
         }
 
