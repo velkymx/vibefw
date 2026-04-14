@@ -176,6 +176,17 @@ final class Connection
 
     public function update(string $table, array $data, array $where): int
     {
+        if (empty($data)) {
+            throw new \LogicException('update() requires at least one data column to set.');
+        }
+
+        if (empty($where)) {
+            throw new \LogicException(
+                'update() requires at least one WHERE condition to prevent accidental mass updates. '
+                . 'Pass [\'1\' => \'1\'] for an intentional bulk update.'
+            );
+        }
+
         $set = [];
         $params = [];
         foreach ($data as $column => $value) {
@@ -198,6 +209,13 @@ final class Connection
 
     public function delete(string $table, array $where): int
     {
+        if (empty($where)) {
+            throw new \LogicException(
+                'delete() requires at least one WHERE condition to prevent accidental mass deletes. '
+                . 'Pass [\'1\' => \'1\'] for an intentional bulk delete.'
+            );
+        }
+
         $whereParts = [];
         $params = [];
         foreach ($where as $column => $value) {
