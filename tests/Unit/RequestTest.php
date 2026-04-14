@@ -488,4 +488,34 @@ final class RequestTest extends TestCase
 
         $this->assertFalse($request->wantsJson());
     }
+
+    public function testHasReturnsTrueForNullQueryParam(): void
+    {
+        $_GET = ['patch_field' => null];
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+
+        $request = new Request();
+
+        $this->assertTrue($request->has('patch_field'));
+    }
+
+    public function testHasReturnsTrueForNullPostParam(): void
+    {
+        $_POST = ['nullable_field' => null];
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+
+        $request = new Request();
+
+        $this->assertTrue($request->has('nullable_field'));
+    }
+
+    public function testHasReturnsFalseForAbsentKey(): void
+    {
+        $_GET = ['other' => 'value'];
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+
+        $request = new Request();
+
+        $this->assertFalse($request->has('missing'));
+    }
 }

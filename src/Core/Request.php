@@ -142,8 +142,7 @@ final class Request
 
     public function has(string $key): bool
     {
-        $all = $this->all();
-        return isset($all[$key]);
+        return array_key_exists($key, $this->all());
     }
 
     public function query(): array
