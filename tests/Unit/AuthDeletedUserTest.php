@@ -50,9 +50,9 @@ final class AuthDeletedUserTest extends TestCase
         // Delete the user from DB (simulates account deletion)
         $this->db->delete('users', ['id' => $id]);
 
-        // Auth::user() must return null — user no longer exists
+        // Auth::user() must return None — user no longer exists
         $user = Auth::user();
-        $this->assertNull($user);
+        $this->assertTrue($user->isNone());
 
         // Critically: the stale session key must be gone so the next
         // request does NOT issue another DB query for this ghost user
@@ -74,7 +74,7 @@ final class AuthDeletedUserTest extends TestCase
 
         $user = Auth::user();
 
-        $this->assertNull($user);
+        $this->assertTrue($user->isNone());
         $this->assertArrayNotHasKey('_auth_user_id', $_SESSION);
         $this->assertSame('must-survive', $_SESSION['other_key']);
     }

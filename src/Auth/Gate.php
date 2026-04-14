@@ -49,13 +49,10 @@ final class Gate
      */
     public static function allows(string $action, object|string $target): bool
     {
-        $user = Auth::user();
-
-        if ($user === null) {
-            return false;
-        }
-
-        return self::check($user, $action, $target);
+        return Auth::user()->match(
+            some: fn ($user) => self::check($user, $action, $target),
+            none: fn () => false,
+        );
     }
 
     /**

@@ -13,6 +13,9 @@ class UserController extends Controller
 {
     public function show(Request $request): Response
     {
-        return $this->json(Auth::user());
+        return Auth::user()->match(
+            some: fn ($user) => $this->json($user),
+            none: fn () => $this->json(['message' => 'Unauthenticated'], 401),
+        );
     }
 }

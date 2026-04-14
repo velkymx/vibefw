@@ -282,7 +282,7 @@ abstract class Controller
      */
     protected function user(): Option
     {
-        return Option::fromNullable(\Fw\Auth\Auth::user());
+        return \Fw\Auth\Auth::user();
     }
 
     /**

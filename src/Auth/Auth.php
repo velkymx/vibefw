@@ -6,6 +6,7 @@ namespace Fw\Auth;
 
 use Fw\Core\RequestContext;
 use Fw\Model\Model;
+use Fw\Support\Option;
 use RuntimeException;
 
 /**
@@ -139,7 +140,7 @@ final class Auth
      */
     public static function check(): bool
     {
-        return self::user() !== null;
+        return self::user()->isSome();
     }
 
     /**
@@ -153,15 +154,18 @@ final class Auth
     /**
      * Get the currently authenticated user.
      *
+     * Returns Option::none() when not authenticated, Option::some($user) when authenticated.
      * Uses RequestContext for request-scoped storage to prevent
      * user state from leaking between concurrent requests.
+     *
+     * @return Option<Model>
      */
-    public static function user(): ?Model
+    public static function user(): Option
     {
         // Check RequestContext first (request-scoped cache)
         $contextUser = self::getContextUser();
         if ($contextUser !== null) {
-            return $contextUser;
+            return Option::some($contextUser);
         }
 
         // Try session
@@ -172,23 +176,23 @@ final class Auth
             if (is_int($sessionUserId)) {
                 if ($sessionUserId <= 0) {
                     unset($_SESSION[self::SESSION_KEY]);
-                    return null;
+                    return Option::none();
                 }
             } elseif (!is_string($sessionUserId) || $sessionUserId === '') {
                 unset($_SESSION[self::SESSION_KEY]);
-                return null;
+                return Option::none();
             }
 
             $userFromSession = (self::$userModel)::find($sessionUserId)->unwrapOr(null);
             if ($userFromSession instanceof Model) {
                 self::setContextUser($userFromSession);
-                return $userFromSession;
+                return Option::some($userFromSession);
             }
 
             // User no longer exists in DB (e.g. account deleted while session was active).
             // Remove the stale key so subsequent requests don't issue another DB query.
             unset($_SESSION[self::SESSION_KEY]);
-            return null;
+            return Option::none();
         }
 
         // Try remember token
@@ -198,11 +202,11 @@ final class Auth
             if ($userFromCookie instanceof Model) {
                 self::setContextUser($userFromCookie);
                 $_SESSION[self::SESSION_KEY] = $userFromCookie->id;
-                return $userFromCookie;
+                return Option::some($userFromCookie);
             }
         }
 
-        return null;
+        return Option::none();
     }
 
     /**
@@ -210,8 +214,7 @@ final class Auth
      */
     public static function id(): string|int|null
     {
-        $user = self::user();
-        return $user?->id;
+        return self::user()->unwrapOr(null)?->id;
     }
 
     /**
@@ -432,11 +435,12 @@ final class Auth
 
     private static function clearRememberToken(): void
     {
-        $user = self::user();
-
-        if ($user !== null) {
-            $user->remember_token = null;
-            $user->save();
-        }
+        self::user()->match(
+            some: function (Model $user): void {
+                $user->remember_token = null;
+                $user->save();
+            },
+            none: fn () => null,
+        );
     }
 }
