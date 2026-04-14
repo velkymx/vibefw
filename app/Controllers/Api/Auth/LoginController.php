@@ -6,10 +6,10 @@ namespace App\Controllers\Api\Auth;
 
 use App\Requests\LoginRequest;
 use Fw\Auth\Auth;
+use Fw\Auth\TokenGuard;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
-use Fw\Support\Hash;
 use Fw\Validation\ValidationException;
 
 final class LoginController extends Controller
@@ -40,6 +40,10 @@ final class LoginController extends Controller
 
     public function logout(Request $request): Response
     {
+        // Revoke the Bearer token before clearing the session so the token
+        // cannot be reused after logout even if an attacker intercepted it.
+        TokenGuard::currentToken()?->revoke();
+
         Auth::logout();
         return $this->json(['message' => 'Logged out successfully']);
     }
