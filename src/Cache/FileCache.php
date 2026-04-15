@@ -46,7 +46,10 @@ final class FileCache implements CacheInterface
         }
 
         $data = json_decode($content, true);
-        if (!is_array($data) || !isset($data['expires'], $data['value'])) {
+
+        // Use array_key_exists, not isset: isset() returns false for null values,
+        // which breaks no-TTL entries (expires=null) and explicitly-cached null values.
+        if (!is_array($data) || !array_key_exists('expires', $data) || !array_key_exists('value', $data)) {
             // Invalid cache format - delete and return default
             $this->delete($key);
             return $default;
