@@ -125,7 +125,8 @@ final class CommandBus
 
             if (!class_exists($handlerClass)) {
                 throw new InvalidArgumentException(
-                    "No handler registered for command: {$commandClass}"
+                    "No handler registered for command: {$commandClass}. " .
+                    "Register one via \$bus->register() or create a class named: {$handlerClass}"
                 );
             }
 

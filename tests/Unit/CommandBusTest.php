@@ -152,6 +152,19 @@ final class CommandBusTest extends TestCase
         $this->assertInstanceOf(InvalidArgumentException::class, $result->unwrapErr());
     }
 
+    public function testUnregisteredHandlerErrorMentionsExpectedConventionClass(): void
+    {
+        // CB-02: error must tell the developer what convention-based class to create.
+        $bus = new CommandBus();
+
+        $result = $bus->dispatch(new UnhandledCommand());
+
+        $err = $result->unwrapErr();
+        $this->assertInstanceOf(InvalidArgumentException::class, $err);
+        // Must mention the expected handler class name (UnhandledCommand -> UnhandledCommandHandler)
+        $this->assertStringContainsString('UnhandledCommandHandler', $err->getMessage());
+    }
+
     public function testMiddlewareIsExecuted(): void
     {
         $log = [];
