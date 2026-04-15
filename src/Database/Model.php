@@ -82,13 +82,13 @@ abstract class Model
 
     public static function find(int|string $id): ?static
     {
-        $row = static::query()->where(static::$primaryKey, $id)->first();
+        $rowOpt = static::query()->where(static::$primaryKey, $id)->first();
 
-        if ($row === null) {
+        if ($rowOpt->isNone()) {
             return null;
         }
 
-        return static::hydrate($row);
+        return static::hydrate($rowOpt->unwrapOrElse(fn () => throw new \LogicException('unreachable')));
     }
 
     public static function findOrFail(int|string $id): static
@@ -275,10 +275,11 @@ abstract class Model
         $pk = $this->attributes[static::$primaryKey] ?? null;
 
         if ($pk !== null) {
-            $fresh = static::connection()->table(static::getTable())
+            $freshOpt = static::connection()->table(static::getTable())
                 ->where(static::$primaryKey, $pk)
                 ->first();
 
+            $fresh = $freshOpt->unwrapOr(null);
             if ($fresh !== null) {
                 $this->attributes = $fresh;
                 $this->original = $fresh;

@@ -68,7 +68,7 @@ final class UserModelTest extends TestCase
 
         $user->markEmailAsVerified();
 
-        $row = $this->db->table('users')->where('id', '=', $id)->first();
+        $row = $this->db->table('users')->where('id', '=', $id)->first()->unwrapOrElse(fn () => throw new \RuntimeException('User not found'));
         $this->assertNotNull($row['email_verified_at'], 'email_verified_at must be persisted to DB');
     }
 

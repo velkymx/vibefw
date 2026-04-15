@@ -81,7 +81,7 @@ final class ModelUpdateOrCreateTest extends TestCase
             ['category' => 'new'],
         );
 
-        $row = $this->db->table('items')->where('name', '=', 'Alpha')->first();
+        $row = $this->db->table('items')->where('name', '=', 'Alpha')->first()->unwrapOrElse(fn () => throw new \RuntimeException('Item not found'));
         $this->assertSame('new', $row['category']);
         $this->assertSame(1, $this->db->table('items')->count());
     }

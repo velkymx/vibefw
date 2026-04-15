@@ -70,7 +70,7 @@ final class ApiTokenTest extends TestCase
             'updated_at' => date('Y-m-d H:i:s'),
         ]));
 
-        $row = $this->db->table('users')->where('email', $data['email'])->first();
+        $row = $this->db->table('users')->where('email', $data['email'])->first()->unwrapOrElse(fn () => throw new \RuntimeException('User not found'));
         return User::find($row['id'])->unwrapOr(null);
     }
 

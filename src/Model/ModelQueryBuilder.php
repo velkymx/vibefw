@@ -223,12 +223,13 @@ final class ModelQueryBuilder
      */
     public function first(): Option
     {
-        $row = $this->query->first();
+        $rowOpt = $this->query->first();
 
-        if ($row === null) {
+        if ($rowOpt->isNone()) {
             return Option::none();
         }
 
+        $row = $rowOpt->unwrapOrElse(fn () => throw new \LogicException('unreachable'));
         $model = ($this->modelClass)::hydrate($row);
 
         // Eager load relations
@@ -299,7 +300,7 @@ final class ModelQueryBuilder
      */
     public function value(string $column): mixed
     {
-        return $this->query->select([$column])->first()[$column] ?? null;
+        return $this->query->select([$column])->first()->unwrapOr([])[$column] ?? null;
     }
 
     // ========================================

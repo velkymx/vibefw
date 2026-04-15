@@ -139,34 +139,36 @@ final class QueryBuilderTest extends TestCase
         $this->assertCount(2, $users);
     }
 
-    public function testFirstReturnsSingleRow(): void
+    public function testFirstReturnsSomeForExistingRow(): void
     {
-        $user = $this->query()->first();
+        $opt = $this->query()->first();
 
-        $this->assertIsArray($user);
+        $this->assertTrue($opt->isSome());
+        $user = $opt->unwrapOr([]);
         $this->assertArrayHasKey('name', $user);
     }
 
-    public function testFirstReturnsNullForNoResults(): void
+    public function testFirstReturnsNoneForNoResults(): void
     {
-        $user = $this->query()->where('email', 'nonexistent@example.com')->first();
+        $opt = $this->query()->where('email', 'nonexistent@example.com')->first();
 
-        $this->assertNull($user);
+        $this->assertTrue($opt->isNone());
     }
 
-    public function testFindByIdReturnsRow(): void
+    public function testFindByIdReturnsOption(): void
     {
-        $user = $this->query()->find(1);
+        $opt = $this->query()->find(1);
 
-        $this->assertNotNull($user);
+        $this->assertTrue($opt->isSome());
+        $user = $opt->unwrapOr([]);
         $this->assertEquals('John Doe', $user['name']);
     }
 
-    public function testFindReturnsNullForInvalidId(): void
+    public function testFindReturnsNoneForInvalidId(): void
     {
-        $user = $this->query()->find(999);
+        $opt = $this->query()->find(999);
 
-        $this->assertNull($user);
+        $this->assertTrue($opt->isNone());
     }
 
     public function testCountReturnsNumberOfRows(): void
@@ -294,7 +296,7 @@ final class QueryBuilderTest extends TestCase
 
         $this->assertEquals(1, $affected);
 
-        $user = $this->query()->where('email', 'john@example.com')->first();
+        $user = $this->query()->where('email', 'john@example.com')->first()->unwrapOr([]);
         $this->assertEquals('John Updated', $user['name']);
     }
 

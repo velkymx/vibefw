@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Database;
 
+use Fw\Support\Option;
 use InvalidArgumentException;
 use LogicException;
 
@@ -253,14 +254,20 @@ final class QueryBuilder
         return $this->connection->select($sql, $bindings);
     }
 
-    public function first(): ?array
+    /**
+     * @return Option<array<string, mixed>>
+     */
+    public function first(): Option
     {
         $this->requireTable();
         $result = $this->limit(1)->get();
-        return $result[0] ?? null;
+        return isset($result[0]) ? Option::some($result[0]) : Option::none();
     }
 
-    public function find(int|string $id, string $column = 'id'): ?array
+    /**
+     * @return Option<array<string, mixed>>
+     */
+    public function find(int|string $id, string $column = 'id'): Option
     {
         return $this->where($column, $id)->first();
     }
@@ -270,7 +277,7 @@ final class QueryBuilder
         $this->requireTable();
         $clone = clone $this;
         $clone->columns = ['COUNT(*) as aggregate'];
-        $result = $clone->first();
+        $result = $clone->first()->unwrapOr([]);
         return (int) ($result['aggregate'] ?? 0);
     }
 
@@ -283,7 +290,7 @@ final class QueryBuilder
     {
         $clone = clone $this;
         $clone->columns = ['SUM(' . $this->quoteIdentifier($column) . ') as aggregate'];
-        $result = $clone->first();
+        $result = $clone->first()->unwrapOr([]);
         return (float) ($result['aggregate'] ?? 0);
     }
 
@@ -291,7 +298,7 @@ final class QueryBuilder
     {
         $clone = clone $this;
         $clone->columns = ['AVG(' . $this->quoteIdentifier($column) . ') as aggregate'];
-        $result = $clone->first();
+        $result = $clone->first()->unwrapOr([]);
         return (float) ($result['aggregate'] ?? 0);
     }
 
@@ -299,7 +306,7 @@ final class QueryBuilder
     {
         $clone = clone $this;
         $clone->columns = ['MAX(' . $this->quoteIdentifier($column) . ') as aggregate'];
-        $result = $clone->first();
+        $result = $clone->first()->unwrapOr([]);
         return $result['aggregate'] ?? null;
     }
 
@@ -307,7 +314,7 @@ final class QueryBuilder
     {
         $clone = clone $this;
         $clone->columns = ['MIN(' . $this->quoteIdentifier($column) . ') as aggregate'];
-        $result = $clone->first();
+        $result = $clone->first()->unwrapOr([]);
         return $result['aggregate'] ?? null;
     }
 
