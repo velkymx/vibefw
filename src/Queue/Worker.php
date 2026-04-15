@@ -78,32 +78,34 @@ final class Worker
         $this->registerSignalHandlers();
         $this->output("Worker started for queue: $queue");
 
-        while (!$this->shouldStop) {
-            if ($this->shouldQuit()) {
-                break;
+        try {
+            while (!$this->shouldStop) {
+                if ($this->shouldQuit()) {
+                    break;
+                }
+
+                $job = $this->queue->pop($queue);
+
+                if ($job === null) {
+                    sleep($this->sleep);
+                    continue;
+                }
+
+                $this->processJob($job);
+                $this->processedJobs++;
+
+                // Clean up state between jobs to prevent memory leaks and state contamination
+                $this->resetState();
+
+                if ($this->maxJobs > 0 && $this->processedJobs >= $this->maxJobs) {
+                    $this->output("Max jobs ($this->maxJobs) reached, stopping...");
+                    break;
+                }
             }
-
-            $job = $this->queue->pop($queue);
-
-            if ($job === null) {
-                sleep($this->sleep);
-                continue;
-            }
-
-            $this->processJob($job);
-            $this->processedJobs++;
-
-            // Clean up state between jobs to prevent memory leaks and state contamination
-            $this->resetState();
-
-            if ($this->maxJobs > 0 && $this->processedJobs >= $this->maxJobs) {
-                $this->output("Max jobs ($this->maxJobs) reached, stopping...");
-                break;
-            }
+        } finally {
+            $this->restoreSignalHandlers();
+            $this->output("Worker stopped. Processed {$this->processedJobs} jobs.");
         }
-
-        $this->restoreSignalHandlers();
-        $this->output("Worker stopped. Processed {$this->processedJobs} jobs.");
     }
 
     public function workOnce(string $queue = 'default'): bool
