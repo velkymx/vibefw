@@ -442,7 +442,21 @@ abstract class Model implements JsonSerializable
                 $instance->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
                 return $instance;
             },
-            none: fn() => static::create(array_merge($attributes, $values)),
+            none: function () use ($attributes, $values): static {
+                try {
+                    return static::create(array_merge($attributes, $values));
+                } catch (\PDOException $e) {
+                    // Race condition: concurrent worker inserted between our SELECT
+                    // and INSERT (SQLSTATE 23xxx = unique/integrity violation).
+                    // Re-run updateOrCreate — the SELECT on the second attempt will
+                    // find the row the other worker created, hit the `some:` branch,
+                    // apply our updates, and return it with the correct static type.
+                    if (str_starts_with((string) $e->getCode(), '23')) {
+                        return static::updateOrCreate($attributes, $values);
+                    }
+                    throw $e;
+                }
+            },
         );
     }
 
@@ -464,7 +478,20 @@ abstract class Model implements JsonSerializable
 
         return $existing->match(
             some: fn($instance) => $instance,
-            none: fn() => static::create(array_merge($attributes, $values)),
+            none: function () use ($attributes, $values): static {
+                try {
+                    return static::create(array_merge($attributes, $values));
+                } catch (\PDOException $e) {
+                    // Race condition: another worker inserted the same unique record
+                    // between our SELECT and INSERT (SQLSTATE 23xxx = integrity violation).
+                    // Re-run firstOrCreate — the SELECT on the second attempt finds
+                    // the row the concurrent worker created and returns it directly.
+                    if (str_starts_with((string) $e->getCode(), '23')) {
+                        return static::firstOrCreate($attributes, $values);
+                    }
+                    throw $e;
+                }
+            },
         );
     }
 
