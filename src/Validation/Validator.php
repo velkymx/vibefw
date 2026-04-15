@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Validation;
 
+use Fw\Database\Connection;
+use LogicException;
 use ReflectionClass;
 use ReflectionProperty;
 
@@ -81,7 +83,9 @@ final class Validator
             $fieldErrors = [];
 
             foreach ($fieldRules as $rule) {
-                $error = $rule->validate($value, $this->formatFieldName($field), $data);
+                $error = $rule instanceof DatabaseRule
+                    ? $this->resolveDbRule($rule, $value, $this->formatFieldName($field), $data)
+                    : $rule->validate($value, $this->formatFieldName($field), $data);
                 if ($error !== null) {
                     $fieldErrors[] = $error;
                 }
@@ -150,6 +154,26 @@ final class Validator
         }
 
         return self::$ruleCache[$class] = $rules;
+    }
+
+    /**
+     * Resolve a DatabaseRule using the active Connection singleton.
+     */
+    /** @param array<string, mixed> $data */
+    private function resolveDbRule(DatabaseRule $rule, mixed $value, string $field, array $data): ?string
+    {
+        try {
+            $connection = Connection::getInstance();
+        } catch (LogicException $e) {
+            throw new \RuntimeException(
+                'A database-backed validation rule requires an active database connection. ' .
+                $e->getMessage(),
+                0,
+                $e
+            );
+        }
+
+        return $rule->resolveWithDb($connection, $value, $field, $data);
     }
 
     /**

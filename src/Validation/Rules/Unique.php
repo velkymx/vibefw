@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Fw\Validation\Rules;
 
-use Fw\Validation\Rule;
+use Fw\Database\Connection;
+use Fw\Validation\DatabaseRule;
 
 /**
  * Value must be unique in a database table column.
  *
- * Note: Database validation is deferred — this rule stores the constraint
- * metadata. The Validator resolves it against the database at validation time
- * when a database connection is available.
+ * The Validator resolves this rule via resolveWithDb() when a database
+ * connection is available. Calling validate() directly always passes (no DB).
  */
-final class Unique implements Rule
+final class Unique implements DatabaseRule
 {
     public function __construct(
         public readonly string $table,
@@ -22,15 +22,30 @@ final class Unique implements Rule
         public readonly string $message = 'The :field has already been taken.',
     ) {}
 
+    /**
+     * Stateless pass — DB check runs through resolveWithDb().
+     */
     public function validate(mixed $value, string $field, array $data = []): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Check that $value is unique in $this->table.$this->column.
+     * Optionally ignores the row with id = $this->ignoreId (for update flows).
+     */
+    public function resolveWithDb(Connection $connection, mixed $value, string $field, array $data): ?string
     {
         if ($value === null || $value === '') {
             return null;
         }
 
-        // Database validation requires a connection — handled by the framework
-        // when wired through FormRequest. Standalone use returns null (passes).
-        // The framework's request lifecycle validates uniqueness via the DB.
-        return null;
+        $query = $connection->table($this->table)->where($this->column, $value);
+
+        if ($this->ignoreId !== null) {
+            $query = $query->where('id', '!=', $this->ignoreId);
+        }
+
+        return $query->exists() ? str_replace(':field', $field, $this->message) : null;
     }
 }

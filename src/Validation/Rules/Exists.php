@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Fw\Validation\Rules;
 
-use Fw\Validation\Rule;
+use Fw\Database\Connection;
+use Fw\Validation\DatabaseRule;
 
 /**
  * Value must exist in a database table column.
  *
- * Note: Database validation is deferred — this rule stores the constraint
- * metadata. The Validator resolves it against the database at validation time
- * when a database connection is available.
+ * The Validator resolves this rule via resolveWithDb() when a database
+ * connection is available. Calling validate() directly always passes (no DB).
  */
-final class Exists implements Rule
+final class Exists implements DatabaseRule
 {
     public function __construct(
         public readonly string $table,
@@ -21,14 +21,25 @@ final class Exists implements Rule
         public readonly string $message = 'The selected :field is invalid.',
     ) {}
 
+    /**
+     * Stateless pass — DB check runs through resolveWithDb().
+     */
     public function validate(mixed $value, string $field, array $data = []): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Check that $value exists in $this->table.$this->column.
+     */
+    public function resolveWithDb(Connection $connection, mixed $value, string $field, array $data): ?string
     {
         if ($value === null || $value === '') {
             return null;
         }
 
-        // Database validation requires a connection — handled by the framework
-        // when wired through FormRequest. Standalone use returns null (passes).
-        return null;
+        $exists = $connection->table($this->table)->where($this->column, $value)->exists();
+
+        return $exists ? null : str_replace(':field', $field, $this->message);
     }
 }
