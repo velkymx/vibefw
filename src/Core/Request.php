@@ -328,7 +328,12 @@ final class Request
     public function bearerToken(): ?string
     {
         $auth = $this->header('authorization', '');
-        return str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : null;
+        if (!str_starts_with($auth, 'Bearer ')) {
+            return null;
+        }
+        $token = substr($auth, 7);
+        $len = strlen($token);
+        return ($len >= 32 && $len <= 512) ? $token : null;
     }
 
     public function sanitized(string $key, mixed $default = null): mixed

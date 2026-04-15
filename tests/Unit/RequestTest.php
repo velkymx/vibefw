@@ -290,16 +290,45 @@ final class RequestTest extends TestCase
 
     public function testBearerTokenExtractsToken(): void
     {
-        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer abc123token';
+        // Realistic token: userId|hex64 format, 101+ chars
+        $token = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890|' . str_repeat('a1b2c3d4', 8);
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $token;
 
         $request = new Request();
 
-        $this->assertEquals('abc123token', $request->bearerToken());
+        $this->assertEquals($token, $request->bearerToken());
     }
 
     public function testBearerTokenReturnsNullForOtherAuth(): void
     {
         $_SERVER['HTTP_AUTHORIZATION'] = 'Basic dXNlcjpwYXNz';
+
+        $request = new Request();
+
+        $this->assertNull($request->bearerToken());
+    }
+
+    public function testBearerTokenReturnsNullForEmptyToken(): void
+    {
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ';
+
+        $request = new Request();
+
+        $this->assertNull($request->bearerToken());
+    }
+
+    public function testBearerTokenReturnsNullForTooShortToken(): void
+    {
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer tooshort';
+
+        $request = new Request();
+
+        $this->assertNull($request->bearerToken());
+    }
+
+    public function testBearerTokenReturnsNullForTooLongToken(): void
+    {
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . str_repeat('x', 513);
 
         $request = new Request();
 
