@@ -15,6 +15,12 @@ final class Request
 
     private static int $readTimeout = 30;
 
+    /** Minimum valid bearer token length (bytes) — matches Csrf::TOKEN_BYTES. */
+    private const int BEARER_TOKEN_MIN = 32;
+
+    /** Maximum valid bearer token length (bytes) — prevents oversized Authorization headers. */
+    private const int BEARER_TOKEN_MAX = 512;
+
     public readonly string $method;
 
     public readonly string $uri;
@@ -333,7 +339,7 @@ final class Request
         }
         $token = substr($auth, 7);
         $len = strlen($token);
-        return ($len >= 32 && $len <= 512) ? $token : null;
+        return ($len >= self::BEARER_TOKEN_MIN && $len <= self::BEARER_TOKEN_MAX) ? $token : null;
     }
 
     public function sanitized(string $key, mixed $default = null): mixed
