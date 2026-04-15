@@ -154,7 +154,7 @@ abstract class Model implements JsonSerializable
 
     public function __get(string $name): mixed
     {
-        return $this->getAttribute($name);
+        return $this->getAttribute($name)->unwrapOr(null);
     }
 
     public function __set(string $name, mixed $value): void
@@ -164,7 +164,7 @@ abstract class Model implements JsonSerializable
 
     public function __isset(string $name): bool
     {
-        return $this->getAttribute($name) !== null;
+        return $this->getAttribute($name)->isSome();
     }
 
     public function __unset(string $name): void
@@ -713,29 +713,34 @@ abstract class Model implements JsonSerializable
     }
 
     /**
-     * Get an attribute value.
+     * Get an attribute value wrapped in Option.
+     *
+     * Returns Option::some($value) when the key exists (even if the value is null),
+     * and Option::none() when the key is absent from attributes, relations, and relationships.
+     *
+     * @return Option<mixed>
      */
-    public function getAttribute(string $key): mixed
+    public function getAttribute(string $key): Option
     {
         $key = Str::snake($key);
 
         // Check attributes first
         if (array_key_exists($key, $this->attributes)) {
-            return $this->attributes[$key];
+            return Option::some($this->attributes[$key]);
         }
 
         // Check relations
         if (array_key_exists($key, $this->relations)) {
-            return $this->relations[$key];
+            return Option::some($this->relations[$key]);
         }
 
         // Try to load relationship
         $camelKey = Str::camel($key);
         if (method_exists($this, $camelKey)) {
-            return $this->getRelation($camelKey);
+            return Option::some($this->getRelation($camelKey));
         }
 
-        return null;
+        return Option::none();
     }
 
     /**
@@ -743,7 +748,7 @@ abstract class Model implements JsonSerializable
      */
     public function getKey(): mixed
     {
-        return $this->getAttribute(static::$primaryKey);
+        return $this->getAttribute(static::$primaryKey)->unwrapOr(null);
     }
 
     /**

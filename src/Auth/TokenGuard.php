@@ -124,7 +124,7 @@ final class TokenGuard
             return [];
         }
 
-        $raw = $token->getAttribute('abilities');
+        $raw = $token->getAttribute('abilities')->unwrapOr(null);
         return is_array($raw) ? $raw : [];
     }
 

@@ -33,7 +33,7 @@ final class HasMany extends Relation
      */
     public function get(): Collection
     {
-        $localValue = $this->parent->getAttribute($this->localKey);
+        $localValue = $this->parent->getAttribute($this->localKey)->unwrapOr(null);
 
         if ($localValue === null) {
             return Collection::empty();
@@ -69,13 +69,13 @@ final class HasMany extends Relation
         // Group by foreign key
         $dictionary = [];
         foreach ($related as $item) {
-            $foreignValue = $item->getAttribute($this->foreignKey);
+            $foreignValue = $item->getAttribute($this->foreignKey)->unwrapOr(null);
             $dictionary[$foreignValue][] = $item;
         }
 
         // Assign to parent models
         foreach ($models as $model) {
-            $key = $model->getAttribute($this->localKey);
+            $key = $model->getAttribute($this->localKey)->unwrapOr(null);
             $model->setRelation($name, new Collection($dictionary[$key] ?? []));
         }
     }
@@ -88,7 +88,7 @@ final class HasMany extends Relation
      */
     public function create(array $attributes): Model
     {
-        $attributes[$this->foreignKey] = $this->parent->getAttribute($this->localKey);
+        $attributes[$this->foreignKey] = $this->parent->getAttribute($this->localKey)->unwrapOr(null);
         return ($this->related)::create($attributes);
     }
 
@@ -143,7 +143,7 @@ final class HasMany extends Relation
      */
     public function count(): int
     {
-        $localValue = $this->parent->getAttribute($this->localKey);
+        $localValue = $this->parent->getAttribute($this->localKey)->unwrapOr(null);
 
         if ($localValue === null) {
             return 0;

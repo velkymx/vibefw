@@ -109,7 +109,7 @@ final class BelongsToMany extends Relation
 
         // Assign to parent models
         foreach ($models as $model) {
-            $key = $model->getAttribute($parentKey);
+            $key = $model->getAttribute($parentKey)->unwrapOr(null);
             $model->setRelation($name, new Collection($dictionary[$key] ?? []));
         }
     }

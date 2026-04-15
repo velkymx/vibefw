@@ -55,7 +55,7 @@ class PersonalAccessToken extends Model implements RevocableTokenInterface
 
     public function can(string $ability): bool
     {
-        $abilities = $this->getAttribute('abilities') ?? [];
+        $abilities = $this->getAttribute('abilities')->unwrapOr([]);
         if (empty($abilities)) {
             return false;
         }
@@ -90,7 +90,7 @@ class PersonalAccessToken extends Model implements RevocableTokenInterface
 
     public function isExpired(): bool
     {
-        $expiresAt = $this->getAttribute('expires_at');
+        $expiresAt = $this->getAttribute('expires_at')->unwrapOr(null);
         if ($expiresAt === null) {
             return false;
         }

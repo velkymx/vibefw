@@ -35,7 +35,7 @@ final class HasOne extends Relation
      */
     public function get(): Option
     {
-        $localValue = $this->parent->getAttribute($this->localKey);
+        $localValue = $this->parent->getAttribute($this->localKey)->unwrapOr(null);
 
         if ($localValue === null) {
             return Option::none();
@@ -71,13 +71,13 @@ final class HasOne extends Relation
         // Key by foreign key for fast lookup
         $dictionary = [];
         foreach ($related as $item) {
-            $foreignValue = $item->getAttribute($this->foreignKey);
+            $foreignValue = $item->getAttribute($this->foreignKey)->unwrapOr(null);
             $dictionary[$foreignValue] = $item;
         }
 
         // Assign to parent models
         foreach ($models as $model) {
-            $key = $model->getAttribute($this->localKey);
+            $key = $model->getAttribute($this->localKey)->unwrapOr(null);
             $model->setRelation($name, $dictionary[$key] ?? null);
         }
     }
@@ -90,7 +90,7 @@ final class HasOne extends Relation
      */
     public function create(array $attributes): Model
     {
-        $attributes[$this->foreignKey] = $this->parent->getAttribute($this->localKey);
+        $attributes[$this->foreignKey] = $this->parent->getAttribute($this->localKey)->unwrapOr(null);
         return ($this->related)::create($attributes);
     }
 
@@ -101,7 +101,7 @@ final class HasOne extends Relation
      */
     public function save(Model $model): Model
     {
-        $model->setAttribute($this->foreignKey, $this->parent->getAttribute($this->localKey));
+        $model->setAttribute($this->foreignKey, $this->parent->getAttribute($this->localKey)->unwrapOr(null));
         $model->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
         return $model;
     }

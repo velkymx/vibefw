@@ -35,7 +35,7 @@ final class BelongsTo extends Relation
      */
     public function get(): Option
     {
-        $foreignValue = $this->parent->getAttribute($this->foreignKey);
+        $foreignValue = $this->parent->getAttribute($this->foreignKey)->unwrapOr(null);
 
         if ($foreignValue === null) {
             return Option::none();
@@ -71,13 +71,13 @@ final class BelongsTo extends Relation
         // Key by owner key for fast lookup
         $dictionary = [];
         foreach ($related as $item) {
-            $ownerValue = $item->getAttribute($this->ownerKey);
+            $ownerValue = $item->getAttribute($this->ownerKey)->unwrapOr(null);
             $dictionary[$ownerValue] = $item;
         }
 
         // Assign to parent models
         foreach ($models as $model) {
-            $key = $model->getAttribute($this->foreignKey);
+            $key = $model->getAttribute($this->foreignKey)->unwrapOr(null);
             $model->setRelation($name, $dictionary[$key] ?? null);
         }
     }
@@ -89,7 +89,7 @@ final class BelongsTo extends Relation
      */
     public function associate(mixed $model): Model
     {
-        $key = $model instanceof Model ? $model->getAttribute($this->ownerKey) : $model;
+        $key = $model instanceof Model ? $model->getAttribute($this->ownerKey)->unwrapOr(null) : $model;
         $this->parent->setAttribute($this->foreignKey, $key);
         return $this->parent;
     }
