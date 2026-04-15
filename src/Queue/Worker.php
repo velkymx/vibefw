@@ -194,9 +194,6 @@ final class Worker
             return;
         }
 
-        // Rotate log file if it exceeds 10MB to prevent unbounded growth
-        $this->rotateLogIfNeeded($logFile, 10 * 1024 * 1024);
-
         $sanitizedTrace = $this->sanitizeStackTrace(array_slice($e->getTrace(), 0, 30));
 
         $entry = sprintf(
@@ -207,7 +204,13 @@ final class Worker
             $sanitizedTrace
         );
 
+        // Write the entry BEFORE rotating so the current failure is always
+        // preserved even if rotation (rename) fails or the process is killed.
         file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
+
+        // Rotate after writing: at this point the entry is safe in the log.
+        // If rotation fails, the file just grows a bit past the limit — acceptable.
+        $this->rotateLogIfNeeded($logFile, 10 * 1024 * 1024);
     }
 
     private function rotateLogIfNeeded(string $logFile, int $maxSize): void
