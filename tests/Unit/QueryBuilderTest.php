@@ -7,6 +7,7 @@ namespace Fw\Tests\Unit;
 use Fw\Database\Connection;
 use Fw\Database\QueryBuilder;
 use Fw\Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 final class QueryBuilderTest extends TestCase
 {
@@ -167,6 +168,15 @@ final class QueryBuilderTest extends TestCase
     public function testFindReturnsNoneForInvalidId(): void
     {
         $opt = $this->query()->find(999);
+
+        $this->assertTrue($opt->isNone());
+    }
+
+    #[Test]
+    public function testFindReturnsNoneForEmptyStringId(): void
+    {
+        // Empty string must return none rather than producing WHERE id = ''
+        $opt = $this->query()->find('');
 
         $this->assertTrue($opt->isNone());
     }

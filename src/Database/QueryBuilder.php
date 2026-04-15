@@ -269,6 +269,12 @@ final class QueryBuilder
      */
     public function find(int|string $id, string $column = 'id'): Option
     {
+        // Reject empty string early — avoids WHERE id = '' which can silently
+        // match unexpected rows on DBs that coerce '' to 0.
+        if ($id === '') {
+            return Option::none();
+        }
+
         return $this->where($column, $id)->first();
     }
 

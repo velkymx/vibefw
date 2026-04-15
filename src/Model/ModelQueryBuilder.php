@@ -259,6 +259,10 @@ final class ModelQueryBuilder
      */
     public function find(mixed $id): Option
     {
+        if ($id === '' || $id === null) {
+            return Option::none();
+        }
+
         return $this->where($this->metadata->primaryKey, $id)->first();
     }
 
