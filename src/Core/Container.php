@@ -79,6 +79,12 @@ final class Container
     private array $reflectionInitializing = [];
 
     /**
+     * Classes currently being built (circular-dependency guard).
+     * @var array<string, true>
+     */
+    private array $resolving = [];
+
+    /**
      * Get the singleton container instance.
      */
     public static function getInstance(): self
@@ -425,6 +431,21 @@ final class Container
     }
 
     private function buildClass(string $concrete): object
+    {
+        if (isset($this->resolving[$concrete])) {
+            throw new RuntimeException("Circular dependency detected while resolving [{$concrete}]");
+        }
+
+        $this->resolving[$concrete] = true;
+
+        try {
+            return $this->buildClassInner($concrete);
+        } finally {
+            unset($this->resolving[$concrete]);
+        }
+    }
+
+    private function buildClassInner(string $concrete): object
     {
         $params = $this->getReflectionCache($concrete);
         if ($params === null) {
