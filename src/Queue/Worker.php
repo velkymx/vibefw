@@ -185,8 +185,13 @@ final class Worker
     {
         $logFile = BASE_PATH . '/storage/logs/failed_jobs.log';
         $dir = dirname($logFile);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0o750, true);
+
+        // TOCTOU-safe directory creation: concurrent workers may both pass the
+        // is_dir() check and race on mkdir().  The third is_dir() guards
+        // against treating a benign EEXIST as a real failure.
+        if (!is_dir($dir) && !mkdir($dir, 0o750, true) && !is_dir($dir)) {
+            $this->output("Warning: could not create log directory: $dir");
+            return;
         }
 
         // Rotate log file if it exceeds 10MB to prevent unbounded growth
