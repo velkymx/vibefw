@@ -61,8 +61,8 @@ final readonly class WorkflowResult
     {
         return [
             [
-                'type' => 'tool_result',
-                'result' => json_encode($this->toArray()),
+                'type' => 'text',
+                'text' => json_encode($this->toArray(), JSON_THROW_ON_ERROR),
             ],
         ];
     }

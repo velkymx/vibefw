@@ -66,10 +66,10 @@ final class WorkflowResultTest extends TestCase
 
         $this->assertIsArray($content);
         $this->assertCount(1, $content);
-        $this->assertEquals('tool_result', $content[0]['type']);
-        $this->assertIsString($content[0]['result']);
+        $this->assertEquals('text', $content[0]['type']);
+        $this->assertIsString($content[0]['text']);
 
-        $decoded = json_decode($content[0]['result'], true);
+        $decoded = json_decode($content[0]['text'], true);
         $this->assertIsArray($decoded);
         $this->assertArrayHasKey('completed', $decoded);
     }
