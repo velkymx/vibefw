@@ -164,6 +164,18 @@ php fw route:cache                # Cache routes
 php fw route:clear                # Clear route cache
 ```
 
+## AUX (Agent Tools)
+
+```bash
+php fw aux:list                                              # List all registered AUX tools
+php fw aux:call process_ticket_queue --input '{"queue_id":1}' # Invoke a tool with JSON input
+php fw aux:call public_status                                # Invoke with default empty input
+php fw aux:schema process_ticket_queue                       # Dump tool's MCP shape as JSON
+php fw serve:mcp                                             # Start MCP server (stdio)
+```
+
+See [aux.md](aux.md) for the full AUX guide and [mcp.md](mcp.md) for MCP client setup.
+
 ## Queue
 
 ```bash

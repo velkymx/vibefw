@@ -33,6 +33,21 @@ Add to your workspace `.cursor/mcp.json`:
 }
 ```
 
+## Setup: Claude Code
+
+Add to `~/.claude/mcp_servers.json` or your project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "myapp": {
+      "command": "php",
+      "args": ["/path/to/your/app/fw", "serve:mcp"]
+    }
+  }
+}
+```
+
 ## CLI: serve:mcp
 
 ```bash
@@ -42,6 +57,16 @@ php fw serve:mcp
 Starts a JSON-RPC 2.0 server on stdin/stdout. The MCP client sends requests as newline-delimited JSON, and the server responds on stdout.
 
 The command resolves `McpServer` from the service container, so all tools registered in your `AuxServiceProvider` are available.
+
+## Verify Before Connecting
+
+Before connecting an MCP client, verify your tools are registered and their schemas are correct:
+
+```bash
+php fw aux:list                           # See all tools
+php fw aux:schema process_ticket_queue    # Check JSON Schema + annotations
+php fw aux:call process_ticket_queue --input '{"queue_id": 1}'  # Test handler
+```
 
 ## Protocol Flow
 
@@ -73,19 +98,26 @@ Server name and version are configurable via `config/aux.php` (`mcp_server_name`
 
 ```json
 → {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-← {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"process_ticket_queue","description":"Process all open tickets","inputSchema":{"type":"object","required":["queue_id"],"properties":{"queue_id":{"type":"integer"}}}}]}}
+← {"jsonrpc":"2.0","id":2,"result":{"tools":[
+    {
+      "name":"process_ticket_queue",
+      "description":"Process all open tickets in a queue, resolve or escalate each.",
+      "inputSchema":{"type":"object","required":["queue_id"],"properties":{"queue_id":{"type":"integer","description":"Queue to process"}}},
+      "annotations":{"idempotentHint":true}
+    }
+  ]}}
 ```
 
-Tools are filtered by caller abilities. Public tools (abilities: []) always appear.
+Tools are filtered by caller abilities. Public tools (`abilities: []`) always appear. Tools with annotations include them in the shape; tools without annotations omit the field.
 
 ### tools/call
 
 ```json
 → {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"process_ticket_queue","arguments":{"queue_id":147}}}
-← {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\"completed\":[...],\"failed\":[...]}"}]}}
+← {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\"completed\":[{\"id\":301,\"action\":\"resolved\"}],\"failed\":[],\"pending\":[],\"metadata\":{\"duration_ms\":234.56}}"}]}}
 ```
 
-Content items use `type: "text"` per MCP spec §5.10. The `text` field contains a JSON-encoded `WorkflowResult`.
+Content items use `type: "text"` per MCP spec §5.10. The `text` field contains a JSON-encoded `WorkflowResult`. The `duration_ms` in metadata is automatically captured by the framework.
 
 ### Error Handling
 
@@ -116,14 +148,16 @@ POST /mcp/messages   → Accepts JSON-RPC requests
 
 The SSE endpoint sends an `endpoint` event pointing to `/mcp/messages`, then sends `: ping` keepalive comments at the configured heartbeat interval (`aux.sse_heartbeat_seconds`, default 15s).
 
-These routes are unauthenticated at the HTTP level. Ability gating happens inside `ToolRegistry` — public tools are visible without authentication.
+Both routes are protected by `AgentMiddleware` (requires `Accept: application/json`). Ability gating happens inside `ToolRegistry` — public tools are visible without authentication.
+
+These routes are only registered when `aux.mcp_enabled` is `true` (the default). Set `AUX_MCP_ENABLED=false` in `.env` to disable.
 
 ## Input Validation
 
 `ToolRegistry` performs lightweight JSON Schema validation:
 
 - **`required`**: Checks that required properties are present
-- **Scalar `type`**: Validates `string`, `integer`, `number`, `boolean`
+- **Scalar `type`**: Validates `string`, `integer`, `number`, `boolean`, `array`, `object`, `null`
 
 For complex validation, do it inside your handler or workflow:
 
@@ -136,27 +170,39 @@ handler: function (array $input) {
 
 ## Testing Your Tools
 
+Three layers, from simplest to most integrated:
+
 ```php
-// Unit test — tool directly
+// 1. Handler directly — fastest, no validation or protocol overhead
 $tool = ProcessTicketQueueTool::make();
 $result = ($tool->handler)(['queue_id' => 147]);
 $this->assertFalse($result->isError);
 $this->assertNotEmpty($result->completed);
 
-// Unit test — via registry
+// 2. Via registry — includes validation, duration capture, events
 $registry = new ToolRegistry();
 $registry->register($tool);
 $result = $registry->call('process_ticket_queue', ['queue_id' => 147]);
 $this->assertTrue($result->isOk());
 
-// Unit test — via protocol
+// 3. Via protocol — full JSON-RPC round-trip, exactly what an MCP client sees
 $protocol = new McpProtocol($registry);
 $json = $protocol->handle('{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"process_ticket_queue","arguments":{"queue_id":147}}}');
 $decoded = json_decode($json, true);
 $this->assertArrayHasKey('content', $decoded['result']);
 ```
 
+## Disabling MCP
+
+Set in `.env`:
+
+```env
+AUX_MCP_ENABLED=false
+```
+
+This prevents `AuxServiceProvider` from registering `/mcp/*` routes entirely. The HTTP Agent API (`/agent/*`) remains available independently via `AUX_HTTP_AGENT_ENABLED`.
+
 ## See Also
 
-- [aux.md](aux.md) — AUX design principles and full developer guide
+- [aux.md](aux.md) — AUX design principles, full developer guide, CLI tools, events, composability
 - [authentication.md](authentication.md) — API token auth for /agent/* endpoints
