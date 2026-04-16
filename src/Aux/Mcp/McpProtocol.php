@@ -10,11 +10,11 @@ use Fw\Aux\WorkflowResult;
 final readonly class McpProtocol
 {
     private const PROTOCOL_VERSION = '2024-11-05';
-    private const SERVER_NAME = 'myapp';
-    private const SERVER_VERSION = '1.0.0';
 
     public function __construct(
         private ToolRegistry $registry,
+        private string $serverName = 'VibeFW AUX',
+        private string $serverVersion = '3.0',
     ) {}
 
     public function handle(string $rawJson, array $callerAbilities = []): string
@@ -56,8 +56,8 @@ final readonly class McpProtocol
         return $this->response($message->id, [
             'protocolVersion' => self::PROTOCOL_VERSION,
             'serverInfo' => [
-                'name' => self::SERVER_NAME,
-                'version' => self::SERVER_VERSION,
+                'name' => $this->serverName,
+                'version' => $this->serverVersion,
             ],
             'capabilities' => [
                 'tools' => new \stdClass(),
@@ -103,7 +103,13 @@ final readonly class McpProtocol
                 return $this->errorResponse($message->id, McpError::toolValidationError($error->getMessage()));
             }
 
-            return $this->errorResponse($message->id, McpError::serverError($error->getMessage()));
+            // Handler threw — MCP spec: return success with isError:true, not JSON-RPC error
+            $errorResult = WorkflowResult::error($error->getMessage());
+
+            return $this->response($message->id, [
+                'content' => $errorResult->toMcpContent(),
+                'isError' => true,
+            ]);
         }
 
         $workflowResult = $result->unwrapOr(null);

@@ -33,7 +33,7 @@ final class McpProtocolTest extends TestCase
         $this->assertEquals(1, $decoded['id']);
         $this->assertArrayHasKey('result', $decoded);
         $this->assertEquals('2024-11-05', $decoded['result']['protocolVersion']);
-        $this->assertEquals('myapp', $decoded['result']['serverInfo']['name']);
+        $this->assertEquals('VibeFW AUX', $decoded['result']['serverInfo']['name']);
     }
 
     public function testToolsListReturnsAllTools(): void
@@ -205,7 +205,7 @@ final class McpProtocolTest extends TestCase
         $this->assertEquals(-32002, $decoded['error']['code']);
     }
 
-    public function testToolsCallHandlerErrorReturnsError(): void
+    public function testToolsCallHandlerExceptionReturnsIsErrorResult(): void
     {
         $this->registry->register(new Tool(
             name: 'failing_tool',
@@ -220,7 +220,24 @@ final class McpProtocolTest extends TestCase
 
         $decoded = json_decode($response, true);
 
-        $this->assertArrayHasKey('error', $decoded);
-        $this->assertEquals(-32000, $decoded['error']['code']);
+        // MCP spec: handler errors are JSON-RPC success with isError:true, not JSON-RPC error
+        $this->assertArrayHasKey('result', $decoded);
+        $this->assertArrayNotHasKey('error', $decoded);
+        $this->assertTrue($decoded['result']['isError']);
+        $this->assertNotEmpty($decoded['result']['content']);
+        $this->assertEquals('text', $decoded['result']['content'][0]['type']);
+        $payload = json_decode($decoded['result']['content'][0]['text'], true);
+        $this->assertStringContainsString('Handler exploded', $payload['metadata']['error']);
+    }
+
+    public function testInitializeReturnsCustomServerName(): void
+    {
+        $protocol = new McpProtocol($this->registry, serverName: 'MyApp', serverVersion: '2.5');
+        $request = '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}';
+
+        $decoded = json_decode($protocol->handle($request), true);
+
+        $this->assertEquals('MyApp', $decoded['result']['serverInfo']['name']);
+        $this->assertEquals('2.5', $decoded['result']['serverInfo']['version']);
     }
 }

@@ -12,6 +12,6 @@ return [
         'max_requests' => Env::int('AUX_RATE_LIMIT', 100),
         'window_seconds' => Env::int('AUX_RATE_LIMIT_WINDOW', 60),
     ],
-    'mcp_server_name' => Env::string('AUX_SERVER_NAME', 'myapp'),
-    'mcp_server_version' => Env::string('AUX_SERVER_VERSION', '1.0.0'),
+    'mcp_server_name' => Env::string('AUX_SERVER_NAME', 'VibeFW AUX'),
+    'mcp_server_version' => Env::string('AUX_SERVER_VERSION', '3.0'),
 ];

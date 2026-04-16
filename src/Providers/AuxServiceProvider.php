@@ -31,6 +31,8 @@ class AuxServiceProvider extends ServiceProvider
         $this->container->singleton(McpProtocol::class, function () {
             return new McpProtocol(
                 $this->container->get(ToolRegistry::class),
+                serverName: $this->app->config('aux.mcp_server_name', 'VibeFW AUX'),
+                serverVersion: $this->app->config('aux.mcp_server_version', '3.0'),
             );
         });
 
