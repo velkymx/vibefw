@@ -78,7 +78,9 @@ final class EmailVerification
 
         $createdAt = strtotime($result['created_at']);
         if (time() - $createdAt > self::TOKEN_EXPIRY) {
-            self::deleteByHash($hashedToken);
+            // Do NOT delete here — eager deletion creates an extra DB write that
+            // distinguishes expired tokens from non-existent ones (timing signal).
+            // Cleanup is handled by deleteExpired().
             return null;
         }
 
