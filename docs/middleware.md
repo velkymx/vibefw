@@ -55,6 +55,10 @@ return [
 ];
 ```
 
+### Worker Mode — No Restart Required
+
+In worker mode (FrankenPHP, RoadRunner) the process stays alive across requests. `HttpKernel::resetState()` calls `Pipeline::clearAliasCache()` after every request, so changes to `config/middleware.php` take effect on the **next request** without restarting the worker.
+
 ## Creating Middleware
 
 ```bash

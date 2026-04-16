@@ -17,6 +17,8 @@ php fw make:request RegisterRequest
 
 ### Login
 
+Use `Auth::attempt()` for timing-safe credential validation. It always runs password hashing even when the user does not exist, preventing user enumeration via timing side-channels. On success it calls `Auth::login()` internally, which regenerates both the session ID and CSRF token.
+
 ```php
 <?php
 
@@ -24,10 +26,10 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use Fw\Auth\Auth;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
-use App\Models\User;
 use App\Requests\LoginRequest;
 use Fw\Validation\ValidationException;
 
@@ -46,33 +48,21 @@ class LoginController extends Controller
             return $this->view('auth.login', ['errors' => $e->errors]);
         }
 
-        return User::where('email', '=', $data->email)->first()->match(
-            some: function ($user) use ($data) {
-                if (!password_verify($data->password, $user->password)) {
-                    return $this->view('auth.login', [
-                        'errors' => ['email' => 'Invalid credentials'],
-                    ]);
-                }
-
-                $this->app->initSession();
-                $_SESSION['user'] = [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                ];
-
-                $intended = $_SESSION['intended_url'] ?? '/dashboard';
-                unset($_SESSION['intended_url']);
-
-                return $this->redirect($intended);
-            },
-            none: fn() => $this->view('auth.login', [
+        if (!Auth::attempt($data->email, $data->password)) {
+            return $this->view('auth.login', [
                 'errors' => ['email' => 'Invalid credentials'],
-            ]),
-        );
+            ]);
+        }
+
+        $intended = $_SESSION['intended_url'] ?? '/dashboard';
+        unset($_SESSION['intended_url']);
+
+        return $this->redirect($intended);
     }
 }
 ```
+
+> **Security note:** Never call `password_verify()` manually in controllers. `Auth::attempt()` handles timing-safe comparison and session fixation prevention automatically. Manually constructing the session array bypasses CSRF token regeneration and session ID rotation.
 
 ### Login FormRequest
 
@@ -105,11 +95,11 @@ class LoginRequest extends FormRequest
 ### Logout
 
 ```php
+use Fw\Auth\Auth;
+
 public function logout(Request $request): Response
 {
-    $this->app->initSession();
-    session_destroy();
-
+    Auth::logout();
     return $this->redirect('/');
 }
 ```
@@ -203,22 +193,63 @@ return function (Router $router): void {
 };
 ```
 
+## Session Cookie Configuration
+
+### SameSite Policy
+
+Control the `SameSite` attribute for session cookies via `SESSION_SAME_SITE` in `.env`:
+
+```env
+# Strict (default) — cookie not sent on cross-site requests at all
+SESSION_SAME_SITE=Strict
+
+# Lax — cookie sent on top-level navigations (GET links), not POST/AJAX
+SESSION_SAME_SITE=Lax
+
+# None — cookie sent cross-site; requires HTTPS and Secure flag
+SESSION_SAME_SITE=None
+```
+
+Or in `config/app.php`:
+
+```php
+'session_same_site' => Env::string('SESSION_SAME_SITE', 'Strict'),
+```
+
+`Strict` is the secure default. Use `Lax` for apps embedded via links in third-party pages. `None` requires HTTPS and is rarely needed.
+
 ## API Authentication
 
 ### Token Generation
 
-```php
-use App\Models\PersonalAccessToken;
+Use `ApiToken::create()` — never construct token records manually. The service generates a cryptographically random opaque token, hashes it for storage, and returns the plaintext only once.
 
+```php
+use Fw\Auth\ApiToken;
+
+// In a controller or command
+$newToken = ApiToken::create(
+    user: $user,
+    name: 'my-app',
+    abilities: ['read', 'write'],
+    // expiresAt: new DateTimeImmutable('+90 days'),  // optional
+);
+
+return $this->json($newToken->toArray());
+// {"token": "abc123...", "token_id": 1, "name": "my-app", ...}
+```
+
+**Security:** tokens are opaque 256-bit random hex — no user ID embedded. Anyone holding the token cannot decode the owner's identity. Store the hash; never log or expose the plaintext after this response.
+
+**Wrong — do not do this:**
+
+```php
+// ❌ Manual construction leaks no timing safety; exposes PII in token body
 $token = PersonalAccessToken::create([
     'user_id' => $user->id,
-    'name' => 'api-token',
     'token' => bin2hex(random_bytes(32)),
-    'abilities' => ['read', 'write'],
-    'expires_at' => date('Y-m-d H:i:s', strtotime('+30 days')),
+    ...
 ]);
-
-return $this->json(['token' => $token->token]);
 ```
 
 ### API Routes

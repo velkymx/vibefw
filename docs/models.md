@@ -11,6 +11,17 @@ php fw make:model Post -m    # Model + matching migration (--migration)
 
 To generate a model alongside its controller, views, form requests, and factory in one step, use the schema workflow — see [schema.md](schema.md). For migration syntax and column types see [database.md](database.md).
 
+## Inspecting a Model
+
+Before writing code, inspect what the framework knows about your model:
+
+```bash
+php fw model:inspect Post
+# Shows: table name, all columns + types, $fillable, $casts, relations, row count, indexes
+```
+
+Use this to confirm your migration ran, your fillable fields are correct, and your relations are wired up before writing controller or view code.
+
 ```php
 <?php
 
@@ -378,18 +389,11 @@ Relationship data is **not** included unless explicitly appended. Hidden attribu
 Generate factories and tests from your model automatically:
 
 ```bash
-php fw make:test Post          # Unit + feature tests from $fillable, casts, relations
+php fw make:test Post            # Unit + feature tests from $fillable, casts, relations
 php fw make:factory PostFactory  # Faker-based factory
 ```
 
 See [testing.md](testing.md) for factory usage, `RefreshDatabase`, and architecture tests.
-
-## Inspection
-
-```bash
-php fw model:inspect Post
-# Shows: table, columns, fillable, casts, relations, row count, indexes
-```
 
 ## Complete Example
 
