@@ -97,15 +97,18 @@ final class ApiTokenTest extends TestCase
         $this->assertEquals(64, strlen($storedToken)); // SHA-256 produces 64 hex chars
     }
 
-    public function testCreateTokenFormatIncludesUserId(): void
+    public function testCreateTokenIsOpaqueHexWithoutUserId(): void
     {
+        // S-NEW-05: token must not embed user ID — opaque 64-char hex only.
         $user = $this->createUser();
 
         $result = ApiToken::create($user, 'Test Token');
-        $parts = explode('|', $result->plainTextToken);
+        $token  = $result->plainTextToken;
 
-        $this->assertCount(2, $parts);
-        $this->assertEquals($user->id, $parts[0]);
+        // Must not contain the user ID
+        $this->assertStringNotContainsString((string) $user->id, $token);
+        // Must be purely hexadecimal (64 chars = 256-bit random body)
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $token);
     }
 
     public function testCreateWithAbilities(): void
@@ -155,25 +158,6 @@ final class ApiTokenTest extends TestCase
         $found = ApiToken::find($newToken->plainTextToken);
 
         $this->assertNull($found);
-    }
-
-    public function testParseTokenExtractsUserIdAndRandom(): void
-    {
-        $user = $this->createUser();
-        $newToken = ApiToken::create($user, 'Test Token');
-
-        $parsed = ApiToken::parseToken($newToken->plainTextToken);
-
-        $this->assertIsArray($parsed);
-        $this->assertCount(2, $parsed);
-        $this->assertEquals($user->id, $parsed[0]);
-        $this->assertNotEmpty($parsed[1]);
-    }
-
-    public function testParseTokenReturnsNullForInvalidFormat(): void
-    {
-        $this->assertNull(ApiToken::parseToken('invalid-no-pipe'));
-        $this->assertNull(ApiToken::parseToken('|random')); // Empty user ID
     }
 
     public function testTokensReturnsAllUserTokens(): void

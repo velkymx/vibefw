@@ -111,15 +111,13 @@ final class ApiToken
             }
         }
 
-        // Generate random token
+        // Generate random token — opaque 64-char hex, no user ID prefix.
+        // Embedding the user ID in the token leaks PII to anyone who holds the token.
+        // The stored hash (find path) already performs indexed lookup; user ID is not needed.
         $randomBytes = random_bytes(self::TOKEN_BYTES);
-        $randomHex = bin2hex($randomBytes);
+        $tokenBody = bin2hex($randomBytes);
 
-        // Hash only the canonical (prefix-free) token body so the stored hash is
-        // independent of the prefix string. Changing the prefix in config does NOT
-        // invalidate all existing tokens — only their transport representation changes.
         $prefix = $config['token_prefix'] ?? '';
-        $tokenBody = $user->id . '|' . $randomHex;
         $plainTextToken = $prefix . $tokenBody;
 
         // Hash for storage
@@ -202,37 +200,6 @@ final class ApiToken
         }
 
         return $token;
-    }
-
-    /**
-     * Parse a token string to extract user ID (for quick lookup optimization).
-     *
-     * Returns [user_id, random_part] or null if invalid format.
-     */
-    public static function parseToken(string $plainTextToken): ?array
-    {
-        $config = self::config();
-        $prefix = $config['token_prefix'] ?? '';
-
-        // Remove prefix if present
-        if ($prefix !== '' && str_starts_with($plainTextToken, $prefix)) {
-            $plainTextToken = substr($plainTextToken, strlen($prefix));
-        }
-
-        $parts = explode('|', $plainTextToken, 2);
-
-        if (count($parts) !== 2) {
-            return null;
-        }
-
-        $userId = $parts[0];
-
-        // User ID must be non-empty
-        if ($userId === '') {
-            return null;
-        }
-
-        return [$userId, $parts[1]];
     }
 
     /**
