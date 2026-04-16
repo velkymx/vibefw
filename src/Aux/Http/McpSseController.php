@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Fw\Aux\Http;
 
+use Fw\Auth\TokenGuard;
 use Fw\Aux\Mcp\McpProtocol;
+use Fw\Core\Application;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
@@ -12,13 +14,16 @@ use Fw\Core\StreamedResponse;
 
 final class McpSseController extends Controller
 {
-    public function __construct(
-        private readonly McpProtocol $protocol,
-    ) {}
+    private McpProtocol $protocol;
+
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+        $this->protocol = $app->getContainer()->get(McpProtocol::class);
+    }
 
     public function sse(Request $request): StreamedResponse
     {
-        $abilities = $this->getCallerAbilities($request);
         $heartbeat = $this->app->config('aux.sse_heartbeat_seconds', 15);
 
         return $this->streamed(function () use ($heartbeat) {
@@ -26,18 +31,20 @@ final class McpSseController extends Controller
                 ob_end_flush();
             }
 
-            echo "event: endpoint\n";
-            echo "data: /mcp/messages\n\n";
+            echo "event: endpoint\ndata: /mcp/messages\n\n";
+            flush();
 
-            echo "data: : keepalive\n\n";
-
-            sleep($heartbeat);
+            while (!connection_aborted()) {
+                echo ": ping\n\n";
+                flush();
+                sleep($heartbeat);
+            }
         });
     }
 
     public function messages(Request $request): Response
     {
-        $abilities = $this->getCallerAbilities($request);
+        $abilities = TokenGuard::tokenAbilities();
         $body = $request->rawBody();
 
         if (empty($body)) {
@@ -72,14 +79,4 @@ final class McpSseController extends Controller
         return $this->json($decoded);
     }
 
-    private function getCallerAbilities(Request $request): array
-    {
-        $header = $request->header('X-Agent-Abilities', '');
-
-        if ($header === '') {
-            return [];
-        }
-
-        return array_filter(array_map('trim', explode(',', $header)));
-    }
 }

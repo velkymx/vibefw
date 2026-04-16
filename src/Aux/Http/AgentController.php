@@ -5,19 +5,25 @@ declare(strict_types=1);
 namespace Fw\Aux\Http;
 
 use Fw\Aux\ToolRegistry;
+use Fw\Auth\TokenGuard;
+use Fw\Core\Application;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
 
 final class AgentController extends Controller
 {
-    public function __construct(
-        private readonly ToolRegistry $tools,
-    ) {}
+    private ToolRegistry $tools;
+
+    public function __construct(Application $app)
+    {
+        parent::__construct($app);
+        $this->tools = $app->getContainer()->get(ToolRegistry::class);
+    }
 
     public function index(Request $request): Response
     {
-        $abilities = $this->getCallerAbilities($request);
+        $abilities = $this->getCallerAbilities();
 
         $tools = $this->tools->allFor($abilities);
 
@@ -33,7 +39,7 @@ final class AgentController extends Controller
 
     public function invoke(Request $request, string $name): Response
     {
-        $abilities = $this->getCallerAbilities($request);
+        $abilities = $this->getCallerAbilities();
         $arguments = $request->all();
 
         $result = $this->tools->call($name, $arguments, $abilities);
@@ -62,21 +68,15 @@ final class AgentController extends Controller
             ]], 500);
         }
 
-        $workflowResult = $result->unwrap();
+        $workflowResult = $result->unwrapOr(null);
 
         return $this->json([
             'content' => $workflowResult->toMcpContent(),
         ]);
     }
 
-    private function getCallerAbilities(Request $request): array
+    private function getCallerAbilities(): array
     {
-        $header = $request->header('X-Agent-Abilities', '');
-
-        if ($header === '') {
-            return [];
-        }
-
-        return array_filter(array_map('trim', explode(',', $header)));
+        return TokenGuard::tokenAbilities();
     }
 }
