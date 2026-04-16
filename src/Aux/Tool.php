@@ -23,11 +23,17 @@ final readonly class Tool
 
     public function toMcpShape(): array
     {
-        return [
+        $shape = [
             'name' => $this->name,
             'description' => $this->description,
             'inputSchema' => $this->inputSchema,
         ];
+
+        if ($this->annotations !== []) {
+            $shape['annotations'] = $this->annotations;
+        }
+
+        return $shape;
     }
 
     public function isAccessibleWith(array $callerAbilities): bool

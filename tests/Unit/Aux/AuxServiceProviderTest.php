@@ -25,6 +25,33 @@ final class AuxServiceProviderTest extends TestCase
         );
     }
 
+    public function testBootChecksConfigFlagsBeforeRegisteringRoutes(): void
+    {
+        $rc = new ReflectionClass(AuxServiceProvider::class);
+        $method = $rc->getMethod('boot');
+
+        $file = file($method->getFileName());
+        $start = $method->getStartLine() - 1;
+        $end = $method->getEndLine();
+        $body = implode('', array_slice($file, $start, $end - $start));
+
+        $this->assertStringContainsString('mcp_enabled', $body, 'boot() must check mcp_enabled config');
+        $this->assertStringContainsString('http_agent_enabled', $body, 'boot() must check http_agent_enabled config');
+    }
+
+    public function testBootWiresAgentMiddleware(): void
+    {
+        $rc = new ReflectionClass(AuxServiceProvider::class);
+        $method = $rc->getMethod('boot');
+
+        $file = file($method->getFileName());
+        $start = $method->getStartLine() - 1;
+        $end = $method->getEndLine();
+        $body = implode('', array_slice($file, $start, $end - $start));
+
+        $this->assertStringContainsString('AgentMiddleware', $body, 'boot() must wire AgentMiddleware');
+    }
+
     public function testBootMethodBodyDeclaresRoutes(): void
     {
         $rc = new ReflectionClass(AuxServiceProvider::class);

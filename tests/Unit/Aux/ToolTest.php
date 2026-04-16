@@ -104,6 +104,37 @@ final class ToolTest extends TestCase
         $this->assertEquals('my_tool_name', $tool->name);
     }
 
+    public function testToMcpShapeIncludesAnnotationsWhenNonEmpty(): void
+    {
+        $tool = new Tool(
+            name: 'destructive_tool',
+            description: 'Deletes things',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => throw new \RuntimeException('Not implemented'),
+            annotations: ['destructiveHint' => true, 'idempotentHint' => false],
+        );
+
+        $shape = $tool->toMcpShape();
+
+        $this->assertArrayHasKey('annotations', $shape);
+        $this->assertTrue($shape['annotations']['destructiveHint']);
+        $this->assertFalse($shape['annotations']['idempotentHint']);
+    }
+
+    public function testToMcpShapeOmitsAnnotationsWhenEmpty(): void
+    {
+        $tool = new Tool(
+            name: 'simple_tool',
+            description: 'No annotations',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => throw new \RuntimeException('Not implemented'),
+        );
+
+        $shape = $tool->toMcpShape();
+
+        $this->assertArrayNotHasKey('annotations', $shape);
+    }
+
     public function testHandlerIsCallable(): void
     {
         $handlerCalled = false;
