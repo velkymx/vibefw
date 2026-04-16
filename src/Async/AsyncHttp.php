@@ -52,6 +52,21 @@ final class AsyncHttp
         return $clone;
     }
 
+    /**
+     * Enable HTTP keep-alive for this client instance.
+     *
+     * By default AsyncHttp sends Connection: close, which lets response
+     * reading terminate naturally on EOF. Use keep-alive together with
+     * servers that include Content-Length or Transfer-Encoding: chunked,
+     * both of which AsyncHttp's isResponseComplete() handles automatically.
+     */
+    public function withKeepAlive(): self
+    {
+        $clone = clone $this;
+        $clone->defaultHeaders['Connection'] = 'keep-alive';
+        return $clone;
+    }
+
     public function request(string $method, string $url, mixed $body = null, array $headers = []): Deferred
     {
         $deferred = new Deferred();
@@ -186,7 +201,60 @@ final class AsyncHttp
             }
 
             $buffer .= $chunk;
+
+            // Short-circuit for responses with explicit length metadata so
+            // keep-alive connections resolve without waiting for EOF.
+            if ($this->isResponseComplete($buffer)) {
+                if ($readWatcherId !== null) {
+                    $loop->removeReadStream($readWatcherId, true);
+                }
+                $this->parseResponse($buffer, $deferred);
+            }
         });
+    }
+
+    /**
+     * Determine whether all response bytes have been received.
+     *
+     * Returns true when:
+     * - Transfer-Encoding is chunked and the 0\r\n\r\n terminator is present.
+     * - Content-Length is declared and that many body bytes have arrived.
+     *
+     * Returns false (caller continues reading until EOF) when neither header
+     * is present — this is the correct behaviour for Connection: close.
+     */
+    private function isResponseComplete(string $buffer): bool
+    {
+        $sepPos = strpos($buffer, "\r\n\r\n");
+        if ($sepPos === false) {
+            return false; // Headers not fully received yet
+        }
+
+        $headerSection = substr($buffer, 0, $sepPos);
+        $bodyStart     = $sepPos + 4;
+        $bodyReceived  = strlen($buffer) - $bodyStart;
+
+        // Parse headers once from the header section
+        $headers = [];
+        foreach (explode("\r\n", $headerSection) as $i => $line) {
+            if ($i === 0 || !str_contains($line, ':')) {
+                continue; // Skip status line and malformed headers
+            }
+            [$name, $value]             = explode(':', $line, 2);
+            $headers[strtolower(trim($name))] = trim($value);
+        }
+
+        if (($headers['transfer-encoding'] ?? '') === 'chunked') {
+            // Chunked: look for the zero-length terminator chunk
+            return str_ends_with(substr($buffer, $bodyStart), "0\r\n\r\n");
+        }
+
+        if (isset($headers['content-length'])) {
+            return $bodyReceived >= (int) $headers['content-length'];
+        }
+
+        // No length metadata — must wait for EOF (Connection: close behaviour)
+        return false;
     }
 
     private function parseResponse(string $buffer, Deferred $deferred): void
