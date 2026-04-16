@@ -192,13 +192,13 @@ final class AsyncHttp
     private function parseResponse(string $buffer, Deferred $deferred): void
     {
         $parts = explode("\r\n\r\n", $buffer, 2);
-        if (count($parts) < 1) {
-            $deferred->reject(new RuntimeException("Invalid response"));
+        if (count($parts) < 2) {
+            $deferred->reject(new RuntimeException("Invalid response: missing header/body separator"));
             return;
         }
 
         $headerLines = explode("\r\n", $parts[0]);
-        $statusLine = array_shift($headerLines);
+        $statusLine  = array_shift($headerLines);
 
         preg_match('/HTTP\/[\d.]+\s+(\d+)/', $statusLine, $matches);
         $statusCode = isset($matches[1]) ? (int) $matches[1] : 200;
@@ -211,8 +211,54 @@ final class AsyncHttp
             }
         }
 
-        $body = $parts[1] ?? '';
+        $body = $parts[1];
+
+        // RFC 7230 §4.1 — decode chunked transfer encoding when indicated.
+        if (($headers['transfer-encoding'] ?? '') === 'chunked') {
+            $body = $this->decodeChunked($body);
+        }
+
         $deferred->resolve(new HttpResponse($statusCode, $headers, $body));
+    }
+
+    /**
+     * Decode an HTTP/1.1 chunked transfer-encoded body (RFC 7230 §4.1).
+     *
+     * Format: {hex_size}[; ext]\r\n{data}\r\n ... 0\r\n\r\n
+     * Chunk extensions (after ';') are ignored per spec.
+     */
+    private function decodeChunked(string $body): string
+    {
+        $decoded = '';
+        $offset  = 0;
+        $len     = strlen($body);
+
+        while ($offset < $len) {
+            // Find end of chunk-size line
+            $eol = strpos($body, "\r\n", $offset);
+            if ($eol === false) {
+                break;
+            }
+
+            // Parse hex size (ignore optional chunk extensions after ';')
+            $sizeLine  = substr($body, $offset, $eol - $offset);
+            $semiColon = strpos($sizeLine, ';');
+            if ($semiColon !== false) {
+                $sizeLine = substr($sizeLine, 0, $semiColon);
+            }
+
+            $chunkSize = (int) hexdec(trim($sizeLine));
+            $offset    = $eol + 2; // skip \r\n
+
+            if ($chunkSize === 0) {
+                break; // last chunk
+            }
+
+            $decoded .= substr($body, $offset, $chunkSize);
+            $offset  += $chunkSize + 2; // skip data + trailing \r\n
+        }
+
+        return $decoded;
     }
 
     /**
