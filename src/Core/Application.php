@@ -139,14 +139,15 @@ final class Application
             return;
         }
 
-        $secure = $this->resolveSecureCookieSetting();
+        $secure   = $this->resolveSecureCookieSetting();
+        $sameSite = $this->resolveSameSiteSetting();
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => '/',
             'domain' => '',
             'secure' => $secure,
             'httponly' => true,
-            'samesite' => 'Strict',
+            'samesite' => $sameSite,
         ]);
         session_start();
     }
@@ -241,5 +242,25 @@ final class Application
         $configSecure = $this->configRepository->get('app.secure_cookies', true);
         $isProduction = $this->configRepository->get('app.env', 'production') === 'production';
         return $isProduction ?: (bool) $configSecure;
+    }
+
+    /**
+     * Resolve the SameSite cookie attribute for session cookies.
+     *
+     * Default is 'Strict' (most secure). Use 'Lax' when cross-site POST flows
+     * are required (e.g. OAuth callbacks, payment provider redirects).
+     * 'None' requires Secure=true and is only appropriate for explicit cross-origin sharing.
+     *
+     * Configure via SESSION_SAME_SITE env var or app.session_same_site config key.
+     */
+    /** @return 'Strict'|'Lax'|'None' */
+    private function resolveSameSiteSetting(): string
+    {
+        $value = $this->configRepository->get('app.session_same_site', 'Strict');
+        return match (true) {
+            in_array($value, ['Lax', 'lax'], true)   => 'Lax',
+            in_array($value, ['None', 'none'], true)  => 'None',
+            default                                   => 'Strict',
+        };
     }
 }

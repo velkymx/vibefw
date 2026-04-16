@@ -10,6 +10,7 @@ return [
     'debug' => Env::bool('APP_DEBUG', true),
     'timezone' => Env::string('APP_TIMEZONE', 'UTC'),
     'secure_cookies' => Env::bool('APP_SECURE_COOKIES', false),
+    'session_same_site' => Env::string('SESSION_SAME_SITE', 'Strict'),
 
     'cors' => [
         'allowed_origins' => array_filter(array_map(
