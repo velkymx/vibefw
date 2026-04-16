@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Fw\Providers;
 
+use Fw\Aux\Http\AgentController;
+use Fw\Aux\Http\McpSseController;
 use Fw\Aux\Mcp\McpProtocol;
 use Fw\Aux\Mcp\McpServer;
 use Fw\Aux\ToolRegistry;
 use Fw\Core\ServiceProvider;
+use Fw\Middleware\ApiAuthMiddleware;
 
 class AuxServiceProvider extends ServiceProvider
 {
@@ -41,5 +44,22 @@ class AuxServiceProvider extends ServiceProvider
                 $this->container->get(McpProtocol::class),
             );
         });
+    }
+
+    public function boot(): void
+    {
+        $router = $this->app->router;
+
+        // MCP transport routes (unauthenticated — ability gating is inside ToolRegistry)
+        $router->group('/mcp', function ($r) {
+            $r->get('/sse', [McpSseController::class, 'sse']);
+            $r->post('/messages', [McpSseController::class, 'messages']);
+        });
+
+        // HTTP agent routes (require API token auth)
+        $router->group('/agent', function ($r) {
+            $r->get('/tools', [AgentController::class, 'index']);
+            $r->post('/tools/{name}', [AgentController::class, 'invoke']);
+        }, middleware: [ApiAuthMiddleware::class]);
     }
 }
