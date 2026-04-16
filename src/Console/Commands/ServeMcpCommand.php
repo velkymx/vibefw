@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Fw\Console\Commands;
 
-use Fw\Aux\Mcp\McpProtocol;
 use Fw\Aux\Mcp\McpServer;
-use Fw\Aux\ToolRegistry;
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Fw\Core\Application as HttpApplication;
 
 /**
  * Start MCP server for AI agent connections.
@@ -39,9 +38,7 @@ final class ServeMcpCommand extends Command
         pcntl_signal(SIGINT, $shutdown);
         pcntl_signal(SIGTERM, $shutdown);
 
-        $registry = new ToolRegistry();
-        $protocol = new McpProtocol($registry);
-        $server = new McpServer($protocol);
+        $server = HttpApplication::getInstance()->getContainer()->get(McpServer::class);
 
         $server->run();
 
