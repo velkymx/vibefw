@@ -14,10 +14,15 @@ final class {{className}}Tool
     public static function make(): Tool
     {
         return new Tool(
+            // CUSTOMIZE: change name to snake_case identifier (e.g. process_ticket_queue)
             name: '{{name}}',
+            // CUSTOMIZE: describe what this tool does for the agent
             description: '{{description}}',
+            // CUSTOMIZE: define your JSON Schema input shape
             inputSchema: {{inputSchema}},
+            // CUSTOMIZE: replace with your workflow or closure logic
             handler: fn(array $input) => (new {{workflowClass}}())->execute($input),
+            // CUSTOMIZE: list required token abilities, or leave [] for public access
             abilities: {{abilities}},
             annotations: {{annotations}},
         );

@@ -23,9 +23,10 @@ final class {{className}}Workflow extends WorkflowAction
 
     public function execute(array $input): WorkflowResult
     {
-        // TODO: Implement workflow logic
+        // CUSTOMIZE: implement your multi-step workflow logic here
         // Use $this->dispatch(Command) to execute commands
         // Use $this->query(Query) to fetch data
+        // Return WorkflowResult::success/partial/error
 
         return WorkflowResult::success(
             completed: [],
