@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Workflows;
+
+use Fw\Aux\WorkflowAction;
+use Fw\Aux\WorkflowResult;
+use Fw\Bus\CommandBus;
+use Fw\Bus\QueryBus;
+
+/**
+ * Workflow: {{description}}
+ */
+final class {{className}}Workflow extends WorkflowAction
+{
+    public function __construct(
+        CommandBus $commands,
+        QueryBus $queries,
+    ) {
+        parent::__construct($commands, $queries);
+    }
+
+    public function execute(array $input): WorkflowResult
+    {
+        // TODO: Implement workflow logic
+        // Use $this->dispatch(Command) to execute commands
+        // Use $this->query(Query) to fetch data
+
+        return WorkflowResult::success(
+            completed: [],
+            metadata: ['workflow' => '{{name}}'],
+        );
+    }
+}

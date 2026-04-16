@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tools;
+
+use Fw\Aux\Tool;
+
+/**
+ * {{description}}
+ */
+final class {{className}}Tool
+{
+    public static function make(): Tool
+    {
+        return new Tool(
+            name: '{{name}}',
+            description: '{{description}}',
+            inputSchema: {{inputSchema}},
+            handler: fn(array $input) => (new {{workflowClass}}())->execute($input),
+            abilities: {{abilities}},
+            annotations: {{annotations}},
+        );
+    }
+}

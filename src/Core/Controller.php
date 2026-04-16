@@ -122,6 +122,15 @@ abstract class Controller
         return $this->app->view->streamed($template, $data);
     }
 
+    protected function streamed(callable $callback): StreamedResponse
+    {
+        return new StreamedResponse($callback, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+        ]);
+    }
+
     /**
      * Return a JSON response.
      */
