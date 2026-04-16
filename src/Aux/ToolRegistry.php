@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Fw\Aux;
 
+use Fw\Aux\Events\ToolCalled;
+use Fw\Aux\Events\ToolCompleted;
 use Fw\Aux\Exceptions\ToolNotFoundException;
 use Fw\Aux\Exceptions\ToolValidationException;
+use Fw\Events\EventDispatcher;
 use Fw\Support\Option;
 use Fw\Support\Result;
 use Throwable;
@@ -14,6 +17,13 @@ final class ToolRegistry
 {
     /** @var array<string, Tool> */
     private array $tools = [];
+
+    private ?EventDispatcher $events = null;
+
+    public function setEventDispatcher(EventDispatcher $events): void
+    {
+        $this->events = $events;
+    }
 
     public function register(Tool $tool): self
     {
@@ -64,7 +74,14 @@ final class ToolRegistry
         }
 
         try {
+            $this->events?->dispatch(new ToolCalled($name, $input));
+
+            $start = hrtime(true);
             $result = ($tool->handler)($input);
+            $durationMs = (hrtime(true) - $start) / 1_000_000;
+
+            $result = $result->withDuration($durationMs);
+            $this->events?->dispatch(new ToolCompleted($name, $result));
 
             return Result::ok($result);
         } catch (Throwable $e) {

@@ -358,6 +358,12 @@ final class Application
             Commands\TestCommand::class,
             Commands\TestForCommand::class,
 
+            // AUX (Agent tools)
+            Commands\AuxListCommand::class,
+            Commands\AuxCallCommand::class,
+            Commands\AuxSchemaCommand::class,
+            Commands\ServeMcpCommand::class,
+
             // Debugging
             Commands\ErrorExplainCommand::class,
         ];

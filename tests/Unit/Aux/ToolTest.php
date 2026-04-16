@@ -135,6 +135,23 @@ final class ToolTest extends TestCase
         $this->assertArrayNotHasKey('annotations', $shape);
     }
 
+    public function testWithAbilitiesReturnsNewToolWithUpdatedAbilities(): void
+    {
+        $original = new Tool(
+            name: 'base_tool',
+            description: 'Original',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => throw new \RuntimeException('Not implemented'),
+            abilities: ['read'],
+        );
+
+        $cloned = $original->withAbilities(['write', 'admin']);
+
+        $this->assertSame(['write', 'admin'], $cloned->abilities);
+        $this->assertSame('base_tool', $cloned->name);
+        $this->assertSame(['read'], $original->abilities);
+    }
+
     public function testHandlerIsCallable(): void
     {
         $handlerCalled = false;

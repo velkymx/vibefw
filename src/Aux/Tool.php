@@ -36,6 +36,18 @@ final readonly class Tool
         return $shape;
     }
 
+    public function withAbilities(array $abilities): self
+    {
+        return new self(
+            name: $this->name,
+            description: $this->description,
+            inputSchema: $this->inputSchema,
+            handler: $this->handler,
+            abilities: $abilities,
+            annotations: $this->annotations,
+        );
+    }
+
     public function isAccessibleWith(array $callerAbilities): bool
     {
         if ($this->abilities === []) {

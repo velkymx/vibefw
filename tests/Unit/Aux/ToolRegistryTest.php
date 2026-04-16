@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Fw\Tests\Unit\Aux;
 
+use Fw\Aux\Events\ToolCalled;
+use Fw\Aux\Events\ToolCompleted;
 use Fw\Aux\Tool;
 use Fw\Aux\ToolRegistry;
 use Fw\Aux\WorkflowResult;
+use Fw\Events\EventDispatcher;
 use Fw\Support\Option;
 use Fw\Support\Result;
 use PHPUnit\Framework\TestCase;
@@ -239,5 +242,52 @@ final class ToolRegistryTest extends TestCase
         $result = $this->registry->call('admin_tool', [], ['admin']);
 
         $this->assertTrue($result->isOk());
+    }
+
+    public function testCallAutoCapturesDuration(): void
+    {
+        $tool = new Tool(
+            name: 'slow_tool',
+            description: 'Takes time',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => WorkflowResult::success(completed: [['done' => true]]),
+        );
+
+        $this->registry->register($tool);
+
+        $result = $this->registry->call('slow_tool', []);
+
+        $this->assertTrue($result->isOk());
+        $workflowResult = $result->unwrapOr(null);
+        $this->assertNotNull($workflowResult->duration);
+        $this->assertGreaterThan(0.0, $workflowResult->duration);
+    }
+
+    public function testCallDispatchesToolCalledAndToolCompletedEvents(): void
+    {
+        $dispatched = [];
+        $events = new EventDispatcher();
+        $events->listen(ToolCalled::class, function (ToolCalled $e) use (&$dispatched) {
+            $dispatched[] = $e;
+        });
+        $events->listen(ToolCompleted::class, function (ToolCompleted $e) use (&$dispatched) {
+            $dispatched[] = $e;
+        });
+
+        $this->registry->setEventDispatcher($events);
+        $this->registry->register(new Tool(
+            name: 'evented_tool',
+            description: 'Fires events',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => WorkflowResult::success(completed: [['ok' => true]]),
+        ));
+
+        $this->registry->call('evented_tool', ['msg' => 'hi']);
+
+        $this->assertCount(2, $dispatched);
+        $this->assertInstanceOf(ToolCalled::class, $dispatched[0]);
+        $this->assertSame('evented_tool', $dispatched[0]->toolName);
+        $this->assertInstanceOf(ToolCompleted::class, $dispatched[1]);
+        $this->assertNotNull($dispatched[1]->result->duration);
     }
 }

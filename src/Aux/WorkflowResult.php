@@ -18,6 +18,7 @@ final readonly class WorkflowResult
         public array $pending,
         public array $metadata,
         public bool $isError,
+        public ?float $duration = null,
     ) {}
 
     public static function success(array $completed = [], array $metadata = []): self
@@ -57,6 +58,37 @@ final readonly class WorkflowResult
         );
     }
 
+    public function withDuration(float $durationMs): self
+    {
+        return new self(
+            completed: $this->completed,
+            failed: $this->failed,
+            pending: $this->pending,
+            metadata: $this->metadata,
+            isError: $this->isError,
+            duration: $durationMs,
+        );
+    }
+
+    public function merge(self ...$others): self
+    {
+        $completed = $this->completed;
+        $failed = $this->failed;
+        $pending = $this->pending;
+        $metadata = $this->metadata;
+        $isError = $this->isError;
+
+        foreach ($others as $other) {
+            $completed = array_merge($completed, $other->completed);
+            $failed = array_merge($failed, $other->failed);
+            $pending = array_merge($pending, $other->pending);
+            $metadata = array_merge($metadata, $other->metadata);
+            $isError = $isError || $other->isError;
+        }
+
+        return new self($completed, $failed, $pending, $metadata, $isError);
+    }
+
     public function toMcpContent(): array
     {
         return [
@@ -69,11 +101,16 @@ final readonly class WorkflowResult
 
     public function toArray(): array
     {
+        $metadata = $this->metadata;
+        if ($this->duration !== null) {
+            $metadata['duration_ms'] = $this->duration;
+        }
+
         return [
             'completed' => $this->completed,
             'failed' => $this->failed,
             'pending' => $this->pending,
-            'metadata' => $this->metadata,
+            'metadata' => $metadata,
         ];
     }
 }

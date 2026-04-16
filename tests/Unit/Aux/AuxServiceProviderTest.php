@@ -39,6 +39,19 @@ final class AuxServiceProviderTest extends TestCase
         $this->assertStringContainsString('http_agent_enabled', $body, 'boot() must check http_agent_enabled config');
     }
 
+    public function testBootWiresRateLimitMiddlewareOnAgentRoutes(): void
+    {
+        $rc = new ReflectionClass(AuxServiceProvider::class);
+        $method = $rc->getMethod('boot');
+
+        $file = file($method->getFileName());
+        $start = $method->getStartLine() - 1;
+        $end = $method->getEndLine();
+        $body = implode('', array_slice($file, $start, $end - $start));
+
+        $this->assertStringContainsString('RateLimitMiddleware', $body, 'boot() must wire RateLimitMiddleware');
+    }
+
     public function testBootWiresAgentMiddleware(): void
     {
         $rc = new ReflectionClass(AuxServiceProvider::class);

@@ -99,6 +99,60 @@ final class WorkflowResultTest extends TestCase
         $this->assertCount(0, $result->completed);
     }
 
+    public function testMergeCombinesMultipleResults(): void
+    {
+        $a = WorkflowResult::success(
+            completed: [['id' => 1, 'action' => 'done']],
+            metadata: ['source' => 'a'],
+        );
+        $b = WorkflowResult::partial(
+            completed: [['id' => 2, 'action' => 'done']],
+            failed: [['id' => 3, 'error' => 'timeout']],
+            pending: [['id' => 4, 'status' => 'waiting']],
+            metadata: ['source' => 'b'],
+        );
+
+        $merged = $a->merge($b);
+
+        $this->assertCount(2, $merged->completed);
+        $this->assertCount(1, $merged->failed);
+        $this->assertCount(1, $merged->pending);
+        $this->assertFalse($merged->isError);
+        $this->assertSame('b', $merged->metadata['source']);
+    }
+
+    public function testMergePreservesErrorFlag(): void
+    {
+        $ok = WorkflowResult::success(completed: [['id' => 1]]);
+        $err = WorkflowResult::error('fail');
+
+        $merged = $ok->merge($err);
+        $this->assertTrue($merged->isError);
+    }
+
+    public function testDurationDefaultsToNull(): void
+    {
+        $result = WorkflowResult::success(completed: [['id' => 1]]);
+        $this->assertNull($result->duration);
+    }
+
+    public function testWithDurationReturnsCopyWithDuration(): void
+    {
+        $result = WorkflowResult::success(completed: [['id' => 1]]);
+        $timed = $result->withDuration(123.45);
+
+        $this->assertNull($result->duration);
+        $this->assertSame(123.45, $timed->duration);
+    }
+
+    public function testToArrayIncludesDurationWhenSet(): void
+    {
+        $result = WorkflowResult::success(completed: [['id' => 1]])->withDuration(50.0);
+        $arr = $result->toArray();
+
+        $this->assertSame(50.0, $arr['metadata']['duration_ms']);
+    }
+
     public function testPartialWithPendingItems(): void
     {
         $result = WorkflowResult::partial(

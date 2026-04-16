@@ -12,6 +12,7 @@ use Fw\Aux\ToolRegistry;
 use Fw\Core\ServiceProvider;
 use Fw\Aux\Http\AgentMiddleware;
 use Fw\Middleware\ApiAuthMiddleware;
+use Fw\Middleware\RateLimitMiddleware;
 
 class AuxServiceProvider extends ServiceProvider
 {
@@ -62,7 +63,7 @@ class AuxServiceProvider extends ServiceProvider
             $router->group('/agent', function ($r) {
                 $r->get('/tools', [AgentController::class, 'index']);
                 $r->post('/tools/{name}', [AgentController::class, 'invoke']);
-            }, middleware: [ApiAuthMiddleware::class, AgentMiddleware::class]);
+            }, middleware: [ApiAuthMiddleware::class, AgentMiddleware::class, RateLimitMiddleware::class]);
         }
     }
 }
