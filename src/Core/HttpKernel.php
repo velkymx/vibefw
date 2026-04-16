@@ -116,6 +116,9 @@ final class HttpKernel
         EmailVerification::resetConnection();
         PasswordReset::resetConnection();
         \Fw\Model\Model::resetConnection();
+        // Clear the Pipeline alias cache so middleware.php changes are picked up
+        // on the next request without restarting the worker process.
+        Pipeline::clearAliasCache();
         // Also flush the fiber-local container instances to prevent memory accumulation
         $this->container->flush();
     }
