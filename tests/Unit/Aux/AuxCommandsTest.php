@@ -6,6 +6,7 @@ namespace Fw\Tests\Unit\Aux;
 
 use Fw\Console\Commands\AuxListCommand;
 use Fw\Console\Commands\AuxCallCommand;
+use Fw\Console\Commands\AuxFeaturesCommand;
 use Fw\Console\Commands\AuxSchemaCommand;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -111,6 +112,34 @@ final class AuxCommandsTest extends TestCase
         $this->assertStringContainsString('json_encode', $body);
     }
 
+    // ── F3: aux:features ─────────────────────────────────────────────────────
+
+    public function testAuxFeaturesCommandExists(): void
+    {
+        $this->assertTrue(class_exists(AuxFeaturesCommand::class));
+    }
+
+    public function testAuxFeaturesCommandHasCorrectName(): void
+    {
+        $rc = new ReflectionClass(AuxFeaturesCommand::class);
+        $prop = $rc->getProperty('name');
+        $this->assertSame('aux:features', $prop->getDefaultValue());
+    }
+
+    public function testAuxFeaturesHandleResolvesFeatureIndex(): void
+    {
+        $rc = new ReflectionClass(AuxFeaturesCommand::class);
+        $method = $rc->getMethod('handle');
+
+        $file = file($method->getFileName());
+        $start = $method->getStartLine() - 1;
+        $end = $method->getEndLine();
+        $body = implode('', array_slice($file, $start, $end - $start));
+
+        $this->assertStringContainsString('FeatureIndex', $body);
+        $this->assertStringContainsString('table(', $body);
+    }
+
     // ── Registration ─────────────────────────────────────────────────────────
 
     public function testAllAuxCommandsRegisteredInApplication(): void
@@ -126,6 +155,7 @@ final class AuxCommandsTest extends TestCase
         $this->assertStringContainsString('AuxListCommand', $body);
         $this->assertStringContainsString('AuxCallCommand', $body);
         $this->assertStringContainsString('AuxSchemaCommand', $body);
+        $this->assertStringContainsString('AuxFeaturesCommand', $body);
         $this->assertStringContainsString('ServeMcpCommand', $body);
     }
 }

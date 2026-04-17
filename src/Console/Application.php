@@ -359,9 +359,12 @@ final class Application
             Commands\TestForCommand::class,
 
             // AUX (Agent tools)
+            Commands\MakeToolCommand::class,
+            Commands\MakeWorkflowCommand::class,
             Commands\AuxListCommand::class,
             Commands\AuxCallCommand::class,
             Commands\AuxSchemaCommand::class,
+            Commands\AuxFeaturesCommand::class,
             Commands\ServeMcpCommand::class,
 
             // Debugging
