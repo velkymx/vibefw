@@ -1,0 +1,85 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Workflows;
+
+use App\Commands\CreateUser;
+use App\Commands\ProvisionDefaults;
+use App\Commands\SendWelcomeEmail;
+use Fw\Aux\WorkflowAction;
+use Fw\Aux\WorkflowResult;
+
+/**
+ * Onboarding workflow: create user, send welcome email, provision defaults.
+ *
+ * Canonical AUX template — one tool, one workflow, one structured result.
+ * Exposed to agents via a Tool wrapper; returns a single report instead of
+ * requiring the agent to chain three API calls.
+ *
+ * Input shape: { email: string, name: string, plan?: string }
+ */
+final class {{className}}Workflow extends WorkflowAction
+{
+    public function execute(array $input): WorkflowResult
+    {
+        $completed = [];
+        $failed = [];
+
+        // CUSTOMIZE: step 1 — create the user account.
+        // Replace CreateUser with your app's user-creation command; input keys
+        // must match your FormRequest / DTO shape.
+        $userResult = $this->dispatch(new CreateUser(
+            email: (string) ($input['email'] ?? ''),
+            name: (string) ($input['name'] ?? ''),
+        ));
+
+        $user = $userResult->match(
+            ok: function ($u) use (&$completed) {
+                $completed[] = ['step' => 'create_user', 'user_id' => $u->id];
+                return $u;
+            },
+            err: function (\Throwable $e) use (&$failed) {
+                $failed[] = ['step' => 'create_user', 'error' => $e->getMessage()];
+                return null;
+            },
+        );
+
+        if ($user === null) {
+            return WorkflowResult::partial($completed, $failed);
+        }
+
+        // CUSTOMIZE: step 2 — send the welcome email.
+        // Keep this step idempotent; agents may retry on transient failure.
+        $this->dispatch(new SendWelcomeEmail(userId: $user->id))->match(
+            ok: function () use (&$completed, $user) {
+                $completed[] = ['step' => 'send_welcome_email', 'user_id' => $user->id];
+                return null;
+            },
+            err: function (\Throwable $e) use (&$failed, $user) {
+                $failed[] = ['step' => 'send_welcome_email', 'user_id' => $user->id, 'error' => $e->getMessage()];
+                return null;
+            },
+        );
+
+        // CUSTOMIZE: step 3 — provision plan-specific defaults.
+        // Swap this for workspace creation, seed data, feature flags, etc.
+        $this->dispatch(new ProvisionDefaults(
+            userId: $user->id,
+            plan: (string) ($input['plan'] ?? 'starter'),
+        ))->match(
+            ok: function () use (&$completed, $user) {
+                $completed[] = ['step' => 'provision_defaults', 'user_id' => $user->id];
+                return null;
+            },
+            err: function (\Throwable $e) use (&$failed, $user) {
+                $failed[] = ['step' => 'provision_defaults', 'user_id' => $user->id, 'error' => $e->getMessage()];
+                return null;
+            },
+        );
+
+        return $failed === []
+            ? WorkflowResult::success(completed: $completed, metadata: ['user_id' => $user->id])
+            : WorkflowResult::partial($completed, $failed, metadata: ['user_id' => $user->id]);
+    }
+}
