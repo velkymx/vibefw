@@ -63,9 +63,12 @@ class AuxServiceProvider extends ServiceProvider
 
         $this->container->singleton(NotificationChannelRegistry::class, function () {
             $factory = new NotificationChannelFactory(
-                fn() => $this->container->has(Logger::class)
+                loggerResolver: fn() => $this->container->has(Logger::class)
                     ? $this->container->get(Logger::class)
                     : Logger::getInstance(),
+                events: $this->container->has(EventDispatcher::class)
+                    ? $this->container->get(EventDispatcher::class)
+                    : null,
             );
 
             $config = $this->app->config('aux.notification_channels', []);

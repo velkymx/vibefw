@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Aux\Notifications;
 
+use Fw\Events\EventDispatcher;
 use Fw\Log\Logger;
 
 final class NotificationChannelFactory
@@ -13,6 +14,7 @@ final class NotificationChannelFactory
      */
     public function __construct(
         private readonly \Closure $loggerResolver,
+        private readonly ?EventDispatcher $events = null,
     ) {}
 
     /**
@@ -20,7 +22,7 @@ final class NotificationChannelFactory
      */
     public function build(array $config): NotificationChannelRegistry
     {
-        $registry = new NotificationChannelRegistry();
+        $registry = new NotificationChannelRegistry($this->events);
 
         foreach ($config as $name => $spec) {
             $registry->register((string) $name, $this->makeChannel((array) $spec));

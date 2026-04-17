@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace Fw\Aux\Notifications;
 
+use Fw\Aux\Events\AgentNotified;
+use Fw\Events\EventDispatcher;
+
 final class NotificationChannelRegistry
 {
     /** @var array<string, NotificationChannel> */
     private array $channels = [];
+
+    public function __construct(
+        private readonly ?EventDispatcher $events = null,
+    ) {}
 
     public function register(string $name, NotificationChannel $channel): self
     {
@@ -33,5 +40,7 @@ final class NotificationChannelRegistry
         }
 
         $this->channels[$name]->deliver($notification);
+
+        $this->events?->dispatch(new AgentNotified($name, $notification));
     }
 }
