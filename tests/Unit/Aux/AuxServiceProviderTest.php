@@ -83,4 +83,32 @@ final class AuxServiceProviderTest extends TestCase
         $this->assertStringContainsString('McpSseController', $body);
         $this->assertStringContainsString('AgentController', $body);
     }
+
+    // ── F2: Auto-register list_features tool + bind FeatureIndex ─────────────
+
+    public function testRegisterBindsFeatureIndexAsSingleton(): void
+    {
+        $rc = new ReflectionClass(AuxServiceProvider::class);
+        $method = $rc->getMethod('register');
+
+        $file = file($method->getFileName());
+        $start = $method->getStartLine() - 1;
+        $end = $method->getEndLine();
+        $body = implode('', array_slice($file, $start, $end - $start));
+
+        $this->assertStringContainsString('FeatureIndex', $body, 'register() must bind FeatureIndex');
+    }
+
+    public function testRegisterAutoRegistersListFeaturesTool(): void
+    {
+        $rc = new ReflectionClass(AuxServiceProvider::class);
+        $method = $rc->getMethod('register');
+
+        $file = file($method->getFileName());
+        $start = $method->getStartLine() - 1;
+        $end = $method->getEndLine();
+        $body = implode('', array_slice($file, $start, $end - $start));
+
+        $this->assertStringContainsString('BuiltinTools::listFeatures', $body, 'register() must wire list_features builtin tool');
+    }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Providers;
 
+use Fw\Aux\BuiltinTools;
+use Fw\Aux\FeatureIndex;
 use Fw\Aux\Http\AgentController;
 use Fw\Aux\Http\McpSseController;
 use Fw\Aux\Mcp\McpProtocol;
@@ -11,6 +13,7 @@ use Fw\Aux\Mcp\McpServer;
 use Fw\Aux\ToolRegistry;
 use Fw\Core\ServiceProvider;
 use Fw\Aux\Http\AgentMiddleware;
+use Fw\Events\EventDispatcher;
 use Fw\Middleware\ApiAuthMiddleware;
 use Fw\Middleware\RateLimitMiddleware;
 
@@ -20,8 +23,14 @@ class AuxServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        $this->container->singleton(FeatureIndex::class, fn(): FeatureIndex => new FeatureIndex());
+
         $this->container->singleton(ToolRegistry::class, function () {
             $registry = new ToolRegistry();
+
+            $registry->register(BuiltinTools::listFeatures(
+                $this->container->get(FeatureIndex::class),
+            ));
 
             foreach ($this->tools as $toolClass) {
                 if (is_string($toolClass) && class_exists($toolClass)) {
