@@ -10,10 +10,15 @@ use Fw\Aux\Http\AgentController;
 use Fw\Aux\Http\McpSseController;
 use Fw\Aux\Mcp\McpProtocol;
 use Fw\Aux\Mcp\McpServer;
+use Fw\Aux\Notifications\DeliverAgentNotificationJob;
+use Fw\Aux\Notifications\AgentNotification;
+use Fw\Aux\Notifications\NotificationChannelFactory;
+use Fw\Aux\Notifications\NotificationChannelRegistry;
 use Fw\Aux\ToolRegistry;
 use Fw\Core\ServiceProvider;
 use Fw\Aux\Http\AgentMiddleware;
 use Fw\Events\EventDispatcher;
+use Fw\Log\Logger;
 use Fw\Middleware\ApiAuthMiddleware;
 use Fw\Middleware\RateLimitMiddleware;
 
@@ -55,10 +60,30 @@ class AuxServiceProvider extends ServiceProvider
                 $this->container->get(McpProtocol::class),
             );
         });
+
+        $this->container->singleton(NotificationChannelRegistry::class, function () {
+            $factory = new NotificationChannelFactory(
+                fn() => $this->container->has(Logger::class)
+                    ? $this->container->get(Logger::class)
+                    : Logger::getInstance(),
+            );
+
+            $config = $this->app->config('aux.notification_channels', []);
+            return $factory->build(is_array($config) ? $config : []);
+        });
     }
 
     public function boot(): void
     {
+        $registry = $this->container->get(NotificationChannelRegistry::class);
+        DeliverAgentNotificationJob::setDeliverer(
+            static function (AgentNotification $n, string $channel) use ($registry): void {
+                if ($registry->has($channel)) {
+                    $registry->deliver($channel, $n);
+                }
+            },
+        );
+
         $router = $this->app->router;
 
         if ($this->app->config('aux.mcp_enabled', true)) {

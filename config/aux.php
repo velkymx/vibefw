@@ -14,4 +14,18 @@ return [
     ],
     'mcp_server_name' => Env::string('AUX_SERVER_NAME', 'VibeFW AUX'),
     'mcp_server_version' => Env::string('AUX_SERVER_VERSION', '3.0'),
+    'notification_channels' => [
+        'log' => [
+            'driver' => 'log',
+        ],
+        // 'mail' => [
+        //     'driver' => 'mail',
+        //     'from'   => Env::string('AUX_MAIL_FROM', 'agent@example.com'),
+        // ],
+        // 'webhook' => [
+        //     'driver'  => 'webhook',
+        //     'url'     => Env::string('AUX_WEBHOOK_URL', ''),
+        //     'timeout' => Env::int('AUX_WEBHOOK_TIMEOUT', 5),
+        // ],
+    ],
 ];
