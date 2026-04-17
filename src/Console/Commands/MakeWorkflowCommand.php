@@ -24,6 +24,10 @@ final class MakeWorkflowCommand extends Command
     public function configure(): void
     {
         $this->addArgument('name', 'The name of the workflow (PascalCase)', true);
+        $this->addOption(
+            'template',
+            'Scaffold from a named stubs/workflows/<template>.stub instead of the default workflow.stub',
+        );
     }
 
     public function handle(): int
@@ -41,28 +45,35 @@ final class MakeWorkflowCommand extends Command
             return 1;
         }
 
-        if (!str_ends_with($name, 'Workflow')) {
-            $name .= 'Workflow';
-        }
+        $baseName = str_ends_with($name, 'Workflow')
+            ? substr($name, 0, -strlen('Workflow'))
+            : $name;
+        $fullName = $baseName . 'Workflow';
 
-        $path = $basePath . '/app/Workflows/' . $name . '.php';
+        $path = $basePath . '/app/Workflows/' . $fullName . '.php';
 
         if (file_exists($path)) {
             $this->error("Workflow already exists: $path");
             return 1;
         }
 
-        $stubPath = $basePath . '/stubs/workflow.stub';
+        $template = $this->option('template');
+        $stubPath = $this->resolveStubPath($basePath, is_string($template) ? $template : null);
+
+        if ($stubPath === null) {
+            $this->error("Unknown workflow template '{$template}'. Expected a file at stubs/workflows/{$template}.stub.");
+            return 1;
+        }
 
         if (!file_exists($stubPath)) {
             $this->error("Stub file not found: $stubPath");
             return 1;
         }
 
-        $description = 'Process ' . str_replace('Workflow', '', $name);
+        $description = 'Process ' . $baseName;
         $content = str_replace(
             ['{{className}}', '{{name}}', '{{description}}'],
-            [$name, $this->toKebabCase($name), $description],
+            [$baseName, $this->toKebabCase($baseName), $description],
             file_get_contents($stubPath)
         );
 
@@ -81,5 +92,18 @@ final class MakeWorkflowCommand extends Command
     private function toKebabCase(string $input): string
     {
         return strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $input));
+    }
+
+    private function resolveStubPath(string $basePath, ?string $template): ?string
+    {
+        if ($template === null || $template === '') {
+            return $basePath . '/stubs/workflow.stub';
+        }
+
+        if (!preg_match('/^[a-z][a-z0-9_-]{0,31}$/', $template)) {
+            return null;
+        }
+
+        return $basePath . '/stubs/workflows/' . $template . '.stub';
     }
 }
