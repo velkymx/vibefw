@@ -14,6 +14,7 @@ use Fw\Aux\Notifications\DeliverAgentNotificationJob;
 use Fw\Aux\Notifications\AgentNotification;
 use Fw\Aux\Notifications\NotificationChannelFactory;
 use Fw\Aux\Notifications\NotificationChannelRegistry;
+use Fw\Aux\AuxStats;
 use Fw\Aux\ToolRegistry;
 use Fw\Core\ServiceProvider;
 use Fw\Aux\Http\AgentMiddleware;
@@ -30,8 +31,16 @@ class AuxServiceProvider extends ServiceProvider
     {
         $this->container->singleton(FeatureIndex::class, fn(): FeatureIndex => new FeatureIndex());
 
+        $this->container->singleton(AuxStats::class, function (): AuxStats {
+            $path = defined('BASE_PATH')
+                ? BASE_PATH . '/storage/cache/aux-stats.json'
+                : sys_get_temp_dir() . '/aux-stats.json';
+            return new AuxStats($path);
+        });
+
         $this->container->singleton(ToolRegistry::class, function () {
             $registry = new ToolRegistry();
+            $registry->setStats($this->container->get(AuxStats::class));
 
             $registry->register(BuiltinTools::listFeatures(
                 $this->container->get(FeatureIndex::class),

@@ -20,9 +20,16 @@ final class ToolRegistry
 
     private ?EventDispatcher $events = null;
 
+    private ?AuxStats $stats = null;
+
     public function setEventDispatcher(EventDispatcher $events): void
     {
         $this->events = $events;
+    }
+
+    public function setStats(AuxStats $stats): void
+    {
+        $this->stats = $stats;
     }
 
     public function register(Tool $tool): self
@@ -81,6 +88,7 @@ final class ToolRegistry
             $durationMs = (hrtime(true) - $start) / 1_000_000;
 
             $result = $result->withDuration($durationMs);
+            $this->stats?->record($name, $durationMs, $result->isError);
             $this->events?->dispatch(new ToolCompleted($name, $result));
 
             return Result::ok($result);
