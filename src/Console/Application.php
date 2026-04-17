@@ -366,6 +366,7 @@ final class Application
             Commands\AuxSchemaCommand::class,
             Commands\AuxFeaturesCommand::class,
             Commands\AuxNotificationsTestCommand::class,
+            Commands\AuxStatsCommand::class,
             Commands\ServeMcpCommand::class,
 
             // Debugging
