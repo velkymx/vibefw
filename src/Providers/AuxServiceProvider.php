@@ -42,6 +42,11 @@ class AuxServiceProvider extends ServiceProvider
             $registry = new ToolRegistry();
             $registry->setStats($this->container->get(AuxStats::class));
 
+            $multiplier = $this->app->config('aux.budget_multiplier');
+            if (is_numeric($multiplier) && (float) $multiplier > 0.0) {
+                $registry->setBudgetMultiplier((float) $multiplier);
+            }
+
             $registry->register(BuiltinTools::listFeatures(
                 $this->container->get(FeatureIndex::class),
             ));

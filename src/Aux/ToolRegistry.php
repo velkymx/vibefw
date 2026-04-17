@@ -22,6 +22,8 @@ final class ToolRegistry
 
     private ?AuxStats $stats = null;
 
+    private ?float $budgetMultiplier = null;
+
     public function setEventDispatcher(EventDispatcher $events): void
     {
         $this->events = $events;
@@ -30,6 +32,11 @@ final class ToolRegistry
     public function setStats(AuxStats $stats): void
     {
         $this->stats = $stats;
+    }
+
+    public function setBudgetMultiplier(float $multiplier): void
+    {
+        $this->budgetMultiplier = $multiplier;
     }
 
     public function register(Tool $tool): self
@@ -88,6 +95,7 @@ final class ToolRegistry
             $durationMs = (hrtime(true) - $start) / 1_000_000;
 
             $result = $result->withDuration($durationMs);
+            $result = $this->applyBudgetCheck($tool, $result, $durationMs);
             $this->stats?->record($name, $durationMs, $result->isError);
             $this->events?->dispatch(new ToolCompleted($name, $result));
 
@@ -95,6 +103,35 @@ final class ToolRegistry
         } catch (Throwable $e) {
             return Result::err($e);
         }
+    }
+
+    private function applyBudgetCheck(Tool $tool, WorkflowResult $result, float $durationMs): WorkflowResult
+    {
+        if ($this->budgetMultiplier === null) {
+            return $result;
+        }
+
+        $estimated = $tool->budget['estimated_duration_ms'] ?? null;
+        if (!is_numeric($estimated) || (float) $estimated <= 0.0) {
+            return $result;
+        }
+
+        $threshold = (float) $estimated * $this->budgetMultiplier;
+        if ($durationMs <= $threshold) {
+            return $result;
+        }
+
+        return $result->markBudgetExceeded(
+            reason: sprintf(
+                "Tool '%s' exceeded budget: %.2fms > %.2fms (%.1fx estimate)",
+                $tool->name,
+                $durationMs,
+                (float) $estimated,
+                $this->budgetMultiplier,
+            ),
+            actualMs: $durationMs,
+            estimatedMs: (float) $estimated,
+        );
     }
 
     private function validateInput(Tool $tool, array $input): Result

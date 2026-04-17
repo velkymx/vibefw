@@ -58,6 +58,54 @@ final readonly class WorkflowResult
         );
     }
 
+    public static function budgetExceeded(
+        string $reason,
+        float $actualMs,
+        float $estimatedMs,
+        array $metadata = [],
+    ): self {
+        return new self(
+            completed: [],
+            failed: [],
+            pending: [],
+            metadata: array_merge(
+                [
+                    'error' => $reason,
+                    'budget_exceeded' => true,
+                    'actual_duration_ms' => $actualMs,
+                    'estimated_duration_ms' => $estimatedMs,
+                ],
+                $metadata,
+            ),
+            isError: true,
+        );
+    }
+
+    public function markBudgetExceeded(string $reason, float $actualMs, float $estimatedMs): self
+    {
+        return new self(
+            completed: $this->completed,
+            failed: $this->failed,
+            pending: $this->pending,
+            metadata: array_merge(
+                $this->metadata,
+                [
+                    'error' => $reason,
+                    'budget_exceeded' => true,
+                    'actual_duration_ms' => $actualMs,
+                    'estimated_duration_ms' => $estimatedMs,
+                ],
+            ),
+            isError: true,
+            duration: $this->duration,
+        );
+    }
+
+    public function isBudgetExceeded(): bool
+    {
+        return ($this->metadata['budget_exceeded'] ?? false) === true;
+    }
+
     public function withDuration(float $durationMs): self
     {
         return new self(

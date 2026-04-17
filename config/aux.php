@@ -14,6 +14,7 @@ return [
     ],
     'mcp_server_name' => Env::string('AUX_SERVER_NAME', 'VibeFW AUX'),
     'mcp_server_version' => Env::string('AUX_SERVER_VERSION', '3.0'),
+    'budget_multiplier' => (float) Env::string('AUX_BUDGET_MULTIPLIER', '2.0'),
     'notification_channels' => [
         'log' => [
             'driver' => 'log',
