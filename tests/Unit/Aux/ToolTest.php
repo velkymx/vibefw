@@ -152,6 +152,73 @@ final class ToolTest extends TestCase
         $this->assertSame(['read'], $original->abilities);
     }
 
+    public function testBudgetEmbeddedInAnnotationsUnderNamespacedKey(): void
+    {
+        $tool = new Tool(
+            name: 'expensive_tool',
+            description: 'Costs something',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => \Fw\Aux\WorkflowResult::success(),
+            budget: [
+                'estimated_tokens' => 1_500,
+                'estimated_duration_ms' => 2_000,
+                'retry_policy' => ['max_attempts' => 3, 'backoff' => 'exponential'],
+            ],
+        );
+
+        $shape = $tool->toMcpShape();
+
+        $this->assertArrayHasKey('annotations', $shape);
+        $this->assertArrayHasKey('_budget', $shape['annotations']);
+        $this->assertSame(1_500, $shape['annotations']['_budget']['estimated_tokens']);
+        $this->assertSame(2_000, $shape['annotations']['_budget']['estimated_duration_ms']);
+        $this->assertSame('exponential', $shape['annotations']['_budget']['retry_policy']['backoff']);
+    }
+
+    public function testBudgetAndExistingAnnotationsCoexist(): void
+    {
+        $tool = new Tool(
+            name: 'mixed_tool',
+            description: 'Both',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => \Fw\Aux\WorkflowResult::success(),
+            annotations: ['readOnlyHint' => true],
+            budget: ['estimated_tokens' => 100],
+        );
+
+        $shape = $tool->toMcpShape();
+
+        $this->assertTrue($shape['annotations']['readOnlyHint']);
+        $this->assertSame(100, $shape['annotations']['_budget']['estimated_tokens']);
+    }
+
+    public function testEmptyBudgetDoesNotPolluteAnnotations(): void
+    {
+        $tool = new Tool(
+            name: 'cheap_tool',
+            description: 'Free',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => \Fw\Aux\WorkflowResult::success(),
+        );
+
+        $shape = $tool->toMcpShape();
+
+        $this->assertArrayNotHasKey('annotations', $shape);
+    }
+
+    public function testBudgetExposedAsProperty(): void
+    {
+        $tool = new Tool(
+            name: 'budgeted',
+            description: 'B',
+            inputSchema: ['type' => 'object'],
+            handler: fn(array $input) => \Fw\Aux\WorkflowResult::success(),
+            budget: ['estimated_duration_ms' => 500],
+        );
+
+        $this->assertSame(['estimated_duration_ms' => 500], $tool->budget);
+    }
+
     public function testHandlerIsCallable(): void
     {
         $handlerCalled = false;

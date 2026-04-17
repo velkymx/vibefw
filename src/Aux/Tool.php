@@ -11,6 +11,7 @@ final readonly class Tool
      * @param \Closure(array): WorkflowResult $handler Handler function
      * @param array<string> $abilities Token abilities required (any one suffices)
      * @param array $annotations MCP hints: readOnlyHint, destructiveHint, etc.
+     * @param array $budget Non-spec hints: estimated_tokens, estimated_duration_ms, retry_policy
      */
     public function __construct(
         public string $name,
@@ -19,6 +20,7 @@ final readonly class Tool
         public \Closure $handler,
         public array $abilities = [],
         public array $annotations = [],
+        public array $budget = [],
     ) {}
 
     public function toMcpShape(): array
@@ -29,8 +31,13 @@ final readonly class Tool
             'inputSchema' => $this->inputSchema,
         ];
 
-        if ($this->annotations !== []) {
-            $shape['annotations'] = $this->annotations;
+        $annotations = $this->annotations;
+        if ($this->budget !== []) {
+            $annotations['_budget'] = $this->budget;
+        }
+
+        if ($annotations !== []) {
+            $shape['annotations'] = $annotations;
         }
 
         return $shape;
@@ -45,6 +52,7 @@ final readonly class Tool
             handler: $this->handler,
             abilities: $abilities,
             annotations: $this->annotations,
+            budget: $this->budget,
         );
     }
 
