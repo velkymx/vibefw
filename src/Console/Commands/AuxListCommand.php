@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Fw\Console\Commands;
 
+use Fw\Aux\Http\AgentAccessibleScanner;
 use Fw\Aux\ToolRegistry;
 use Fw\Console\Application;
 use Fw\Console\Command;
 use Fw\Core\Application as HttpApplication;
+use Fw\Core\Router;
 
 final class AuxListCommand extends Command
 {
@@ -22,13 +24,18 @@ final class AuxListCommand extends Command
 
     public function handle(): int
     {
-        $registry = HttpApplication::getInstance()->getContainer()->get(ToolRegistry::class);
+        $container = HttpApplication::getInstance()->getContainer();
+        $registry = $container->get(ToolRegistry::class);
         $tools = $registry->all();
 
         if (empty($tools)) {
             $this->comment('No AUX tools registered.');
             return 0;
         }
+
+        $linkedRoutes = $container->has(Router::class)
+            ? (new AgentAccessibleScanner($container->get(Router::class)))->scan()
+            : [];
 
         $this->newLine();
         $this->info('Registered AUX Tools');
@@ -37,14 +44,20 @@ final class AuxListCommand extends Command
         $rows = [];
         foreach ($tools as $tool) {
             $abilities = $tool->abilities === [] ? 'public' : implode(', ', $tool->abilities);
+            $routes = $linkedRoutes[$tool->name] ?? [];
+            $routeLabel = $routes === []
+                ? '—'
+                : implode(', ', array_map(static fn(array $r): string => $r['name'], $routes));
+
             $rows[] = [
                 $tool->name,
                 $tool->description,
                 $abilities,
+                $routeLabel,
             ];
         }
 
-        $this->table(['Name', 'Description', 'Abilities'], $rows);
+        $this->table(['Name', 'Description', 'Abilities', 'Linked Routes'], $rows);
         $this->newLine();
         $this->line('Total: ' . count($tools) . ' tool(s)');
         $this->newLine();
