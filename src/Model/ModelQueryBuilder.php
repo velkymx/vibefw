@@ -387,9 +387,9 @@ final class ModelQueryBuilder
      *
      * @return array{items: Collection, total: int, per_page: int, current_page: int, last_page: int}
      */
-    public function paginate(int $perPage = 15, int $page = 1): array
+    public function paginate(int $perPage = 15, int $page = 1, bool $useWindow = false): array
     {
-        $result = $this->query->paginate($perPage, $page);
+        $result = $this->query->paginate($perPage, $page, $useWindow);
 
         return [
             'items' => ($this->modelClass)::hydrateMany($result['items']),

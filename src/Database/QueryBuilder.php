@@ -354,16 +354,25 @@ final class QueryBuilder
         return $clone;
     }
 
+    private const string PAGINATE_TOTAL_ALIAS = '__fw_paginate_total';
+
+    private bool $appendCountWindow = false;
+
     /**
      * Paginate results.
      *
-     * NOTE: count() and get() are two separate queries. Under concurrent inserts
-     * or deletes the total count may not exactly match the number of items on the
-     * last page (e.g. total=16 per_page=15 last_page=2 but only 1 item on page 2
-     * because a concurrent insert happened between the two queries). For strict
-     * consistency wrap calls in a REPEATABLE READ transaction at the call site.
+     * Two modes:
+     * - Default: issues COUNT(*) then a limited SELECT (two queries). Simpler,
+     *   works on every driver, but under concurrent inserts/deletes total may
+     *   drift from the item slice. For strict consistency wrap call sites in a
+     *   REPEATABLE READ transaction.
+     * - `$useWindow = true`: issues one query using COUNT(*) OVER () so total
+     *   and items come from the same snapshot. Requires a driver with SQL
+     *   window-function support (SQLite >= 3.25, MySQL >= 8.0, PostgreSQL).
+     *   Falls back to the two-query path when distinct() or groupBy() is in
+     *   effect, since a window aggregate changes meaning in those cases.
      */
-    public function paginate(int $perPage = 15, int $page = 1): array
+    public function paginate(int $perPage = 15, int $page = 1, bool $useWindow = false): array
     {
         if ($perPage <= 0) {
             throw new InvalidArgumentException('perPage must be greater than 0');
@@ -371,6 +380,11 @@ final class QueryBuilder
 
         $page = max(1, $page);
         $offset = ($page - 1) * $perPage;
+
+        if ($useWindow && !$this->distinct && empty($this->groupBy)) {
+            return $this->paginateWithWindow($perPage, $page, $offset);
+        }
+
         $total = $this->count();
         $items = $this->limit($perPage)->offset($offset)->get();
 
@@ -380,6 +394,33 @@ final class QueryBuilder
             'per_page' => $perPage,
             'current_page' => $page,
             'last_page' => (int) ceil($total / $perPage),
+        ];
+    }
+
+    /**
+     * @return array{items: array<int, array<string, mixed>>, total: int, per_page: int, current_page: int, last_page: int}
+     */
+    private function paginateWithWindow(int $perPage, int $page, int $offset): array
+    {
+        $clone = $this->limit($perPage)->offset($offset);
+        $clone->appendCountWindow = true;
+        $rows = $clone->get();
+
+        $total = $rows === [] ? 0 : (int) ($rows[0][self::PAGINATE_TOTAL_ALIAS] ?? 0);
+        $items = array_map(
+            function (array $row): array {
+                unset($row[self::PAGINATE_TOTAL_ALIAS]);
+                return $row;
+            },
+            $rows,
+        );
+
+        return [
+            'items' => $items,
+            'total' => $total,
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'last_page' => $total === 0 ? 0 : (int) ceil($total / $perPage),
         ];
     }
 
@@ -430,7 +471,11 @@ final class QueryBuilder
         $this->requireTable();
         $bindings = $this->bindings;
         $sql = $this->distinct ? 'SELECT DISTINCT ' : 'SELECT ';
-        $sql .= implode(', ', array_map(fn ($c) => $this->compileSelectColumn($c), $this->columns));
+        $columns = array_map(fn ($c) => $this->compileSelectColumn($c), $this->columns);
+        if ($this->appendCountWindow) {
+            $columns[] = 'COUNT(*) OVER () as ' . $this->quoteIdentifier(self::PAGINATE_TOTAL_ALIAS);
+        }
+        $sql .= implode(', ', $columns);
         $sql .= ' FROM ' . $this->quoteIdentifier($this->table);
 
         foreach ($this->joins as $join) {
