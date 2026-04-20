@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Fw\Core\Env;
+use Fw\Core\Response;
 
 return [
     'name' => Env::string('APP_NAME', 'VibeFw Framework'),
@@ -17,5 +18,9 @@ return [
             'trim',
             explode(',', Env::string('CORS_ALLOWED_ORIGINS', '*'))
         )),
+    ],
+
+    'security' => [
+        'csp' => Env::string('APP_CSP', Response::DEFAULT_CSP),
     ],
 ];

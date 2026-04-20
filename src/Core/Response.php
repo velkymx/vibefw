@@ -27,6 +27,10 @@ final class Response
         503 => 'Service Unavailable',
     ];
 
+    public const string DEFAULT_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self';";
+
+    private static ?string $defaultCsp = null;
+
     private int $statusCode = 200;
 
     private array $headers = [];
@@ -34,6 +38,11 @@ final class Response
     private string $body = '';
 
     private array $flash = [];
+
+    public static function setDefaultCsp(?string $csp): void
+    {
+        self::$defaultCsp = $csp;
+    }
 
     public function __construct(string $body = '', int $statusCode = 200)
     {
@@ -93,13 +102,15 @@ final class Response
     /**
      * Set standard security headers.
      */
-    public function securityHeaders(): self
+    public function securityHeaders(?string $csp = null): self
     {
+        $policy = $csp ?? self::$defaultCsp ?? self::DEFAULT_CSP;
+
         return $this->header('X-Content-Type-Options', 'nosniff')
             ->header('X-Frame-Options', 'SAMEORIGIN')
             ->header('X-XSS-Protection', '1; mode=block')
             ->header('Referrer-Policy', 'no-referrer-when-downgrade')
-            ->header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self';");
+            ->header('Content-Security-Policy', $policy);
     }
 
     public function cache(int $seconds, bool $public = true): self
