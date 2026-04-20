@@ -84,37 +84,51 @@ final class QueryBuilder
 
     public function where(string $column, mixed $operator = null, mixed $value = null): self
     {
-        if ($value === null) {
-            $value = $operator;
-            $operator = '=';
-        }
-        $this->validateOperator($operator);
-
-        $clone = clone $this;
-        $clone->wheres[] = [
-            'type' => 'basic',
-            'column' => $column,
-            'operator' => $operator,
-            'boolean' => 'AND',
-        ];
-        $clone->bindings[] = $value;
-        return $clone;
+        return $this->addWhere('AND', $column, $operator, $value);
     }
 
     public function orWhere(string $column, mixed $operator = null, mixed $value = null): self
     {
-        if ($value === null) {
+        return $this->addWhere('OR', $column, $operator, $value);
+    }
+
+    private function addWhere(string $boolean, string $column, mixed $operator, mixed $value): self
+    {
+        $explicitOperator = is_string($operator) && in_array($operator, self::ALLOWED_OPERATORS, true);
+        if ($value === null && !$explicitOperator) {
             $value = $operator;
             $operator = '=';
         }
         $this->validateOperator($operator);
+
+        if ($value === null) {
+            if ($operator === '=') {
+                $clone = clone $this;
+                $clone->wheres[] = [
+                    'type' => 'null',
+                    'column' => $column,
+                    'boolean' => $boolean,
+                ];
+                return $clone;
+            }
+            if ($operator === '!=' || $operator === '<>') {
+                $clone = clone $this;
+                $clone->wheres[] = [
+                    'type' => 'notNull',
+                    'column' => $column,
+                    'boolean' => $boolean,
+                ];
+                return $clone;
+            }
+            throw new InvalidArgumentException("Operator '{$operator}' cannot be used with NULL value.");
+        }
 
         $clone = clone $this;
         $clone->wheres[] = [
             'type' => 'basic',
             'column' => $column,
             'operator' => $operator,
-            'boolean' => 'OR',
+            'boolean' => $boolean,
         ];
         $clone->bindings[] = $value;
         return $clone;
