@@ -56,23 +56,34 @@ final class AuthMiddleware implements MiddlewareInterface
      */
     private function isSafeRedirectUrl(string $url): bool
     {
-        // Empty URL is not safe
         if ($url === '') {
             return false;
         }
 
+        // Decode percent-encoded octets until stable so that `%2F%2Fevil.com`
+        // (or any layered double-encoding) collapses into the form a browser
+        // will ultimately dereference before we apply the prefix checks.
+        $decoded = $url;
+        for ($i = 0; $i < 3; $i++) {
+            $next = rawurldecode($decoded);
+            if ($next === $decoded) {
+                break;
+            }
+            $decoded = $next;
+        }
+
         // Protocol-relative URLs (//evil.com) are not safe
-        if (str_starts_with($url, '//')) {
+        if (str_starts_with($decoded, '//')) {
             return false;
         }
 
         // Relative paths starting with / are safe
-        if (str_starts_with($url, '/')) {
+        if (str_starts_with($decoded, '/')) {
             return true;
         }
 
-        // Parse the URL
-        $parsed = parse_url($url);
+        // Parse the decoded URL
+        $parsed = parse_url($decoded);
 
         // Block dangerous schemes (javascript:, data:, vbscript:, etc.)
         if (isset($parsed['scheme']) && !in_array($parsed['scheme'], ['http', 'https'], true)) {
