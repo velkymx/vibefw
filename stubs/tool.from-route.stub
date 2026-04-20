@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tools;
+
+use Fw\Aux\Tool;
+
+/**
+ * {{description}}
+ *
+ * Wraps route: {{routeHttpMethod}} {{routePath}} (name: {{routeName}})
+ * Controller: {{controllerClass}}::{{controllerMethod}}
+ */
+final class {{className}}Tool
+{
+    public static function make(): Tool
+    {
+        return new Tool(
+            // CUSTOMIZE: rename if a different agent-facing label fits better
+            name: '{{name}}',
+            // CUSTOMIZE: describe the workflow from the agent's perspective
+            description: '{{description}}',
+            // CUSTOMIZE: tighten the JSON Schema to match the controller inputs
+            inputSchema: {{inputSchema}},
+            handler: fn(array $input) => (new {{workflowClass}}())->execute($input),
+            // CUSTOMIZE: mirror whatever abilities the human route requires
+            abilities: {{abilities}},
+            annotations: {{annotations}},
+        );
+    }
+}

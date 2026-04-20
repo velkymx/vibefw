@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Workflows;
+
+use Fw\Aux\WorkflowAction;
+use Fw\Aux\WorkflowResult;
+use Fw\Bus\CommandBus;
+use Fw\Bus\QueryBus;
+use {{controllerClass}};
+
+/**
+ * Workflow: {{description}}
+ *
+ * Wraps human route: {{routeHttpMethod}} {{routePath}} ({{routeName}})
+ * Controller action: {{controllerShortName}}::{{controllerMethod}}
+ */
+final class {{className}}Workflow extends WorkflowAction
+{
+    public function __construct(
+        CommandBus $commands,
+        QueryBus $queries,
+    ) {
+        parent::__construct($commands, $queries);
+    }
+
+    public function execute(array $input): WorkflowResult
+    {
+        // CUSTOMIZE: adapt $input into whatever {{controllerShortName}}::{{controllerMethod}} needs.
+        // Prefer calling your own domain services via $this->dispatch() / $this->query()
+        // rather than invoking the controller directly — the goal is one workflow tool
+        // per business action, not a thin wrapper around HTTP plumbing.
+
+        return WorkflowResult::success(
+            completed: [],
+            metadata: [
+                'workflow' => '{{name}}',
+                'route' => '{{routeName}}',
+                'controller' => '{{controllerClass}}::{{controllerMethod}}',
+            ],
+        );
+    }
+}
