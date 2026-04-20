@@ -292,12 +292,17 @@ final class QueryBuilder
         return $this->where($column, $id)->first();
     }
 
-    public function count(): int
+    /**
+     * COUNT rows. `$column = '*'` counts every row; a named column skips NULLs.
+     * `$distinct = true` emits COUNT(DISTINCT column); the outer DISTINCT flag from
+     * ->distinct() is always stripped here — aggregates return a single row and a
+     * leaked SELECT DISTINCT would silently change semantics.
+     */
+    public function count(string $column = '*', bool $distinct = false): int
     {
         $this->requireTable();
-        $clone = clone $this;
-        $clone->columns = ['COUNT(*) as aggregate'];
-        $result = $clone->first()->unwrapOr([]);
+        $expr = $this->aggregateExpr('COUNT', $column, $distinct);
+        $result = $this->aggregateClone($expr)->first()->unwrapOr([]);
         return (int) ($result['aggregate'] ?? 0);
     }
 
@@ -306,36 +311,47 @@ final class QueryBuilder
         return $this->count() > 0;
     }
 
-    public function sum(string $column): float
+    public function sum(string $column, bool $distinct = false): float
     {
-        $clone = clone $this;
-        $clone->columns = ['SUM(' . $this->quoteIdentifier($column) . ') as aggregate'];
-        $result = $clone->first()->unwrapOr([]);
+        $expr = $this->aggregateExpr('SUM', $column, $distinct);
+        $result = $this->aggregateClone($expr)->first()->unwrapOr([]);
         return (float) ($result['aggregate'] ?? 0);
     }
 
-    public function avg(string $column): float
+    public function avg(string $column, bool $distinct = false): float
     {
-        $clone = clone $this;
-        $clone->columns = ['AVG(' . $this->quoteIdentifier($column) . ') as aggregate'];
-        $result = $clone->first()->unwrapOr([]);
+        $expr = $this->aggregateExpr('AVG', $column, $distinct);
+        $result = $this->aggregateClone($expr)->first()->unwrapOr([]);
         return (float) ($result['aggregate'] ?? 0);
     }
 
     public function max(string $column): mixed
     {
-        $clone = clone $this;
-        $clone->columns = ['MAX(' . $this->quoteIdentifier($column) . ') as aggregate'];
-        $result = $clone->first()->unwrapOr([]);
+        $expr = $this->aggregateExpr('MAX', $column, false);
+        $result = $this->aggregateClone($expr)->first()->unwrapOr([]);
         return $result['aggregate'] ?? null;
     }
 
     public function min(string $column): mixed
     {
-        $clone = clone $this;
-        $clone->columns = ['MIN(' . $this->quoteIdentifier($column) . ') as aggregate'];
-        $result = $clone->first()->unwrapOr([]);
+        $expr = $this->aggregateExpr('MIN', $column, false);
+        $result = $this->aggregateClone($expr)->first()->unwrapOr([]);
         return $result['aggregate'] ?? null;
+    }
+
+    private function aggregateExpr(string $fn, string $column, bool $distinct): string
+    {
+        $inner = $column === '*' ? '*' : $this->quoteIdentifier($column);
+        $prefix = $distinct && $column !== '*' ? 'DISTINCT ' : '';
+        return $fn . '(' . $prefix . $inner . ') as aggregate';
+    }
+
+    private function aggregateClone(string $expr): self
+    {
+        $clone = clone $this;
+        $clone->columns = [$expr];
+        $clone->distinct = false;
+        return $clone;
     }
 
     /**
