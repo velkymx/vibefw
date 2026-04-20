@@ -18,6 +18,17 @@ final class Cache implements CacheInterface
 
     private bool $useL2;
 
+    /**
+     * Private miss marker used as the `$default` to L2::get(). Caller code can
+     * never observe this object, so a stored value can never === it by mistake.
+     */
+    private static ?object $missMarker = null;
+
+    private static function missMarker(): object
+    {
+        return self::$missMarker ??= new \stdClass();
+    }
+
     public function __construct(?CacheInterface $store = null, string $cachePath = '')
     {
         $this->l1 = new MemoryCache();
@@ -46,8 +57,9 @@ final class Cache implements CacheInterface
 
         // Check L2
         if ($this->useL2) {
-            $value = $this->l2->get($key, $this);
-            if ($value !== $this) {
+            $marker = self::missMarker();
+            $value = $this->l2->get($key, $marker);
+            if ($value !== $marker) {
                 // Promote to L1
                 $this->l1->set($key, $value);
                 return $value;
@@ -104,8 +116,9 @@ final class Cache implements CacheInterface
 
         // Check L2
         if ($this->useL2) {
-            $value = $this->l2->get($key, $this);
-            if ($value !== $this) {
+            $marker = self::missMarker();
+            $value = $this->l2->get($key, $marker);
+            if ($value !== $marker) {
                 $this->l1->set($key, $value, $ttl);
                 return $value;
             }
