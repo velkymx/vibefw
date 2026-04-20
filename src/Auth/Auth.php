@@ -409,16 +409,13 @@ final class Auth
 
     private static function isHttps(): bool
     {
-        // Prefer the Request object when available — it honours trusted-proxy
-        // config and checks HTTP_X_FORWARDED_PROTO for SSL-terminating load balancers.
-        $ctx = RequestContext::current();
-        if ($ctx !== null) {
-            return $ctx->getRequest()->isSecure();
-        }
-
-        // Fallback for CLI / non-HTTP contexts (e.g. queue workers running Auth).
-        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
+        // Always defer to Request::isSecure(), which honours
+        // Request::setTrustedProxies() when evaluating X-Forwarded-Proto.
+        // Without a RequestContext there is no trustworthy signal — reading
+        // $_SERVER['HTTPS'] / SERVER_PORT directly would let a misconfigured
+        // proxy (or a CLI worker running behind one) flip the cookie secure
+        // flag based on unvalidated input.
+        return RequestContext::current()?->getRequest()->isSecure() ?? false;
     }
 
     /**
