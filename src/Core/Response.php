@@ -44,6 +44,13 @@ final class Response
         self::$defaultCsp = $csp;
     }
 
+    public static function cspMetaTag(?string $csp = null): string
+    {
+        $policy = $csp ?? self::$defaultCsp ?? self::DEFAULT_CSP;
+        $escaped = htmlspecialchars($policy, ENT_QUOTES, 'UTF-8');
+        return '<meta http-equiv="Content-Security-Policy" content="' . $escaped . '">';
+    }
+
     public function __construct(string $body = '', int $statusCode = 200)
     {
         $this->body = $body;

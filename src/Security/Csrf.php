@@ -105,6 +105,12 @@ final class Csrf
         return '<input type="hidden" name="' . self::FIELD_NAME . '" value="' . $token . '">';
     }
 
+    /**
+     * Render the CSRF-token meta tag: `<meta name="csrf-token" content="…">`.
+     *
+     * This is NOT the CSP meta tag. For Content-Security-Policy use
+     * {@see \Fw\Core\Response::cspMetaTag()}.
+     */
     public function metaTag(): string
     {
         $token = htmlspecialchars($this->getToken(), ENT_QUOTES, 'UTF-8');
