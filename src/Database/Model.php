@@ -34,8 +34,24 @@ abstract class Model
 
     protected bool $exists = false;
 
+    /** @var array<class-string, true> Subclasses that already emitted the deprecation notice. */
+    private static array $deprecationNoticed = [];
+
     public function __construct(array $attributes = [])
     {
+        $class = static::class;
+        if (!isset(self::$deprecationNoticed[$class])) {
+            self::$deprecationNoticed[$class] = true;
+            trigger_error(
+                sprintf(
+                    '%s extends the legacy Fw\\Database\\Model, which is deprecated. '
+                    . 'Migrate to Fw\\Model\\Model (Option/Result-based API, relationship support) for new development.',
+                    $class,
+                ),
+                E_USER_DEPRECATED,
+            );
+        }
+
         $this->fill($attributes);
         $this->original = $this->attributes;
     }
