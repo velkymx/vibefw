@@ -8,6 +8,7 @@ use Fw\Aux\BuiltinTools;
 use Fw\Aux\FeatureIndex;
 use Fw\Aux\Http\AgentController;
 use Fw\Aux\Http\McpSseController;
+use Fw\Aux\Http\RouteAdvertiser;
 use Fw\Aux\Mcp\McpProtocol;
 use Fw\Aux\Mcp\McpServer;
 use Fw\Aux\Notifications\DeliverAgentNotificationJob;
@@ -50,6 +51,12 @@ class AuxServiceProvider extends ServiceProvider
             $registry->register(BuiltinTools::listFeatures(
                 $this->container->get(FeatureIndex::class),
             ));
+
+            if ($this->app->config('aux.list_routes_enabled', true)) {
+                $registry->register(BuiltinTools::listRoutes(
+                    new RouteAdvertiser($this->app->router),
+                ));
+            }
 
             foreach ($this->tools as $toolClass) {
                 if (is_string($toolClass) && class_exists($toolClass)) {

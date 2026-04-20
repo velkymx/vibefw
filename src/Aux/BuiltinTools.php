@@ -4,8 +4,35 @@ declare(strict_types=1);
 
 namespace Fw\Aux;
 
+use Fw\Aux\Http\RouteAdvertiser;
+
 final class BuiltinTools
 {
+    public static function listRoutes(RouteAdvertiser $advertiser): Tool
+    {
+        return new Tool(
+            name: 'list_routes',
+            description: 'List all named HTTP routes in this app: name, method, path, handler, middleware. Agents use this to discover the human-facing feature surface.',
+            inputSchema: [
+                'type' => 'object',
+                'properties' => new \stdClass(),
+            ],
+            handler: function (array $input) use ($advertiser): WorkflowResult {
+                $routes = $advertiser->advertise();
+
+                return WorkflowResult::success(
+                    completed: $routes,
+                    metadata: ['count' => count($routes)],
+                );
+            },
+            abilities: ['routes:read'],
+            annotations: [
+                'readOnlyHint' => true,
+                'idempotentHint' => true,
+            ],
+        );
+    }
+
     public static function listFeatures(FeatureIndex $index): Tool
     {
         return new Tool(

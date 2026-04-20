@@ -384,6 +384,14 @@ final class Router
         return $this->routes;
     }
 
+    /**
+     * @return array<string, string> Named routes as name => path
+     */
+    public function getNamedRoutes(): array
+    {
+        return $this->namedRoutes;
+    }
+
     public function loadCache(): bool
     {
         if ($this->cacheFile === null || !file_exists($this->cacheFile)) {

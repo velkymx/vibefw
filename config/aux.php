@@ -12,6 +12,7 @@ return [
         'max_requests' => Env::int('AUX_RATE_LIMIT', 100),
         'window_seconds' => Env::int('AUX_RATE_LIMIT_WINDOW', 60),
     ],
+    'list_routes_enabled' => Env::bool('AUX_LIST_ROUTES_ENABLED', true),
     'mcp_server_name' => Env::string('AUX_SERVER_NAME', 'VibeFW AUX'),
     'mcp_server_version' => Env::string('AUX_SERVER_VERSION', '3.0'),
     'budget_multiplier' => (float) Env::string('AUX_BUDGET_MULTIPLIER', '2.0'),
