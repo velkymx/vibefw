@@ -130,7 +130,8 @@ final class Request
 
     public function input(string $key, mixed $default = null): mixed
     {
-        return $this->post[$key] ?? $this->json()[$key] ?? $this->query[$key] ?? $default;
+        $json = $this->json() ?? [];
+        return $this->post[$key] ?? $json[$key] ?? $this->query[$key] ?? $default;
     }
 
     public function all(): array
