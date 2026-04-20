@@ -309,9 +309,9 @@ final class Connection
         return $this->transactionLevel > 0;
     }
 
-    public function lastInsertId(): int
+    public function lastInsertId(): string
     {
-        return (int) $this->pdo->lastInsertId();
+        return (string) $this->pdo->lastInsertId();
     }
 
     public function quoteIdentifier(string $identifier): string
