@@ -14,7 +14,6 @@ use ReflectionFunction;
 use ReflectionMethod;
 use ReflectionNamedType;
 use RuntimeException;
-use stdClass;
 use Throwable;
 use WeakMap;
 
@@ -71,12 +70,6 @@ final class Container
      * @var array<class-string, array<int, array{name: string, type: ?string, builtin: bool, nullable: bool, hasDefault: bool, default: mixed}>|null>
      */
     private array $reflectionCache = [];
-
-    /**
-     * Classes currently being reflected (Fiber concurrency guard).
-     * @var array<class-string, int>
-     */
-    private array $reflectionInitializing = [];
 
     /**
      * Classes currently being built (circular-dependency guard).
@@ -348,7 +341,6 @@ final class Container
     public function clearReflectionCache(): void
     {
         $this->reflectionCache = [];
-        $this->reflectionInitializing = [];
     }
 
     public function resetForWorker(): void
@@ -484,67 +476,47 @@ final class Container
             return $this->reflectionCache[$concrete];
         }
 
-        $initToken = spl_object_id(new stdClass());
-        $spins = 0;
-        while (true) {
-            if (array_key_exists($concrete, $this->reflectionCache)) {
-                return $this->reflectionCache[$concrete];
-            }
-            if (!isset($this->reflectionInitializing[$concrete])) {
-                $this->reflectionInitializing[$concrete] = $initToken;
-                break;
-            }
-            if (++$spins > 1000) {
-                throw new RuntimeException(
-                    "Container reflection deadlock: another context started reflecting {$concrete} but did not complete. " .
-                    'This usually means the initialising Fiber threw an uncaught exception.'
-                );
-            }
-            if (Fiber::getCurrent() !== null) {
-                Fiber::suspend();
-            } else {
-                usleep(100);
-            }
+        // ReflectionClass + ReflectionParameter calls are synchronous and side-
+        // effect free (modulo autoload, which is itself synchronous). Two fibers
+        // reflecting the same concrete in parallel just recompute identical
+        // metadata — last write wins — so no lock or spin coordination is
+        // needed. Only cache on success so a thrown non-instantiable stays
+        // re-raiseable on the next call instead of cached as a silent null.
+        return $this->reflectionCache[$concrete] = $this->computeReflection($concrete);
+    }
+
+    private function computeReflection(string $concrete): ?array
+    {
+        $reflector = new ReflectionClass($concrete);
+        if (!$reflector->isInstantiable()) {
+            throw new InvalidArgumentException("Class {$concrete} is not instantiable");
         }
 
-        try {
-            $reflector = new ReflectionClass($concrete);
-            if (!$reflector->isInstantiable()) {
-                throw new InvalidArgumentException("Class {$concrete} is not instantiable");
-            }
-
-            $constructor = $reflector->getConstructor();
-            if ($constructor === null) {
-                $this->reflectionCache[$concrete] = null;
-                return null;
-            }
-
-            $params = [];
-            foreach ($constructor->getParameters() as $parameter) {
-                $type = $parameter->getType();
-                $paramInfo = [
-                    'name' => $parameter->getName(),
-                    'type' => null,
-                    'builtin' => false,
-                    'nullable' => false,
-                    'hasDefault' => $parameter->isDefaultValueAvailable(),
-                    'default' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
-                ];
-
-                if ($type instanceof ReflectionNamedType) {
-                    $paramInfo['type'] = $type->getName();
-                    $paramInfo['builtin'] = $type->isBuiltin();
-                    $paramInfo['nullable'] = $type->allowsNull();
-                }
-                $params[] = $paramInfo;
-            }
-
-            $this->reflectionCache[$concrete] = $params;
-            return $params;
-        } finally {
-            if (($this->reflectionInitializing[$concrete] ?? null) === $initToken) {
-                unset($this->reflectionInitializing[$concrete]);
-            }
+        $constructor = $reflector->getConstructor();
+        if ($constructor === null) {
+            return null;
         }
+
+        $params = [];
+        foreach ($constructor->getParameters() as $parameter) {
+            $type = $parameter->getType();
+            $paramInfo = [
+                'name' => $parameter->getName(),
+                'type' => null,
+                'builtin' => false,
+                'nullable' => false,
+                'hasDefault' => $parameter->isDefaultValueAvailable(),
+                'default' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
+            ];
+
+            if ($type instanceof ReflectionNamedType) {
+                $paramInfo['type'] = $type->getName();
+                $paramInfo['builtin'] = $type->isBuiltin();
+                $paramInfo['nullable'] = $type->allowsNull();
+            }
+            $params[] = $paramInfo;
+        }
+
+        return $params;
     }
 }
