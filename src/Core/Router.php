@@ -27,6 +27,16 @@ final class Router
 
     private array $routes = [];
 
+    /**
+     * Lazily-built lookup index keyed as [method][segment] → list<int route-index>.
+     * Segment '*' holds routes whose first path segment is dynamic (`/{slug}/…`).
+     * Each inner list preserves insertion order so first-match-wins semantics
+     * hold when merging the static-segment bucket with the '*' bucket.
+     */
+    private array $routeBuckets = [];
+
+    private bool $bucketsValid = false;
+
     private array $namedRoutes = [];
 
     private string $groupPrefix = '';
@@ -293,7 +303,7 @@ final class Router
             return Result::err(RouteNotFound::forRequest($method, $uri));
         }
 
-        foreach ($this->routes[$method] as $route) {
+        foreach ($this->candidateRoutes($method, $uri) as $route) {
             if (preg_match($route['pattern'], $uri, $matches)) {
                 $params = array_filter(
                     $matches,
@@ -327,8 +337,8 @@ final class Router
         $uri = '/' . trim(parse_url($uri, PHP_URL_PATH) ?? '', '/');
         $allowed = [];
 
-        foreach ($this->routes as $method => $routes) {
-            foreach ($routes as $route) {
+        foreach ($this->routes as $method => $_) {
+            foreach ($this->candidateRoutes($method, $uri) as $route) {
                 if (preg_match($route['pattern'], $uri)) {
                     $allowed[] = $method;
                     break;
@@ -337,6 +347,77 @@ final class Router
         }
 
         return $allowed;
+    }
+
+    /**
+     * Yield routes that could plausibly match $uri for $method, in registration
+     * order. Draws from the URI-first-segment bucket merged with the '*' bucket
+     * (dynamic-first routes) so far fewer patterns are tested than a linear scan.
+     *
+     * @return iterable<array<string, mixed>>
+     */
+    private function candidateRoutes(string $method, string $uri): iterable
+    {
+        if (!isset($this->routes[$method])) {
+            return;
+        }
+
+        if (!$this->bucketsValid) {
+            $this->rebuildBuckets();
+        }
+
+        $segment = $this->firstUriSegment($uri);
+        $static = $this->routeBuckets[$method][$segment] ?? [];
+        $dynamic = $this->routeBuckets[$method]['*'] ?? [];
+
+        // Merge two insertion-ordered index lists into one ordered stream.
+        $routes = $this->routes[$method];
+        $i = 0;
+        $j = 0;
+        $staticCount = count($static);
+        $dynamicCount = count($dynamic);
+        while ($i < $staticCount || $j < $dynamicCount) {
+            if ($j >= $dynamicCount || ($i < $staticCount && $static[$i] < $dynamic[$j])) {
+                yield $routes[$static[$i++]];
+            } else {
+                yield $routes[$dynamic[$j++]];
+            }
+        }
+    }
+
+    private function rebuildBuckets(): void
+    {
+        $this->routeBuckets = [];
+        foreach ($this->routes as $method => $routes) {
+            foreach ($routes as $index => $route) {
+                $key = $this->bucketKeyForPath($route['path']);
+                $this->routeBuckets[$method][$key][] = $index;
+            }
+        }
+        $this->bucketsValid = true;
+    }
+
+    private function bucketKeyForPath(string $path): string
+    {
+        $trimmed = trim($path, '/');
+        if ($trimmed === '') {
+            return '';
+        }
+        $first = strtok($trimmed, '/');
+        if ($first === false || str_contains($first, '{')) {
+            return '*';
+        }
+        return $first;
+    }
+
+    private function firstUriSegment(string $uri): string
+    {
+        $trimmed = trim($uri, '/');
+        if ($trimmed === '') {
+            return '';
+        }
+        $first = strtok($trimmed, '/');
+        return $first === false ? '' : $first;
     }
 
     /**
@@ -406,6 +487,7 @@ final class Router
 
         $this->routes = $data['routes'] ?? [];
         $this->namedRoutes = $data['named'] ?? [];
+        $this->bucketsValid = false;
 
         return true;
     }
@@ -519,6 +601,7 @@ final class Router
 
         $this->routes[$method][] = $route;
         $index = array_key_last($this->routes[$method]);
+        $this->bucketsValid = false;
 
         $this->pendingRoute = ['method' => $method, 'index' => $index];
 
