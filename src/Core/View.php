@@ -466,8 +466,9 @@ final class View
             return;
         }
 
-        $content = ob_get_flush(); // Output and get content
-        $this->viewCache->set('fragment_' . $this->currentCacheKey, $content ?: '', $this->currentCacheTtl);
+        $content = ob_get_clean() ?: '';
+        $this->viewCache->set('fragment_' . $this->currentCacheKey, $content, $this->currentCacheTtl);
         $this->currentCacheKey = null;
+        echo $content;
     }
 }
