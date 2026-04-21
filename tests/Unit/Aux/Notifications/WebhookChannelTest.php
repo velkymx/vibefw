@@ -52,4 +52,21 @@ final class WebhookChannelTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $channel->deliver(new AgentNotification('r', 's', 'b'));
     }
+
+    public function testDoesNotUseDeprecatedHttpResponseHeaderLocal(): void
+    {
+        $path = (new \ReflectionClass(WebhookChannel::class))->getFileName();
+        $source = file_get_contents($path);
+
+        $this->assertStringNotContainsString(
+            '$http_response_header',
+            $source,
+            'WebhookChannel must use http_get_last_response_headers() (PHP 8.4+) instead of the deprecated $http_response_header predefined local.',
+        );
+        $this->assertStringContainsString(
+            'http_get_last_response_headers',
+            $source,
+            'WebhookChannel must read response headers via http_get_last_response_headers().',
+        );
+    }
 }

@@ -52,7 +52,7 @@ final class WebhookChannel implements NotificationChannel
             return 0;
         }
 
-        foreach ($http_response_header as $line) {
+        foreach (http_get_last_response_headers() ?? [] as $line) {
             if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $m) === 1) {
                 return (int) $m[1];
             }
