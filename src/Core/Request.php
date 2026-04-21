@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Core;
 
 use Fw\Security\Sanitizer;
+use InvalidArgumentException;
 use RuntimeException;
 
 final class Request
@@ -98,6 +99,24 @@ final class Request
     public static function setReadTimeout(int $seconds): void
     {
         self::$readTimeout = $seconds;
+    }
+
+    /**
+     * Set the maximum raw request body size in bytes. Reads exceeding this limit
+     * throw RuntimeException. Wire from config (e.g. REQUEST_MAX_BODY_SIZE) at
+     * bootstrap — same opt-in pattern as setTrustedProxies().
+     */
+    public static function setMaxBodySize(int $bytes): void
+    {
+        if ($bytes <= 0) {
+            throw new InvalidArgumentException('Request max body size must be positive, got ' . $bytes);
+        }
+        self::$maxBodySize = $bytes;
+    }
+
+    public static function getMaxBodySize(): int
+    {
+        return self::$maxBodySize;
     }
 
     private static function parseHeadersFromGlobals(array $server): array

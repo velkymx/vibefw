@@ -23,4 +23,8 @@ return [
     'security' => [
         'csp' => Env::string('APP_CSP', Response::DEFAULT_CSP),
     ],
+
+    'request' => [
+        'max_body_size' => Env::int('REQUEST_MAX_BODY_SIZE', 10 * 1024 * 1024),
+    ],
 ];
