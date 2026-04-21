@@ -6,6 +6,7 @@ namespace Fw\Tests;
 
 use Fw\Database\Connection;
 use Fw\Core\RequestContext;
+use Fw\Model\Model;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 
 /**
@@ -22,6 +23,10 @@ abstract class TestCase extends BaseTestCase
         // Clear RequestContext to prevent leakage between tests
         RequestContext::clear();
 
+        // Silence N+1 lazy-load warnings by default; tests that exercise
+        // the reporter path opt back in explicitly.
+        Model::$lazyLoadReporter = static fn(string $m): null => null;
+
         // Clear session and globals between tests
         $_SESSION = [];
         $_GET = [];
@@ -36,6 +41,10 @@ abstract class TestCase extends BaseTestCase
     protected function tearDown(): void
     {
         $this->db = null;
+
+        // Restore default reporter so non-test code paths (if any run after)
+        // fall back to error_log.
+        Model::$lazyLoadReporter = null;
 
         // Ensure cleanup
         RequestContext::clear();

@@ -120,6 +120,17 @@ abstract class Model implements JsonSerializable
     private static array $metadataInitializing = [];
 
     /**
+     * Reporter invoked when a lazy relation load is detected in debug mode.
+     *
+     * `null` delegates to `error_log()`. Tests can swap in a capturing
+     * closure to assert the N+1 path fires, or a silencing closure to keep
+     * stderr clean during runs that exercise lazy loading incidentally.
+     *
+     * @var (\Closure(string): void)|null
+     */
+    public static ?\Closure $lazyLoadReporter = null;
+
+    /**
      * Indicates if the model exists in the database.
      */
     public private(set) bool $exists = false;
@@ -1263,10 +1274,11 @@ abstract class Model implements JsonSerializable
                 );
                 if ($debug) {
                     $class = static::class;
-                    error_log(
-                        "N+1 WARNING: Lazy-loading relationship '{$name}' on {$class}. " .
-                        "Use ->with('{$name}') to eager-load and avoid N+1 queries."
-                    );
+                    $reporter = self::$lazyLoadReporter ?? error_log(...);
+
+                    "N+1 WARNING: Lazy-loading relationship '{$name}' on {$class}. "
+                    . "Use ->with('{$name}') to eager-load and avoid N+1 queries."
+                        |> $reporter;
                 }
 
                 $this->relations[$name] = $relation->get();
