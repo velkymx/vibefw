@@ -269,11 +269,31 @@ final class Auth
     }
 
     /**
+     * Validate APP_KEY at bootstrap. Call once from app startup so misconfigured
+     * keys fail loudly before the first request hits the remember-me path.
+     *
+     * @throws RuntimeException If APP_KEY is missing, too short, or weak in production.
+     */
+    public static function validateAppKey(): void
+    {
+        self::resolveAppKey();
+    }
+
+    /**
      * Get the secret key for cookie signing.
      *
      * @throws RuntimeException If APP_KEY is missing or has insufficient entropy
      */
     private static function getCookieSecret(): string
+    {
+        return self::resolveAppKey();
+    }
+
+    /**
+     * Resolve and validate APP_KEY. Shared by bootstrap validation and runtime
+     * cookie signing so both paths enforce identical guarantees.
+     */
+    private static function resolveAppKey(): string
     {
         $secret = $_ENV['APP_KEY'] ?? getenv('APP_KEY');
 
@@ -281,8 +301,6 @@ final class Auth
             throw new RuntimeException('APP_KEY environment variable must be set for cookie signing');
         }
 
-        // Validate key has sufficient entropy
-        // A proper key should be at least 32 bytes (64 hex chars or 44 base64 chars)
         $keyLength = strlen($secret);
         if ($keyLength < self::MIN_KEY_LENGTH) {
             throw new RuntimeException(
@@ -292,15 +310,14 @@ final class Auth
             );
         }
 
-        // Warn about weak keys in production (common patterns)
         $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
         if ($env === 'production') {
             $weakPatterns = [
-                '/^(.)\1+$/',           // All same character: "aaaaaaa..."
-                '/^(..)\1+$/',          // Repeated 2-char pattern: "abababab..."
-                '/^[a-zA-Z]+$/',        // Only letters (no numbers/symbols)
-                '/^[0-9]+$/',           // Only numbers
-                '/^(password|secret|key|test|demo|example)/i', // Common weak prefixes
+                '/^(.)\1+$/',
+                '/^(..)\1+$/',
+                '/^[a-zA-Z]+$/',
+                '/^[0-9]+$/',
+                '/^(password|secret|key|test|demo|example)/i',
             ];
 
             foreach ($weakPatterns as $pattern) {
