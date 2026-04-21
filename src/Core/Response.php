@@ -100,10 +100,23 @@ final class Response
 
     /**
      * Set a redirect.
+     *
+     * Permanent redirects (301, 308) are emitted cacheable for a year so
+     * browsers and proxies stop re-requesting the old URL; temporary
+     * redirects (302, 303, 307) get Cache-Control: no-store to keep
+     * intermediaries from pinning a target that may move again. Callers
+     * can still override either by chaining ->header() afterwards.
      */
     public function redirect(string $url, int $code = 302): self
     {
-        return $this->setStatus($code)->header('Location', $url);
+        $response = $this->setStatus($code)->header('Location', $url);
+
+        return match ($code) {
+            301, 308 => $response
+                ->header('Cache-Control', 'public, max-age=31536000')
+                ->header('Expires', gmdate('D, d M Y H:i:s', time() + 31_536_000) . ' GMT'),
+            default => $response->header('Cache-Control', 'no-store'),
+        };
     }
 
     /**
