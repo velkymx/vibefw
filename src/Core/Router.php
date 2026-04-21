@@ -420,23 +420,6 @@ final class Router
         return $first === false ? '' : $first;
     }
 
-    /**
-     * Legacy dispatch that returns array or null.
-     *
-     * @deprecated Use dispatch() which returns Result instead
-     */
-    public function dispatchLegacy(string $method, string $uri): ?array
-    {
-        return $this->dispatch($method, $uri)->match(
-            fn (RouteMatch $match) => [
-                'handler' => $match->handler,
-                'params' => $match->params,
-                'middleware' => $match->middleware,
-            ],
-            fn () => null
-        );
-    }
-
     public function url(string $name, array $params = []): string
     {
         if (!isset($this->namedRoutes[$name])) {

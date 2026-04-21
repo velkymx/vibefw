@@ -1141,12 +1141,6 @@ parameters:
 			path: src/Core/Router.php
 
 		-
-			message: '#^Method Fw\\Core\\Router\:\:dispatchLegacy\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Core/Router.php
-
-		-
 			message: '#^Method Fw\\Core\\Router\:\:get\(\) has parameter \$handler with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
