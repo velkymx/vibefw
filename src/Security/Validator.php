@@ -300,7 +300,7 @@ final class Validator
 
     private function validateBetween(mixed $value, ?string $param): bool
     {
-        [$min, $max] = array_map('intval', explode(',', $param ?? '0,0'));
+        [$min, $max] = $this->parseBetweenParam($param);
 
         if (is_string($value)) {
             $length = mb_strlen($value);
@@ -312,6 +312,33 @@ final class Validator
         }
 
         return false;
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function parseBetweenParam(?string $param): array
+    {
+        if ($param === null || $param === '') {
+            throw new \InvalidArgumentException('between rule requires a "min,max" parameter');
+        }
+
+        $parts = explode(',', $param);
+        if (count($parts) !== 2 || !is_numeric($parts[0]) || !is_numeric($parts[1])) {
+            throw new \InvalidArgumentException(
+                "between rule requires two numeric bounds, got \"{$param}\""
+            );
+        }
+
+        $min = (int) $parts[0];
+        $max = (int) $parts[1];
+        if ($min > $max) {
+            throw new \InvalidArgumentException(
+                "between rule min ({$min}) must not exceed max ({$max})"
+            );
+        }
+
+        return [$min, $max];
     }
 
     private function validateNumeric(mixed $value): bool
