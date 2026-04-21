@@ -40,13 +40,6 @@ use ReflectionProperty;
 abstract class FormRequest
 {
     /**
-     * Define validation rules using typed rule objects.
-     *
-     * @return array<string, list<Rule>>
-     */
-    abstract public function rules(): array;
-
-    /**
      * Create a validated request from HTTP request data.
      *
      * @throws ValidationException
@@ -92,6 +85,13 @@ abstract class FormRequest
             return null;
         }
     }
+
+    /**
+     * Define validation rules using typed rule objects.
+     *
+     * @return array<string, list<Rule>>
+     */
+    abstract public function rules(): array;
 
     /**
      * Get all validated data as an array.

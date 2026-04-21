@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Fw\Aux\Http;
 
-use Fw\Aux\ToolRegistry;
 use Fw\Auth\TokenGuard;
+use Fw\Aux\ToolRegistry;
+use Fw\Aux\WorkflowResult;
 use Fw\Core\Application;
 use Fw\Core\Controller;
 use Fw\Core\Request;
@@ -28,7 +29,7 @@ final class AgentController extends Controller
         $tools = $this->tools->allFor($abilities);
 
         $shapes = array_values(array_map(
-            fn($tool) => $tool->toMcpShape(),
+            fn ($tool) => $tool->toMcpShape(),
             $tools,
         ));
 
@@ -42,39 +43,37 @@ final class AgentController extends Controller
         $abilities = $this->getCallerAbilities();
         $arguments = $request->all();
 
-        $result = $this->tools->call($name, $arguments, $abilities);
+        return $this->tools->call($name, $arguments, $abilities)->match(
+            ok: fn (WorkflowResult $workflowResult): Response => $this->json([
+                'content' => $workflowResult->toMcpContent(),
+            ]),
+            err: function (\Throwable $error): Response {
+                if ($error instanceof \Fw\Aux\Exceptions\ToolNotFoundException) {
+                    return $this->json(['error' => [
+                        'code' => -32001,
+                        'message' => $error->getMessage(),
+                    ]], 404);
+                }
 
-        if ($result->isErr()) {
-            $error = $result->unwrapErr();
+                if ($error instanceof \Fw\Aux\Exceptions\ToolValidationException) {
+                    return $this->json(['error' => [
+                        'code' => -32002,
+                        'message' => $error->getMessage(),
+                        'data' => $error->errors,
+                    ]], 422);
+                }
 
-            if ($error instanceof \Fw\Aux\Exceptions\ToolNotFoundException) {
                 return $this->json(['error' => [
-                    'code' => -32001,
+                    'code' => -32000,
                     'message' => $error->getMessage(),
-                ]], 404);
-            }
-
-            if ($error instanceof \Fw\Aux\Exceptions\ToolValidationException) {
-                return $this->json(['error' => [
-                    'code' => -32002,
-                    'message' => $error->getMessage(),
-                    'data' => $error->errors,
-                ]], 422);
-            }
-
-            return $this->json(['error' => [
-                'code' => -32000,
-                'message' => $error->getMessage(),
-            ]], 500);
-        }
-
-        $workflowResult = $result->unwrapOr(null);
-
-        return $this->json([
-            'content' => $workflowResult->toMcpContent(),
-        ]);
+                ]], 500);
+            },
+        );
     }
 
+    /**
+     * @return list<string>
+     */
     private function getCallerAbilities(): array
     {
         return TokenGuard::tokenAbilities();

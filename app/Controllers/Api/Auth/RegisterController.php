@@ -38,7 +38,7 @@ final class RegisterController extends Controller
             if (str_starts_with($e->getCode(), '23')) {
                 return $this->json([
                     'message' => 'Registration failed',
-                    'errors'  => ['email' => ['The email address is already registered.']],
+                    'errors' => ['email' => ['The email address is already registered.']],
                 ], 422);
             }
 

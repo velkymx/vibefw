@@ -66,6 +66,9 @@ final readonly class McpError
         return new self(self::TOOL_VALIDATION_ERROR, $message, $data);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         $arr = [

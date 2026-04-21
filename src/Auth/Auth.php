@@ -7,6 +7,7 @@ namespace Fw\Auth;
 use Fw\Core\RequestContext;
 use Fw\Model\Model;
 use Fw\Support\Option;
+use LogicException;
 use RuntimeException;
 
 /**
@@ -26,13 +27,6 @@ final class Auth
     private const string CONTEXT_USER_KEY = '_auth_user';
 
     /**
-     * Cached dummy hash for timing-safe comparison when user doesn't exist.
-     * Initialized lazily with PASSWORD_DEFAULT so it always matches the
-     * algorithm used for real password hashes, regardless of PHP version.
-     */
-    private static ?string $dummyHash = null;
-
-    /**
      * Dummy SHA256 hash for timing-safe remember token comparison.
      * Used when user's remember_token is null to ensure constant-time comparison.
      * 64 hex characters (256 bits) matching SHA256 output.
@@ -43,6 +37,13 @@ final class Auth
      * Minimum required length for APP_KEY (32 bytes = 64 hex chars or 44 base64 chars).
      */
     private const int MIN_KEY_LENGTH = 32;
+
+    /**
+     * Cached dummy hash for timing-safe comparison when user doesn't exist.
+     * Initialized lazily with PASSWORD_DEFAULT so it always matches the
+     * algorithm used for real password hashes, regardless of PHP version.
+     */
+    private static ?string $dummyHash = null;
 
     /**
      * The user model class. Must have findByEmail() and verifyPassword() methods.
@@ -228,6 +229,17 @@ final class Auth
     }
 
     /**
+     * Validate APP_KEY at bootstrap. Call once from app startup so misconfigured
+     * keys fail loudly before the first request hits the remember-me path.
+     *
+     * @throws RuntimeException If APP_KEY is missing, too short, or weak in production.
+     */
+    public static function validateAppKey(): void
+    {
+        self::resolveAppKey();
+    }
+
+    /**
      * Regenerate the CSRF token.
      *
      * Called on login to prevent CSRF token fixation attacks.
@@ -266,17 +278,6 @@ final class Auth
     private static function clearContextUser(): void
     {
         RequestContext::current()?->forget(self::CONTEXT_USER_KEY);
-    }
-
-    /**
-     * Validate APP_KEY at bootstrap. Call once from app startup so misconfigured
-     * keys fail loudly before the first request hits the remember-me path.
-     *
-     * @throws RuntimeException If APP_KEY is missing, too short, or weak in production.
-     */
-    public static function validateAppKey(): void
-    {
-        self::resolveAppKey();
     }
 
     /**
@@ -408,7 +409,7 @@ final class Auth
             return null;
         }
 
-        $user = $userOption->unwrapOrElse(fn() => throw new \LogicException('unreachable: isNone guard passed'));
+        $user = $userOption->unwrapOrElse(fn () => throw new LogicException('unreachable: isNone guard passed'));
 
         // Use DUMMY_SHA256_HASH instead of '' when token is null to ensure constant-time comparison
         // Empty string vs 64-char hash would return false immediately without constant-time behavior

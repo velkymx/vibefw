@@ -7,6 +7,7 @@ namespace Fw\Model;
 use Fw\Database\Connection;
 use Fw\Database\QueryBuilder;
 use Fw\Support\Option;
+use LogicException;
 
 /**
  * Query builder for Model classes.
@@ -229,7 +230,7 @@ final class ModelQueryBuilder
             return Option::none();
         }
 
-        $row = $rowOpt->unwrapOrElse(fn () => throw new \LogicException('unreachable'));
+        $row = $rowOpt->unwrapOrElse(fn () => throw new LogicException('unreachable'));
         $model = ($this->modelClass)::hydrate($row);
 
         // Eager load relations

@@ -12,10 +12,14 @@ use Fw\Database\Connection;
 use Fw\Support\Option;
 use Fw\Support\Result;
 use Fw\Support\Str;
+use InvalidArgumentException;
 use JsonSerializable;
+use NoDiscard;
+use PDOException;
 use ReflectionClass;
 use RuntimeException;
 use stdClass;
+use Throwable;
 
 /**
  * Base Model class with Active Record pattern.
@@ -266,7 +270,7 @@ abstract class Model implements JsonSerializable
      *
      * @return Option<static>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public static function find(mixed $id): Option
     {
         return static::query()->find($id);
@@ -406,7 +410,7 @@ abstract class Model implements JsonSerializable
      *
      * @param array<string, mixed> $attributes
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public static function create(array $attributes): static
     {
         $model = new static($attributes);
@@ -423,7 +427,7 @@ abstract class Model implements JsonSerializable
     public static function updateOrCreate(array $attributes, array $values = []): static
     {
         if (empty($attributes)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 static::class . '::updateOrCreate() requires at least one search attribute to identify the record.'
             );
         }
@@ -445,7 +449,7 @@ abstract class Model implements JsonSerializable
             none: function () use ($attributes, $values): static {
                 try {
                     return static::create(array_merge($attributes, $values));
-                } catch (\PDOException $e) {
+                } catch (PDOException $e) {
                     // Race condition: concurrent worker inserted between our SELECT
                     // and INSERT (SQLSTATE 23xxx = unique/integrity violation).
                     // Re-run updateOrCreate — the SELECT on the second attempt will
@@ -477,11 +481,11 @@ abstract class Model implements JsonSerializable
         $existing = $query->first();
 
         return $existing->match(
-            some: fn($instance) => $instance,
+            some: fn ($instance) => $instance,
             none: function () use ($attributes, $values): static {
                 try {
                     return static::create(array_merge($attributes, $values));
-                } catch (\PDOException $e) {
+                } catch (PDOException $e) {
                     // Race condition: another worker inserted the same unique record
                     // between our SELECT and INSERT (SQLSTATE 23xxx = integrity violation).
                     // Re-run firstOrCreate — the SELECT on the second attempt finds
@@ -812,9 +816,9 @@ abstract class Model implements JsonSerializable
     /**
      * Save the model to the database.
      *
-     * @return Result<$this, \Throwable>
+     * @return Result<$this, Throwable>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public function save(): Result
     {
         return Result::try(function (): static {
@@ -833,7 +837,7 @@ abstract class Model implements JsonSerializable
     /**
      * Delete the model from the database.
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public function delete(): bool
     {
         if (!$this->exists) {
@@ -865,12 +869,12 @@ abstract class Model implements JsonSerializable
         $fresh = static::find($this->getKey());
 
         $fresh->match(
-            some: function ($model) {
+            some: function ($model): void {
                 $this->attributes = $model->attributes;
                 $this->original = $this->attributes;
                 $this->relations = [];
             },
-            none: fn() => null,
+            none: fn () => null,
         );
 
         return $this;
@@ -964,7 +968,6 @@ abstract class Model implements JsonSerializable
     {
         return $this->toArray();
     }
-
 
     /**
      * Cast an attribute to the appropriate type.

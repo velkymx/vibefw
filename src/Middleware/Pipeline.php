@@ -11,6 +11,15 @@ use InvalidArgumentException;
 
 final class Pipeline
 {
+    /**
+     * Static cache for file-loaded aliases so the config file is only
+     * require'd once per process, regardless of how many Pipeline instances
+     * are created.  null = not yet loaded.
+     *
+     * @var array<string, class-string<MiddlewareInterface>>|null
+     */
+    private static ?array $cachedFileAliases = null;
+
     private array $middleware = [];
 
     private Application $app;
@@ -22,19 +31,19 @@ final class Pipeline
      */
     private array $aliases = [];
 
-    /**
-     * Static cache for file-loaded aliases so the config file is only
-     * require'd once per process, regardless of how many Pipeline instances
-     * are created.  null = not yet loaded.
-     *
-     * @var array<string, class-string<MiddlewareInterface>>|null
-     */
-    private static ?array $cachedFileAliases = null;
-
     public function __construct(Application $app)
     {
         $this->app = $app;
         $this->loadAliases();
+    }
+
+    /**
+     * Reset the file-alias static cache.  Call this in tests or after
+     * config changes to force a fresh load on the next instantiation.
+     */
+    public static function clearAliasCache(): void
+    {
+        self::$cachedFileAliases = null;
     }
 
     /**
@@ -72,10 +81,10 @@ final class Pipeline
         $config = $this->app->getContainer()->tryGet('middleware.config');
 
         $config->match(
-            some: function ($cfg) {
+            some: function ($cfg): void {
                 $this->aliases = $cfg->aliases;
             },
-            none: fn() => null,
+            none: fn () => null,
         );
 
         if ($config->isSome()) {
@@ -92,22 +101,13 @@ final class Pipeline
         $configFile = BASE_PATH . '/config/middleware.php';
 
         if (file_exists($configFile)) {
-            $configData            = require $configFile;
+            $configData = require $configFile;
             self::$cachedFileAliases = $configData['aliases'] ?? [];
         } else {
             self::$cachedFileAliases = [];
         }
 
         $this->aliases = self::$cachedFileAliases;
-    }
-
-    /**
-     * Reset the file-alias static cache.  Call this in tests or after
-     * config changes to force a fresh load on the next instantiation.
-     */
-    public static function clearAliasCache(): void
-    {
-        self::$cachedFileAliases = null;
     }
 
     private function carry(): callable

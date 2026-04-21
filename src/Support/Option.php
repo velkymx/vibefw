@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Support;
 
-use LogicException;
+use NoDiscard;
 
 /**
  * Option type for explicit null handling.
@@ -126,7 +126,7 @@ final readonly class Option
      * @param callable(T): U $fn
      * @return Option<U>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public function map(callable $fn): self
     {
         if (!$this->some) {
@@ -192,7 +192,7 @@ final readonly class Option
      * @param callable(T): bool $predicate
      * @return Option<T>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public function filter(callable $predicate): self
     {
         if (!$this->some) {

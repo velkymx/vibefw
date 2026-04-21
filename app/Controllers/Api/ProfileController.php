@@ -25,13 +25,13 @@ final class ProfileController extends Controller
 
         return Auth::user()->match(
             some: function ($user) use ($data) {
-                $user->fill($data->toArray())->save()->match(ok: fn() => null, err: fn($e) => throw $e);
+                $user->fill($data->toArray())->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
                 return $this->json([
-                    'user'    => $user,
+                    'user' => $user,
                     'message' => 'Profile updated successfully.',
                 ]);
             },
-            none: fn() => $this->json(['message' => 'Unauthenticated'], 401),
+            none: fn () => $this->json(['message' => 'Unauthenticated'], 401),
         );
     }
 
@@ -51,11 +51,11 @@ final class ProfileController extends Controller
                     ], 422);
                 }
 
-                $user->fill(['password' => Hash::make($data->password)])->save()->match(ok: fn() => null, err: fn($e) => throw $e);
+                $user->fill(['password' => Hash::make($data->password)])->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
 
                 return $this->json(['message' => 'Password updated successfully.']);
             },
-            none: fn() => $this->json(['message' => 'Unauthenticated'], 401),
+            none: fn () => $this->json(['message' => 'Unauthenticated'], 401),
         );
     }
 
@@ -79,7 +79,7 @@ final class ProfileController extends Controller
 
                 return $this->json(['message' => 'Account deleted successfully.']);
             },
-            none: fn() => $this->json(['message' => 'Unauthenticated'], 401),
+            none: fn () => $this->json(['message' => 'Unauthenticated'], 401),
         );
     }
 }

@@ -185,6 +185,10 @@ final class Container
 
     /**
      * Resolve an instance from the container.
+     *
+     * @template T of object
+     * @param class-string<T>|string $abstract
+     * @return ($abstract is class-string<T> ? T : object)
      */
     public function get(string $abstract): object
     {
@@ -470,6 +474,9 @@ final class Container
         return new $concrete(...$dependencies);
     }
 
+    /**
+     * @return array<int, array{name: string, type: ?string, builtin: bool, nullable: bool, hasDefault: bool, default: mixed}>|null
+     */
     private function getReflectionCache(string $concrete): ?array
     {
         if (array_key_exists($concrete, $this->reflectionCache)) {
@@ -485,6 +492,9 @@ final class Container
         return $this->reflectionCache[$concrete] = $this->computeReflection($concrete);
     }
 
+    /**
+     * @return array<int, array{name: string, type: ?string, builtin: bool, nullable: bool, hasDefault: bool, default: mixed}>|null
+     */
     private function computeReflection(string $concrete): ?array
     {
         $reflector = new ReflectionClass($concrete);

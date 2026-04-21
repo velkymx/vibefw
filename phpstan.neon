@@ -14,7 +14,6 @@ parameters:
         - app
     excludePaths:
         - src/Console/Commands  # CLI commands have dynamic patterns
-        - src/PHPStan            # PHPStan rules use PHPStan internals
 
     # Treat phpdoc types as authoritative
     treatPhpDocTypesAsCertain: false

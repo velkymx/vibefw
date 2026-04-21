@@ -16,6 +16,9 @@ final class ToolValidationException extends InvalidArgumentException
         parent::__construct($message);
     }
 
+    /**
+     * @param array<string, list<string>> $errors
+     */
     public static function fromValidationErrors(string $toolName, array $errors): self
     {
         $messages = [];

@@ -20,6 +20,14 @@ final class ModelNotFoundException extends RuntimeException implements Prescript
         parent::__construct($message ?: $this->buildMessage(), 404);
     }
 
+    /**
+     * @param class-string<Model> $model
+     */
+    public static function forModel(string $model, mixed $id = null): self
+    {
+        return new self($model, $id);
+    }
+
     public function getFixCommand(): string
     {
         $shortClass = basename(str_replace('\\', '/', $this->model));
@@ -36,13 +44,5 @@ final class ModelNotFoundException extends RuntimeException implements Prescript
 
         return $msg . "\nFix: Check your ID or query conditions. Inspect with:\n"
             . "  {$this->getFixCommand()}";
-    }
-
-    /**
-     * @param class-string<Model> $model
-     */
-    public static function forModel(string $model, mixed $id = null): self
-    {
-        return new self($model, $id);
     }
 }

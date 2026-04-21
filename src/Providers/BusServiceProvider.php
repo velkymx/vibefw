@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Fw\Providers;
 
+use Fw\Bus\Command;
 use Fw\Bus\CommandBus;
 use Fw\Bus\Handler;
+use Fw\Bus\Query;
 use Fw\Bus\QueryBus;
 use Fw\Core\ServiceProvider;
 
@@ -33,14 +35,14 @@ class BusServiceProvider extends ServiceProvider
     /**
      * Command to handler mappings.
      *
-     * @var array<class-string, class-string<Handler>|callable>
+     * @var array<class-string<Command>, class-string<Handler>|callable>
      */
     protected array $commands = [];
 
     /**
      * Query to handler mappings.
      *
-     * @var array<class-string, class-string<Handler>|callable>
+     * @var array<class-string<Query>, class-string<Handler>|callable>
      */
     protected array $queries = [];
 

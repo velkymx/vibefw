@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Support;
 
 use LogicException;
+use NoDiscard;
 use Throwable;
 
 /**
@@ -203,7 +204,7 @@ final readonly class Result
      * @param callable(T): U $fn
      * @return Result<U, E>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public function map(callable $fn): self
     {
         if (!$this->success) {
@@ -220,7 +221,7 @@ final readonly class Result
      * @param callable(E): F $fn
      * @return Result<T, F>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public function mapErr(callable $fn): self
     {
         if ($this->success) {
@@ -253,7 +254,7 @@ final readonly class Result
      * @param callable(T): Result<U, E> $fn
      * @return Result<U, E>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     public function andThen(callable $fn): self
     {
         return $this->flatMap($fn);

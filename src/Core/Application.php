@@ -139,7 +139,7 @@ final class Application
             return;
         }
 
-        $secure   = $this->resolveSecureCookieSetting();
+        $secure = $this->resolveSecureCookieSetting();
         $sameSite = $this->resolveSameSiteSetting();
         session_set_cookie_params([
             'lifetime' => 0,
@@ -258,9 +258,9 @@ final class Application
     {
         $value = $this->configRepository->get('app.session_same_site', 'Strict');
         return match (true) {
-            in_array($value, ['Lax', 'lax'], true)   => 'Lax',
-            in_array($value, ['None', 'none'], true)  => 'None',
-            default                                   => 'Strict',
+            in_array($value, ['Lax', 'lax'], true) => 'Lax',
+            in_array($value, ['None', 'none'], true) => 'None',
+            default => 'Strict',
         };
     }
 }

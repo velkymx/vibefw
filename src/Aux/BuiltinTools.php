@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Aux;
 
 use Fw\Aux\Http\RouteAdvertiser;
+use stdClass;
 
 final class BuiltinTools
 {
@@ -15,7 +16,7 @@ final class BuiltinTools
             description: 'List all named HTTP routes in this app: name, method, path, handler, middleware. Agents use this to discover the human-facing feature surface.',
             inputSchema: [
                 'type' => 'object',
-                'properties' => new \stdClass(),
+                'properties' => new stdClass(),
             ],
             handler: function (array $input) use ($advertiser): WorkflowResult {
                 $routes = $advertiser->advertise();
@@ -40,9 +41,9 @@ final class BuiltinTools
             description: 'List all navigable features in this app with their URLs and required abilities. Agents should call this once to build a mental map before invoking other tools.',
             inputSchema: [
                 'type' => 'object',
-                'properties' => new \stdClass(),
+                'properties' => new stdClass(),
             ],
-            handler: fn(array $input): WorkflowResult => WorkflowResult::success(
+            handler: fn (array $input): WorkflowResult => WorkflowResult::success(
                 completed: $index->toArray(),
                 metadata: ['count' => count($index->features)],
             ),

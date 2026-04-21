@@ -31,8 +31,8 @@ class DatabaseServiceProvider extends ServiceProvider
         $connection = $this->container->tryGet(Connection::class);
 
         $connection->match(
-            some: fn(Connection $conn) => Model::setConnection($conn),
-            none: fn() => null,
+            some: fn (Connection $conn) => Model::setConnection($conn),
+            none: fn () => null,
         );
     }
 }

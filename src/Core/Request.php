@@ -10,17 +10,17 @@ use RuntimeException;
 
 final class Request
 {
-    private static int $maxBodySize = 10 * 1024 * 1024;
-
-    private static array $trustedProxies = [];
-
-    private static int $readTimeout = 30;
-
     /** Minimum valid bearer token length (bytes) — matches Csrf::TOKEN_BYTES. */
     private const int BEARER_TOKEN_MIN = 32;
 
     /** Maximum valid bearer token length (bytes) — prevents oversized Authorization headers. */
     private const int BEARER_TOKEN_MAX = 512;
+
+    private static int $maxBodySize = 10 * 1024 * 1024;
+
+    private static array $trustedProxies = [];
+
+    private static int $readTimeout = 30;
 
     public readonly string $method;
 
@@ -135,6 +135,42 @@ final class Request
             $headers['content-length'] = (string) $server['CONTENT_LENGTH'];
         }
         return $headers;
+    }
+
+    /**
+     * Parse an Accept header into a media-type → q-value map. Unparseable
+     * q values fall back to the RFC 7231 default of 1.0; malformed entries
+     * are skipped silently.
+     *
+     * @return array<string, float>
+     */
+    private static function parseAcceptWeights(string $accept): array
+    {
+        if ($accept === '') {
+            return [];
+        }
+
+        $weights = [];
+        foreach (explode(',', $accept) as $part) {
+            $segments = explode(';', trim($part));
+            $type = strtolower(trim(array_shift($segments)));
+            if ($type === '') {
+                continue;
+            }
+
+            $q = 1.0;
+            foreach ($segments as $param) {
+                $param = trim($param);
+                if (str_starts_with($param, 'q=')) {
+                    $q = (float) substr($param, 2);
+                    break;
+                }
+            }
+
+            $weights[$type] = isset($weights[$type]) ? max($weights[$type], $q) : $q;
+        }
+
+        return $weights;
     }
 
     public function get(string $key, mixed $default = null): mixed
@@ -281,7 +317,7 @@ final class Request
 
     public function expectsJson(): bool
     {
-        $weights = self::parseAcceptWeights($this->header('accept', ''));
+        $weights = self::parseAcceptWeights($this->header('accept', '') ?? '');
 
         $json = $weights['application/json'] ?? null;
         $html = $weights['text/html'] ?? null;
@@ -294,42 +330,6 @@ final class Request
         }
 
         return $wildcard !== null && $wildcard > 0.0 && $html === null;
-    }
-
-    /**
-     * Parse an Accept header into a media-type → q-value map. Unparseable
-     * q values fall back to the RFC 7231 default of 1.0; malformed entries
-     * are skipped silently.
-     *
-     * @return array<string, float>
-     */
-    private static function parseAcceptWeights(string $accept): array
-    {
-        if ($accept === '') {
-            return [];
-        }
-
-        $weights = [];
-        foreach (explode(',', $accept) as $part) {
-            $segments = explode(';', trim($part));
-            $type = strtolower(trim(array_shift($segments)));
-            if ($type === '') {
-                continue;
-            }
-
-            $q = 1.0;
-            foreach ($segments as $param) {
-                $param = trim($param);
-                if (str_starts_with($param, 'q=')) {
-                    $q = (float) substr($param, 2);
-                    break;
-                }
-            }
-
-            $weights[$type] = isset($weights[$type]) ? max($weights[$type], $q) : $q;
-        }
-
-        return $weights;
     }
 
     public function wantsJson(): bool

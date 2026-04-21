@@ -126,7 +126,7 @@ final class ControllerReturnTypeRule implements Rule
             return $type->toString();
         }
         if ($type instanceof Node\UnionType) {
-            return implode('|', array_map(fn($t) => $this->getTypeName($t) ?? '?', $type->types));
+            return implode('|', array_map(fn ($t) => $this->getTypeName($t) ?? '?', $type->types));
         }
 
         return null;

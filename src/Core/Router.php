@@ -32,6 +32,8 @@ final class Router
      * Segment '*' holds routes whose first path segment is dynamic (`/{slug}/…`).
      * Each inner list preserves insertion order so first-match-wins semantics
      * hold when merging the static-segment bucket with the '*' bucket.
+     *
+     * @var array<string, array<string, list<int>>>
      */
     private array $routeBuckets = [];
 
@@ -349,77 +351,6 @@ final class Router
         return $allowed;
     }
 
-    /**
-     * Yield routes that could plausibly match $uri for $method, in registration
-     * order. Draws from the URI-first-segment bucket merged with the '*' bucket
-     * (dynamic-first routes) so far fewer patterns are tested than a linear scan.
-     *
-     * @return iterable<array<string, mixed>>
-     */
-    private function candidateRoutes(string $method, string $uri): iterable
-    {
-        if (!isset($this->routes[$method])) {
-            return;
-        }
-
-        if (!$this->bucketsValid) {
-            $this->rebuildBuckets();
-        }
-
-        $segment = $this->firstUriSegment($uri);
-        $static = $this->routeBuckets[$method][$segment] ?? [];
-        $dynamic = $this->routeBuckets[$method]['*'] ?? [];
-
-        // Merge two insertion-ordered index lists into one ordered stream.
-        $routes = $this->routes[$method];
-        $i = 0;
-        $j = 0;
-        $staticCount = count($static);
-        $dynamicCount = count($dynamic);
-        while ($i < $staticCount || $j < $dynamicCount) {
-            if ($j >= $dynamicCount || ($i < $staticCount && $static[$i] < $dynamic[$j])) {
-                yield $routes[$static[$i++]];
-            } else {
-                yield $routes[$dynamic[$j++]];
-            }
-        }
-    }
-
-    private function rebuildBuckets(): void
-    {
-        $this->routeBuckets = [];
-        foreach ($this->routes as $method => $routes) {
-            foreach ($routes as $index => $route) {
-                $key = $this->bucketKeyForPath($route['path']);
-                $this->routeBuckets[$method][$key][] = $index;
-            }
-        }
-        $this->bucketsValid = true;
-    }
-
-    private function bucketKeyForPath(string $path): string
-    {
-        $trimmed = trim($path, '/');
-        if ($trimmed === '') {
-            return '';
-        }
-        $first = strtok($trimmed, '/');
-        if ($first === false || str_contains($first, '{')) {
-            return '*';
-        }
-        return $first;
-    }
-
-    private function firstUriSegment(string $uri): string
-    {
-        $trimmed = trim($uri, '/');
-        if ($trimmed === '') {
-            return '';
-        }
-        $first = strtok($trimmed, '/');
-        return $first === false ? '' : $first;
-    }
-
     public function url(string $name, array $params = []): string
     {
         if (!isset($this->namedRoutes[$name])) {
@@ -543,6 +474,77 @@ final class Router
     }
 
     /**
+     * Yield routes that could plausibly match $uri for $method, in registration
+     * order. Draws from the URI-first-segment bucket merged with the '*' bucket
+     * (dynamic-first routes) so far fewer patterns are tested than a linear scan.
+     *
+     * @return iterable<array<string, mixed>>
+     */
+    private function candidateRoutes(string $method, string $uri): iterable
+    {
+        if (!isset($this->routes[$method])) {
+            return;
+        }
+
+        if (!$this->bucketsValid) {
+            $this->rebuildBuckets();
+        }
+
+        $segment = $this->firstUriSegment($uri);
+        $static = $this->routeBuckets[$method][$segment] ?? [];
+        $dynamic = $this->routeBuckets[$method]['*'] ?? [];
+
+        // Merge two insertion-ordered index lists into one ordered stream.
+        $routes = $this->routes[$method];
+        $i = 0;
+        $j = 0;
+        $staticCount = count($static);
+        $dynamicCount = count($dynamic);
+        while ($i < $staticCount || $j < $dynamicCount) {
+            if ($j >= $dynamicCount || ($i < $staticCount && $static[$i] < $dynamic[$j])) {
+                yield $routes[$static[$i++]];
+            } else {
+                yield $routes[$dynamic[$j++]];
+            }
+        }
+    }
+
+    private function rebuildBuckets(): void
+    {
+        $this->routeBuckets = [];
+        foreach ($this->routes as $method => $routes) {
+            foreach ($routes as $index => $route) {
+                $key = $this->bucketKeyForPath($route['path']);
+                $this->routeBuckets[$method][$key][] = $index;
+            }
+        }
+        $this->bucketsValid = true;
+    }
+
+    private function bucketKeyForPath(string $path): string
+    {
+        $trimmed = trim($path, '/');
+        if ($trimmed === '') {
+            return '';
+        }
+        $first = strtok($trimmed, '/');
+        if ($first === false || str_contains($first, '{')) {
+            return '*';
+        }
+        return $first;
+    }
+
+    private function firstUriSegment(string $uri): string
+    {
+        $trimmed = trim($uri, '/');
+        if ($trimmed === '') {
+            return '';
+        }
+        $first = strtok($trimmed, '/');
+        return $first === false ? '' : $first;
+    }
+
+    /**
      * Add a route to the routing table.
      *
      * @param callable|array|string $handler Can be callable, [Controller, method], or Component class name
@@ -629,7 +631,7 @@ final class Router
      */
     private function validateMiddlewareClassString(string $middleware): void
     {
-        $colonPos  = strpos($middleware, ':');
+        $colonPos = strpos($middleware, ':');
         $className = $colonPos !== false
             ? substr($middleware, 0, $colonPos)
             : $middleware;

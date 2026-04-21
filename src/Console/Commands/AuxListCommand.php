@@ -34,7 +34,7 @@ final class AuxListCommand extends Command
         }
 
         $linkedRoutes = $container->has(Router::class)
-            ? (new AgentAccessibleScanner($container->get(Router::class)))->scan()
+            ? new AgentAccessibleScanner($container->get(Router::class))->scan()
             : [];
 
         $this->newLine();
@@ -47,7 +47,7 @@ final class AuxListCommand extends Command
             $routes = $linkedRoutes[$tool->name] ?? [];
             $routeLabel = $routes === []
                 ? '—'
-                : implode(', ', array_map(static fn(array $r): string => $r['name'], $routes));
+                : implode(', ', array_map(static fn (array $r): string => $r['name'], $routes));
 
             $rows[] = [
                 $tool->name,

@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Fw\Model\Model;
 use InvalidArgumentException;
+use LogicException;
 
 /**
  * Value object representing a newly created access token.
@@ -230,7 +231,7 @@ final class ApiToken
             return false;
         }
 
-        $token = $tokenOption->unwrapOrElse(fn() => throw new \LogicException('unreachable: isNone guard passed'));
+        $token = $tokenOption->unwrapOrElse(fn () => throw new LogicException('unreachable: isNone guard passed'));
         if ((string) $token->user_id !== (string) $user->id) {
             return false;
         }

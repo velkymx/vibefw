@@ -12,6 +12,7 @@ use Fw\Bus\Query;
 use Fw\Bus\QueryBus;
 use Fw\Queue\Queue;
 use Fw\Support\Result;
+use RuntimeException;
 
 abstract class WorkflowAction
 {
@@ -21,13 +22,22 @@ abstract class WorkflowAction
         protected readonly ?Queue $queue = null,
     ) {}
 
+    /**
+     * @param array<string, mixed> $input
+     */
     abstract public function execute(array $input): WorkflowResult;
 
+    /**
+     * @return Result<mixed, \Throwable>
+     */
     final protected function dispatch(Command $command): Result
     {
         return $this->commands->dispatch($command);
     }
 
+    /**
+     * @return Result<mixed, \Throwable>
+     */
     final protected function query(Query $query): Result
     {
         return $this->queries->dispatch($query);
@@ -36,7 +46,7 @@ abstract class WorkflowAction
     final protected function notify(AgentNotification $notification, string $channel = 'log'): string
     {
         if ($this->queue === null) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'WorkflowAction::notify() requires a Queue. Inject one via the constructor.'
             );
         }

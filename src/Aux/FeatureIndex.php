@@ -23,7 +23,7 @@ final readonly class FeatureIndex
     {
         $visible = array_values(array_filter(
             $this->features,
-            fn(Feature $f): bool => $f->isAccessibleWith($callerAbilities),
+            fn (Feature $f): bool => $f->isAccessibleWith($callerAbilities),
         ));
 
         return clone($this, ['features' => $visible]);
@@ -35,7 +35,7 @@ final readonly class FeatureIndex
     public function toArray(): array
     {
         return array_map(
-            fn(Feature $f): array => $f->toArray(),
+            fn (Feature $f): array => $f->toArray(),
             $this->features,
         );
     }

@@ -46,6 +46,9 @@ final class ToolRegistry
         return $this;
     }
 
+    /**
+     * @return Option<Tool>
+     */
     public function get(string $name): Option
     {
         return Option::fromNullable($this->tools[$name] ?? null);
@@ -57,37 +60,42 @@ final class ToolRegistry
         return $this->tools;
     }
 
-    /** @param array<string> $callerAbilities */
+    /**
+     * @param list<string> $callerAbilities
+     * @return array<string, Tool>
+     */
     public function allFor(array $callerAbilities): array
     {
         return array_filter(
             $this->tools,
-            fn(Tool $tool) => $tool->isAccessibleWith($callerAbilities),
+            fn (Tool $tool) => $tool->isAccessibleWith($callerAbilities),
         );
     }
 
     /**
-     * @param array<string> $callerAbilities
+     * @param array<string, mixed> $input
+     * @param list<string> $callerAbilities
+     * @return Result<WorkflowResult, \Throwable>
      */
     public function call(string $name, array $input, array $callerAbilities = []): Result
     {
-        $tool = $this->tools[$name] ?? null;
+        return Result::try(function () use ($name, $input, $callerAbilities): WorkflowResult {
+            $tool = $this->tools[$name] ?? null;
 
-        if ($tool === null) {
-            return Result::err(new ToolNotFoundException($name));
-        }
+            if ($tool === null) {
+                throw new ToolNotFoundException($name);
+            }
 
-        if (!$tool->isAccessibleWith($callerAbilities)) {
-            return Result::err(new ToolNotFoundException($name));
-        }
+            if (!$tool->isAccessibleWith($callerAbilities)) {
+                throw new ToolNotFoundException($name);
+            }
 
-        $validation = $this->validateInput($tool, $input);
+            $validation = $this->validateInput($tool, $input);
 
-        if ($validation->isErr()) {
-            return Result::err($validation->unwrapErr());
-        }
+            if ($validation->isErr()) {
+                throw $validation->unwrapErr();
+            }
 
-        try {
             $this->events?->dispatch(new ToolCalled($name, $input));
 
             $start = hrtime(true);
@@ -99,10 +107,8 @@ final class ToolRegistry
             $this->stats?->record($name, $durationMs, $result->isError);
             $this->events?->dispatch(new ToolCompleted($name, $result));
 
-            return Result::ok($result);
-        } catch (Throwable $e) {
-            return Result::err($e);
-        }
+            return $result;
+        });
     }
 
     private function applyBudgetCheck(Tool $tool, WorkflowResult $result, float $durationMs): WorkflowResult
@@ -134,6 +140,10 @@ final class ToolRegistry
         );
     }
 
+    /**
+     * @param array<string, mixed> $input
+     * @return Result<null, ToolValidationException>
+     */
     private function validateInput(Tool $tool, array $input): Result
     {
         $schema = $tool->inputSchema;

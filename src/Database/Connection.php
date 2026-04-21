@@ -15,6 +15,25 @@ use Throwable;
 
 final class Connection
 {
+    /**
+     * SQLSTATE / driver error codes that indicate a transient failure which
+     * can safely be retried outside of a transaction. Kept small on purpose —
+     * anything non-transient (constraint, syntax, auth) must bubble.
+     */
+    private const array RETRYABLE_SQLSTATES = [
+        '40001', // serialization failure (PG)
+        '40P01', // deadlock_detected (PG)
+    ];
+
+    private const array RETRYABLE_DRIVER_CODES = [
+        1213,    // MySQL deadlock
+        1205,    // MySQL lock wait timeout
+        2006,    // MySQL server has gone away
+        2013,    // MySQL lost connection during query
+        5,       // SQLITE_BUSY
+        6,       // SQLITE_LOCKED
+    ];
+
     private static ?Connection $instance = null;
 
     private static array $config = [];
@@ -42,25 +61,6 @@ final class Connection
     private int $retryAttempts = 3;
 
     private int $retryBaseDelayMs = 10;
-
-    /**
-     * SQLSTATE / driver error codes that indicate a transient failure which
-     * can safely be retried outside of a transaction. Kept small on purpose —
-     * anything non-transient (constraint, syntax, auth) must bubble.
-     */
-    private const array RETRYABLE_SQLSTATES = [
-        '40001', // serialization failure (PG)
-        '40P01', // deadlock_detected (PG)
-    ];
-
-    private const array RETRYABLE_DRIVER_CODES = [
-        1213,    // MySQL deadlock
-        1205,    // MySQL lock wait timeout
-        2006,    // MySQL server has gone away
-        2013,    // MySQL lost connection during query
-        5,       // SQLITE_BUSY
-        6,       // SQLITE_LOCKED
-    ];
 
     /**
      * Optional callback for recording queries (breaks circular dependency with Core).
@@ -138,20 +138,6 @@ final class Connection
         return new self($config ?? self::$config);
     }
 
-    /**
-     * Compare two config arrays independent of key insertion order.
-     */
-    /**
-     * @param array<string, mixed> $a
-     * @param array<string, mixed> $b
-     */
-    private static function configsMatch(array $a, array $b): bool
-    {
-        ksort($a);
-        ksort($b);
-        return $a === $b;
-    }
-
     public static function configure(array $config): void
     {
         self::$config = $config;
@@ -165,6 +151,20 @@ final class Connection
             }
         }
         self::$instance = null;
+    }
+
+    /**
+     * Compare two config arrays independent of key insertion order.
+     */
+    /**
+     * @param array<string, mixed> $a
+     * @param array<string, mixed> $b
+     */
+    private static function configsMatch(array $a, array $b): bool
+    {
+        ksort($a);
+        ksort($b);
+        return $a === $b;
     }
 
     /**
@@ -200,55 +200,6 @@ final class Connection
         });
     }
 
-    /**
-     * Execute $op with bounded retries for transient failures. Skips retry
-     * inside an active transaction — partial work would replay against a
-     * state the caller cannot reason about, so the original exception must
-     * surface so the caller can rollback and decide.
-     */
-    private function runWithRetry(Closure $op): mixed
-    {
-        if ($this->inTransaction()) {
-            return $op();
-        }
-
-        $attempt = 0;
-        while (true) {
-            $attempt++;
-            try {
-                return $op();
-            } catch (PDOException $e) {
-                if ($attempt >= $this->retryAttempts || !$this->shouldRetry($e)) {
-                    throw $e;
-                }
-                $this->sleepBeforeRetry($attempt);
-            }
-        }
-    }
-
-    private function shouldRetry(PDOException $e): bool
-    {
-        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
-        if (in_array($sqlState, self::RETRYABLE_SQLSTATES, true)) {
-            return true;
-        }
-
-        $driverCode = (int) ($e->errorInfo[1] ?? 0);
-        return in_array($driverCode, self::RETRYABLE_DRIVER_CODES, true);
-    }
-
-    private function sleepBeforeRetry(int $attempt): void
-    {
-        if ($this->retryBaseDelayMs === 0) {
-            return;
-        }
-        // Exponential backoff with small jitter so contending workers don't
-        // resynchronize on every deadlock cycle.
-        $backoff = $this->retryBaseDelayMs * (2 ** ($attempt - 1));
-        $jitter = random_int(0, $this->retryBaseDelayMs);
-        usleep(($backoff + $jitter) * 1000);
-    }
-
     public function select(string $sql, array $params = []): array
     {
         return $this->query($sql, $params)->fetchAll();
@@ -277,11 +228,11 @@ final class Connection
     public function update(string $table, array $data, array $where): int
     {
         if (empty($data)) {
-            throw new \LogicException('update() requires at least one data column to set.');
+            throw new LogicException('update() requires at least one data column to set.');
         }
 
         if (empty($where)) {
-            throw new \LogicException(
+            throw new LogicException(
                 'update() requires at least one WHERE condition to prevent accidental mass updates. '
                 . 'Pass [\'1\' => \'1\'] for an intentional bulk update.'
             );
@@ -310,7 +261,7 @@ final class Connection
     public function delete(string $table, array $where): int
     {
         if (empty($where)) {
-            throw new \LogicException(
+            throw new LogicException(
                 'delete() requires at least one WHERE condition to prevent accidental mass deletes. '
                 . 'Pass [\'1\' => \'1\'] for an intentional bulk delete.'
             );
@@ -426,6 +377,55 @@ final class Connection
     public function getQueryLog(): array
     {
         return $this->queryLog;
+    }
+
+    /**
+     * Execute $op with bounded retries for transient failures. Skips retry
+     * inside an active transaction — partial work would replay against a
+     * state the caller cannot reason about, so the original exception must
+     * surface so the caller can rollback and decide.
+     */
+    private function runWithRetry(Closure $op): mixed
+    {
+        if ($this->inTransaction()) {
+            return $op();
+        }
+
+        $attempt = 0;
+        while (true) {
+            $attempt++;
+            try {
+                return $op();
+            } catch (PDOException $e) {
+                if ($attempt >= $this->retryAttempts || !$this->shouldRetry($e)) {
+                    throw $e;
+                }
+                $this->sleepBeforeRetry($attempt);
+            }
+        }
+    }
+
+    private function shouldRetry(PDOException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+        if (in_array($sqlState, self::RETRYABLE_SQLSTATES, true)) {
+            return true;
+        }
+
+        $driverCode = (int) ($e->errorInfo[1] ?? 0);
+        return in_array($driverCode, self::RETRYABLE_DRIVER_CODES, true);
+    }
+
+    private function sleepBeforeRetry(int $attempt): void
+    {
+        if ($this->retryBaseDelayMs === 0) {
+            return;
+        }
+        // Exponential backoff with small jitter so contending workers don't
+        // resynchronize on every deadlock cycle.
+        $backoff = $this->retryBaseDelayMs * (2 ** ($attempt - 1));
+        $jitter = random_int(0, $this->retryBaseDelayMs);
+        usleep(($backoff + $jitter) * 1000);
     }
 
     private function getSavepointName(int $level): string

@@ -23,15 +23,6 @@ class ValidationException extends RuntimeException
         parent::__construct($message ?: $this->buildMessage());
     }
 
-    private function buildMessage(): string
-    {
-        $fields = implode(', ', array_keys($this->errors));
-
-        return "The given data was invalid. Failing fields: {$fields}\n"
-            . "Fix: Check your FormRequest rules or run:\n"
-            . "  php fw check";
-    }
-
     /**
      * Get errors for a specific field.
      *
@@ -93,5 +84,14 @@ class ValidationException extends RuntimeException
             'message' => $this->message,
             'errors' => $this->errors,
         ];
+    }
+
+    private function buildMessage(): string
+    {
+        $fields = implode(', ', array_keys($this->errors));
+
+        return "The given data was invalid. Failing fields: {$fields}\n"
+            . "Fix: Check your FormRequest rules or run:\n"
+            . "  php fw check";
     }
 }

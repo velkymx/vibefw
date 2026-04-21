@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Console;
 
+use RuntimeException;
+
 /**
  * Console output with color support.
  */
@@ -49,7 +51,7 @@ final class Output
     {
         $stream = fopen('php://memory', 'r+');
         if ($stream === false) {
-            throw new \RuntimeException('Cannot open in-memory buffer');
+            throw new RuntimeException('Cannot open in-memory buffer');
         }
         return new self($stream);
     }

@@ -6,6 +6,10 @@ namespace Fw\Aux\Mcp;
 
 final readonly class McpMessage
 {
+    /**
+     * @param array<string, mixed>|null $params
+     * @param array<string, mixed>|null $result
+     */
     public function __construct(
         public ?string $jsonrpc,
         public ?int $id,
@@ -15,6 +19,9 @@ final readonly class McpMessage
         public ?McpError $error,
     ) {}
 
+    /**
+     * @param array<string, mixed>|null $params
+     */
     public static function request(int $id, string $method, ?array $params = null): self
     {
         return new self(
@@ -27,6 +34,9 @@ final readonly class McpMessage
         );
     }
 
+    /**
+     * @param array<string, mixed>|null $params
+     */
     public static function notification(string $method, ?array $params = null): self
     {
         return new self(
@@ -63,6 +73,9 @@ final readonly class McpMessage
         );
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public static function fromArray(array $data): self
     {
         $jsonrpc = $data['jsonrpc'] ?? null;
@@ -105,6 +118,9 @@ final readonly class McpMessage
         return $this->id !== null && ($this->result !== null || $this->error !== null);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         $arr = [];

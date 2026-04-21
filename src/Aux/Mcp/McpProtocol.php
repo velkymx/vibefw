@@ -6,6 +6,7 @@ namespace Fw\Aux\Mcp;
 
 use Fw\Aux\ToolRegistry;
 use Fw\Aux\WorkflowResult;
+use stdClass;
 
 final readonly class McpProtocol
 {
@@ -17,6 +18,9 @@ final readonly class McpProtocol
         private string $serverVersion = '3.0',
     ) {}
 
+    /**
+     * @param list<string> $callerAbilities
+     */
     public function handle(string $rawJson, array $callerAbilities = []): string
     {
         $data = json_decode($rawJson, true);
@@ -60,17 +64,20 @@ final readonly class McpProtocol
                 'version' => $this->serverVersion,
             ],
             'capabilities' => [
-                'tools' => new \stdClass(),
+                'tools' => new stdClass(),
             ],
         ]);
     }
 
+    /**
+     * @param list<string> $callerAbilities
+     */
     private function handleToolsList(McpMessage $message, array $callerAbilities): string
     {
         $tools = $this->registry->allFor($callerAbilities);
 
         $shapes = array_values(array_map(
-            fn($tool) => $tool->toMcpShape(),
+            fn ($tool) => $tool->toMcpShape(),
             $tools,
         ));
 
@@ -79,6 +86,9 @@ final readonly class McpProtocol
         ]);
     }
 
+    /**
+     * @param list<string> $callerAbilities
+     */
     private function handleToolsCall(McpMessage $message, array $callerAbilities): string
     {
         $params = $message->params ?? [];
@@ -112,20 +122,24 @@ final readonly class McpProtocol
             ]);
         }
 
-        $workflowResult = $result->unwrapOr(null);
-
-        return $this->response($message->id, [
-            'content' => $workflowResult->toMcpContent(),
-        ]);
+        return $result->match(
+            ok: fn (WorkflowResult $wr): string => $this->response($message->id, [
+                'content' => $wr->toMcpContent(),
+            ]),
+            err: fn (): string => $this->errorResponse(
+                $message->id,
+                McpError::internalError('Tool execution failed'),
+            ),
+        );
     }
 
-    private function response(int $id, mixed $result): string
+    private function response(?int $id, mixed $result): string
     {
         return json_encode([
             'jsonrpc' => '2.0',
             'id' => $id,
             'result' => $result,
-        ]);
+        ], JSON_THROW_ON_ERROR);
     }
 
     private function errorResponse(?int $id, McpError $error): string
@@ -134,6 +148,6 @@ final readonly class McpProtocol
             'jsonrpc' => '2.0',
             'id' => $id,
             'error' => $error->toArray(),
-        ]);
+        ], JSON_THROW_ON_ERROR);
     }
 }

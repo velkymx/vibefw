@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Validation\Rules;
 
+use BackedEnum;
 use Fw\Validation\Rule;
 
 /**
@@ -15,14 +16,14 @@ final class InEnum implements Rule
     private readonly array $validValues;
 
     /**
-     * @param class-string<\BackedEnum> $enumClass
+     * @param class-string<BackedEnum> $enumClass
      */
     public function __construct(
         public readonly string $enumClass,
         public readonly string $message = 'The :field must be one of: :values.',
     ) {
         $this->validValues = array_map(
-            fn(\BackedEnum $case) => $case->value,
+            fn (BackedEnum $case) => $case->value,
             $enumClass::cases()
         );
     }

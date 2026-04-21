@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Fw\Aux\Notifications;
 
+use Closure;
+use RuntimeException;
+
 final class WebhookChannel implements NotificationChannel
 {
     /**
-     * @param \Closure(string $url, string $body, list<string> $headers): int|null $httpCaller
+     * @param Closure(string $url, string $body, list<string> $headers): int|null $httpCaller
      */
     public function __construct(
         private readonly string $url,
         private readonly int $timeout = 5,
-        private readonly ?\Closure $httpCaller = null,
+        private readonly ?Closure $httpCaller = null,
     ) {}
 
     public function deliver(AgentNotification $notification): void
@@ -25,7 +28,7 @@ final class WebhookChannel implements NotificationChannel
             : $this->postViaStreams($this->url, $body, $headers);
 
         if ($status < 200 || $status >= 300) {
-            throw new \RuntimeException("WebhookChannel non-2xx response from {$this->url}: {$status}");
+            throw new RuntimeException("WebhookChannel non-2xx response from {$this->url}: {$status}");
         }
     }
 
@@ -49,7 +52,7 @@ final class WebhookChannel implements NotificationChannel
             return 0;
         }
 
-        foreach ($http_response_header ?? [] as $line) {
+        foreach ($http_response_header as $line) {
             if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $m) === 1) {
                 return (int) $m[1];
             }

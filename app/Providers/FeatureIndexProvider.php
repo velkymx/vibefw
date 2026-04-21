@@ -27,7 +27,7 @@ final class FeatureIndexProvider extends ServiceProvider
             // CUSTOMIZE: declare each navigable feature the agent should know about.
             // Each entry = {name, description, url, abilities?}. Public features
             // use abilities: []; gated features list required token abilities.
-            return (new FeatureIndex())
+            return new FeatureIndex()
                 ->with(new Feature(
                     name: 'dashboard',
                     description: 'Main operator dashboard — metrics and recent activity.',

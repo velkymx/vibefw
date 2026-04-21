@@ -9,10 +9,6 @@ use Fw\Console\Command;
 
 final class ErrorExplainCommand extends Command
 {
-    protected string $name = 'error:explain';
-
-    protected string $description = 'Parse an error message and suggest a fix';
-
     /** @var array<array{pattern: string, cause: string, fix: string}> */
     private const array PATTERNS = [
         [
@@ -66,6 +62,10 @@ final class ErrorExplainCommand extends Command
             'fix' => 'Run: php fw fix (auto-extracts closures into controllers). Or manually: php fw make:controller NameController then replace the closure with [NameController::class, \'method\'] in config/routes.php',
         ],
     ];
+
+    protected string $name = 'error:explain';
+
+    protected string $description = 'Parse an error message and suggest a fix';
 
     public function __construct(Application $app)
     {

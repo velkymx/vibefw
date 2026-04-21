@@ -7,6 +7,7 @@ namespace Fw\Console\Commands;
 use FilesystemIterator;
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Generator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -192,9 +193,9 @@ final class AiContextCommand extends Command
     }
 
     /**
-     * @return \Generator<string>
+     * @return Generator<string>
      */
-    private function phpFiles(string $directory): \Generator
+    private function phpFiles(string $directory): Generator
     {
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS)

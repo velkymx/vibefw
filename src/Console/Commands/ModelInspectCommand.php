@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Console\Commands;
 
+use DirectoryIterator;
 use Fw\Console\Application;
 use Fw\Console\Command;
 
@@ -108,7 +109,7 @@ final class ModelInspectCommand extends Command
             return;
         }
 
-        $dir = new \DirectoryIterator($path);
+        $dir = new DirectoryIterator($path);
         foreach ($dir as $file) {
             if ($file->getExtension() === 'php') {
                 $this->line('  - ' . $file->getBasename('.php'));

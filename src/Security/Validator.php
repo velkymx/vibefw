@@ -6,6 +6,7 @@ namespace Fw\Security;
 
 use DateTimeImmutable;
 use Exception;
+use InvalidArgumentException;
 use ValueError;
 
 final class Validator
@@ -320,12 +321,12 @@ final class Validator
     private function parseBetweenParam(?string $param): array
     {
         if ($param === null || $param === '') {
-            throw new \InvalidArgumentException('between rule requires a "min,max" parameter');
+            throw new InvalidArgumentException('between rule requires a "min,max" parameter');
         }
 
         $parts = explode(',', $param);
         if (count($parts) !== 2 || !is_numeric($parts[0]) || !is_numeric($parts[1])) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "between rule requires two numeric bounds, got \"{$param}\""
             );
         }
@@ -333,7 +334,7 @@ final class Validator
         $min = (int) $parts[0];
         $max = (int) $parts[1];
         if ($min > $max) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "between rule min ({$min}) must not exceed max ({$max})"
             );
         }

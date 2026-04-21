@@ -89,30 +89,30 @@ final class MakeLinkCommand extends Command
         $migrationPath = $this->nextMigrationPath($basePath, $migrationName);
 
         $content = <<<PHP
-<?php
+            <?php
 
-declare(strict_types=1);
+            declare(strict_types=1);
 
-use Fw\Database\Migration\Migration;
-use Fw\Database\Migration\Blueprint;
+            use Fw\Database\Migration\Migration;
+            use Fw\Database\Migration\Blueprint;
 
-return new class extends Migration
-{
-    public function up(): void
-    {
-        \$this->table('{$childTable}', function (Blueprint \$table): void {
-            \$table->foreignId('{$foreignKey}')->constrained()->cascadeOnDelete();
-        });
-    }
+            return new class extends Migration
+            {
+                public function up(): void
+                {
+                    \$this->table('{$childTable}', function (Blueprint \$table): void {
+                        \$table->foreignId('{$foreignKey}')->constrained()->cascadeOnDelete();
+                    });
+                }
 
-    public function down(): void
-    {
-        \$this->table('{$childTable}', function (Blueprint \$table): void {
-            \$table->dropColumn('{$foreignKey}');
-        });
-    }
-};
-PHP;
+                public function down(): void
+                {
+                    \$this->table('{$childTable}', function (Blueprint \$table): void {
+                        \$table->dropColumn('{$foreignKey}');
+                    });
+                }
+            };
+            PHP;
 
         file_put_contents($migrationPath, $content . "\n");
         $this->success("Migration created: " . basename($migrationPath));
@@ -131,29 +131,29 @@ PHP;
         $fk2 = $names[1] . '_id';
 
         $content = <<<PHP
-<?php
+            <?php
 
-declare(strict_types=1);
+            declare(strict_types=1);
 
-use Fw\Database\Migration\Migration;
-use Fw\Database\Migration\Blueprint;
+            use Fw\Database\Migration\Migration;
+            use Fw\Database\Migration\Blueprint;
 
-return new class extends Migration
-{
-    public function up(): void
-    {
-        \$this->create('{$pivotTable}', function (Blueprint \$table): void {
-            \$table->foreignId('{$fk1}')->constrained()->cascadeOnDelete();
-            \$table->foreignId('{$fk2}')->constrained()->cascadeOnDelete();
-        });
-    }
+            return new class extends Migration
+            {
+                public function up(): void
+                {
+                    \$this->create('{$pivotTable}', function (Blueprint \$table): void {
+                        \$table->foreignId('{$fk1}')->constrained()->cascadeOnDelete();
+                        \$table->foreignId('{$fk2}')->constrained()->cascadeOnDelete();
+                    });
+                }
 
-    public function down(): void
-    {
-        \$this->drop('{$pivotTable}');
-    }
-};
-PHP;
+                public function down(): void
+                {
+                    \$this->drop('{$pivotTable}');
+                }
+            };
+            PHP;
 
         file_put_contents($migrationPath, $content . "\n");
         $this->success("Pivot migration created: " . basename($migrationPath));
@@ -164,11 +164,11 @@ PHP;
         $methodName = Str::camel(Str::plural($child));
         $method = <<<PHP
 
-    public function {$methodName}(): \Fw\Model\Relations\HasMany
-    {
-        return \$this->hasMany({$child}::class);
-    }
-PHP;
+                public function {$methodName}(): \Fw\Model\Relations\HasMany
+                {
+                    return \$this->hasMany({$child}::class);
+                }
+            PHP;
 
         $this->insertMethodIntoModel($modelPath, $method);
         $this->success("{$parent} model updated: added {$methodName}() method");
@@ -179,11 +179,11 @@ PHP;
         $methodName = Str::camel($child);
         $method = <<<PHP
 
-    public function {$methodName}(): \Fw\Model\Relations\HasOne
-    {
-        return \$this->hasOne({$child}::class);
-    }
-PHP;
+                public function {$methodName}(): \Fw\Model\Relations\HasOne
+                {
+                    return \$this->hasOne({$child}::class);
+                }
+            PHP;
 
         $this->insertMethodIntoModel($modelPath, $method);
         $this->success("{$parent} model updated: added {$methodName}() method");
@@ -194,11 +194,11 @@ PHP;
         $methodName = Str::camel($parent);
         $method = <<<PHP
 
-    public function {$methodName}(): \Fw\Model\Relations\BelongsTo
-    {
-        return \$this->belongsTo({$parent}::class);
-    }
-PHP;
+                public function {$methodName}(): \Fw\Model\Relations\BelongsTo
+                {
+                    return \$this->belongsTo({$parent}::class);
+                }
+            PHP;
 
         $this->insertMethodIntoModel($modelPath, $method);
         $this->success("{$child} model updated: added {$methodName}() method");
@@ -209,11 +209,11 @@ PHP;
         $methodName = Str::camel(Str::plural($related));
         $method = <<<PHP
 
-    public function {$methodName}(): \Fw\Model\Relations\BelongsToMany
-    {
-        return \$this->belongsToMany({$related}::class);
-    }
-PHP;
+                public function {$methodName}(): \Fw\Model\Relations\BelongsToMany
+                {
+                    return \$this->belongsToMany({$related}::class);
+                }
+            PHP;
 
         $this->insertMethodIntoModel($modelPath, $method);
         $this->success("{$owner} model updated: added {$methodName}() method");

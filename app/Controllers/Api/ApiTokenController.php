@@ -21,7 +21,7 @@ final class ApiTokenController extends Controller
                 $tokens = PersonalAccessToken::where('user_id', '=', $user->id)->get();
                 return $this->json(['tokens' => $tokens]);
             },
-            none: fn() => $this->json(['message' => 'Unauthenticated'], 401),
+            none: fn () => $this->json(['message' => 'Unauthenticated'], 401),
         );
     }
 
@@ -39,11 +39,11 @@ final class ApiTokenController extends Controller
             some: function ($user) use ($data, $abilities) {
                 $token = $user->createToken($data->name, $abilities);
                 return $this->json([
-                    'token'   => $token->plainTextToken,
+                    'token' => $token->plainTextToken,
                     'message' => 'Token created successfully.',
                 ], 201);
             },
-            none: fn() => $this->json(['message' => 'Unauthenticated'], 401),
+            none: fn () => $this->json(['message' => 'Unauthenticated'], 401),
         );
     }
 
@@ -61,10 +61,10 @@ final class ApiTokenController extends Controller
                             }
                             return $this->json(['message' => 'Token revoked.']);
                         },
-                        none: fn() => $this->json(['message' => 'Token not found.'], 404),
+                        none: fn () => $this->json(['message' => 'Token not found.'], 404),
                     );
             },
-            none: fn() => $this->json(['message' => 'Unauthenticated'], 401),
+            none: fn () => $this->json(['message' => 'Unauthenticated'], 401),
         );
     }
 }

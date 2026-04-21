@@ -4,25 +4,30 @@ declare(strict_types=1);
 
 namespace Fw\Aux;
 
+use Closure;
+
 final readonly class Tool
 {
     /**
-     * @param array $inputSchema JSON Schema object as array
-     * @param \Closure(array): WorkflowResult $handler Handler function
-     * @param array<string> $abilities Token abilities required (any one suffices)
-     * @param array $annotations MCP hints: readOnlyHint, destructiveHint, etc.
-     * @param array $budget Non-spec hints: estimated_tokens, estimated_duration_ms, retry_policy
+     * @param array<string, mixed> $inputSchema JSON Schema object as array
+     * @param Closure(array<string, mixed>): WorkflowResult $handler Handler function
+     * @param list<string> $abilities Token abilities required (any one suffices)
+     * @param array<string, mixed> $annotations MCP hints: readOnlyHint, destructiveHint, etc.
+     * @param array<string, mixed> $budget Non-spec hints: estimated_tokens, estimated_duration_ms, retry_policy
      */
     public function __construct(
         public string $name,
         public string $description,
         public array $inputSchema,
-        public \Closure $handler,
+        public Closure $handler,
         public array $abilities = [],
         public array $annotations = [],
         public array $budget = [],
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toMcpShape(): array
     {
         $shape = [
@@ -43,6 +48,9 @@ final readonly class Tool
         return $shape;
     }
 
+    /**
+     * @param list<string> $abilities
+     */
     public function withAbilities(array $abilities): self
     {
         return new self(
@@ -56,6 +64,9 @@ final readonly class Tool
         );
     }
 
+    /**
+     * @param list<string> $callerAbilities
+     */
     public function isAccessibleWith(array $callerAbilities): bool
     {
         if ($this->abilities === []) {

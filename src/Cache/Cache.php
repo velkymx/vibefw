@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Cache;
 
+use stdClass;
+
 /**
  * Cache manager with layered caching support.
  *
@@ -12,22 +14,17 @@ namespace Fw\Cache;
  */
 final class Cache implements CacheInterface
 {
-    private MemoryCache $l1;
-
-    private CacheInterface $l2;
-
-    private bool $useL2;
-
     /**
      * Private miss marker used as the `$default` to L2::get(). Caller code can
      * never observe this object, so a stored value can never === it by mistake.
      */
     private static ?object $missMarker = null;
 
-    private static function missMarker(): object
-    {
-        return self::$missMarker ??= new \stdClass();
-    }
+    private MemoryCache $l1;
+
+    private CacheInterface $l2;
+
+    private bool $useL2;
 
     public function __construct(?CacheInterface $store = null, string $cachePath = '')
     {
@@ -46,6 +43,11 @@ final class Cache implements CacheInterface
             $this->l2 = new MemoryCache(); // Fallback to memory only
             $this->useL2 = false;
         }
+    }
+
+    private static function missMarker(): object
+    {
+        return self::$missMarker ??= new stdClass();
     }
 
     public function get(string $key, mixed $default = null): mixed

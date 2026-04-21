@@ -13,7 +13,9 @@ use Fw\Events\Event;
 use Fw\Events\EventDispatcher;
 use Fw\Support\Option;
 use Fw\Support\Result;
+use NoDiscard;
 use RuntimeException;
+use Throwable;
 
 /**
  * Base Controller for MVC applications.
@@ -160,9 +162,9 @@ abstract class Controller
      */
     protected function back(): Response
     {
-        $referer  = $_SERVER['HTTP_REFERER'] ?? '/';
-        $refHost  = parse_url($referer, PHP_URL_HOST);
-        $appHost  = $_SERVER['HTTP_HOST'] ?? '';
+        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
+        $refHost = parse_url($referer, PHP_URL_HOST);
+        $appHost = $_SERVER['HTTP_HOST'] ?? '';
 
         // Reject any Referer that names a different host (or protocol-relative URLs
         // which parse_url resolves to a host without a scheme).
@@ -227,7 +229,7 @@ abstract class Controller
      * @template T
      * @return Result<T, \Throwable>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     protected function dispatch(Command $command): Result
     {
         if ($this->commands === null) {
@@ -243,7 +245,7 @@ abstract class Controller
      * @template T
      * @return Result<T, \Throwable>
      */
-    #[\NoDiscard]
+    #[NoDiscard]
     protected function query(Query $query): Result
     {
         if ($this->queries === null) {
@@ -279,7 +281,6 @@ abstract class Controller
         return $deferred->await();
     }
 
-
     // ========================================
     // UTILITY HELPERS
     // ========================================
@@ -301,5 +302,4 @@ abstract class Controller
     {
         return $this->user()->isSome();
     }
-
 }

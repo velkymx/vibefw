@@ -133,15 +133,6 @@ final class ConfigValidator
     }
 
     /**
-     * @param array<string> $errors
-     * @return Result<true, array<string>>
-     */
-    private static function validationErrors(array $errors): Result
-    {
-        return Result::err($errors);
-    }
-
-    /**
      * Get the default schemas for framework configs.
      */
     public static function registerDefaultSchemas(): void
@@ -187,6 +178,15 @@ final class ConfigValidator
             'retry_after' => ['type' => 'int', 'required' => false, 'min' => 0],
             'max_tries' => ['type' => 'int', 'required' => false, 'min' => 1],
         ]);
+    }
+
+    /**
+     * @param array<string> $errors
+     * @return Result<true, array<string>>
+     */
+    private static function validationErrors(array $errors): Result
+    {
+        return Result::err($errors);
     }
 
     /**

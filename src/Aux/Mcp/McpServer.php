@@ -27,6 +27,9 @@ final class McpServer
         }
     }
 
+    /**
+     * @param list<string> $callerAbilities
+     */
     public function processLine(string $line, array $callerAbilities = []): string
     {
         $trimmed = trim($line);

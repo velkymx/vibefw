@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fw\Aux\Notifications;
 
+use InvalidArgumentException;
+
 final readonly class AgentNotification
 {
     /**
@@ -17,10 +19,10 @@ final readonly class AgentNotification
         public array $metadata = [],
     ) {
         if (trim($recipient) === '') {
-            throw new \InvalidArgumentException('AgentNotification recipient must not be blank.');
+            throw new InvalidArgumentException('AgentNotification recipient must not be blank.');
         }
         if (trim($subject) === '') {
-            throw new \InvalidArgumentException('AgentNotification subject must not be blank.');
+            throw new InvalidArgumentException('AgentNotification subject must not be blank.');
         }
     }
 

@@ -75,7 +75,7 @@ final class HttpKernel
 
                     return $response;
                 },
-                err: fn($error) => $this->errorHandler->createRoutingResponse($error, $request),
+                err: fn ($error) => $this->errorHandler->createRoutingResponse($error, $request),
             );
 
         } catch (Throwable $e) {

@@ -18,17 +18,17 @@ final class AgentMiddleware implements MiddlewareInterface
 {
     private const AUX_VERSION = '1.0';
 
-    public function handle(Request $request, callable $next): Response|string|array
+    public function handle(Request $request, callable $next): Response
     {
-        $accept = $request->header('Accept', '*/*');
+        $accept = $request->header('Accept', '*/*') ?? '*/*';
 
         if (!$this->acceptsJson($accept)) {
-            return (new Response(json_encode([
+            return new Response(json_encode([
                 'type' => 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/406',
                 'title' => 'Not Acceptable',
                 'detail' => 'Agent endpoints require Accept: application/json',
                 'status' => 406,
-            ], JSON_THROW_ON_ERROR)))
+            ], JSON_THROW_ON_ERROR))
                 ->setStatus(406)
                 ->header('Content-Type', 'application/json');
         }

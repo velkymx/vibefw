@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Fw\Aux\Notifications;
 
+use Closure;
+use RuntimeException;
+
 final class MailChannel implements NotificationChannel
 {
     /**
-     * @param \Closure(string $to, string $subject, string $body, string $headers): bool|null $mailer
+     * @param Closure(string $to, string $subject, string $body, string $headers): bool|null $mailer
      */
     public function __construct(
         private readonly string $fromAddress,
-        private readonly ?\Closure $mailer = null,
+        private readonly ?Closure $mailer = null,
     ) {}
 
     public function deliver(AgentNotification $notification): void
@@ -24,7 +27,7 @@ final class MailChannel implements NotificationChannel
             : mail($notification->recipient, $subject, $notification->body, $headers);
 
         if ($sent === false) {
-            throw new \RuntimeException("MailChannel failed to deliver to {$notification->recipient}.");
+            throw new RuntimeException("MailChannel failed to deliver to {$notification->recipient}.");
         }
     }
 }

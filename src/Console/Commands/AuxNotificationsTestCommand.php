@@ -10,6 +10,7 @@ use Fw\Aux\Notifications\Severity;
 use Fw\Console\Application;
 use Fw\Console\Command;
 use Fw\Core\Application as HttpApplication;
+use Throwable;
 
 final class AuxNotificationsTestCommand extends Command
 {
@@ -60,7 +61,7 @@ final class AuxNotificationsTestCommand extends Command
 
         try {
             $registry->deliver($channel, $notification);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error("Delivery failed: {$e->getMessage()}");
             return 1;
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Database;
 
+use LogicException;
 use ReflectionClass;
 use RuntimeException;
 
@@ -28,14 +29,14 @@ abstract class Model
 
     protected static bool $softDeletes = false;
 
+    /** @var array<class-string, true> Subclasses that already emitted the deprecation notice. */
+    private static array $deprecationNoticed = [];
+
     protected array $attributes = [];
 
     protected array $original = [];
 
     protected bool $exists = false;
-
-    /** @var array<class-string, true> Subclasses that already emitted the deprecation notice. */
-    private static array $deprecationNoticed = [];
 
     public function __construct(array $attributes = [])
     {
@@ -104,7 +105,7 @@ abstract class Model
             return null;
         }
 
-        return static::hydrate($rowOpt->unwrapOrElse(fn () => throw new \LogicException('unreachable')));
+        return static::hydrate($rowOpt->unwrapOrElse(fn () => throw new LogicException('unreachable')));
     }
 
     public static function findOrFail(int|string $id): static

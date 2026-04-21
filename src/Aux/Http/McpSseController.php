@@ -26,7 +26,7 @@ final class McpSseController extends Controller
     {
         $heartbeat = $this->app->config('aux.sse_heartbeat_seconds', 15);
 
-        return $this->streamed(function () use ($heartbeat) {
+        return $this->streamed(function () use ($heartbeat): void {
             while (ob_get_level() > 0) {
                 ob_end_flush();
             }
@@ -78,5 +78,4 @@ final class McpSseController extends Controller
 
         return $this->json($decoded);
     }
-
 }

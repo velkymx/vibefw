@@ -6,6 +6,7 @@ namespace Fw\Aux\Notifications;
 
 use Fw\Aux\Events\AgentNotified;
 use Fw\Events\EventDispatcher;
+use InvalidArgumentException;
 
 final class NotificationChannelRegistry
 {
@@ -36,7 +37,7 @@ final class NotificationChannelRegistry
     public function deliver(string $name, AgentNotification $notification): void
     {
         if (!isset($this->channels[$name])) {
-            throw new \InvalidArgumentException("Notification channel '{$name}' is not registered.");
+            throw new InvalidArgumentException("Notification channel '{$name}' is not registered.");
         }
 
         $this->channels[$name]->deliver($notification);

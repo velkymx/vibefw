@@ -24,6 +24,8 @@ final class QueryBuilder
 
     private const int MAX_IDENTIFIER_LENGTH = 255;
 
+    private const string PAGINATE_TOTAL_ALIAS = '__fw_paginate_total';
+
     private Connection $connection;
 
     private string $table = '';
@@ -45,6 +47,8 @@ final class QueryBuilder
     private ?int $offset = null;
 
     private bool $distinct = false;
+
+    private bool $appendCountWindow = false;
 
     public function __construct(Connection $connection)
     {
@@ -90,48 +94,6 @@ final class QueryBuilder
     public function orWhere(string $column, mixed $operator = null, mixed $value = null): self
     {
         return $this->addWhere('OR', $column, $operator, $value);
-    }
-
-    private function addWhere(string $boolean, string $column, mixed $operator, mixed $value): self
-    {
-        $explicitOperator = is_string($operator) && in_array($operator, self::ALLOWED_OPERATORS, true);
-        if ($value === null && !$explicitOperator) {
-            $value = $operator;
-            $operator = '=';
-        }
-        $this->validateOperator($operator);
-
-        if ($value === null) {
-            if ($operator === '=') {
-                $clone = clone $this;
-                $clone->wheres[] = [
-                    'type' => 'null',
-                    'column' => $column,
-                    'boolean' => $boolean,
-                ];
-                return $clone;
-            }
-            if ($operator === '!=' || $operator === '<>') {
-                $clone = clone $this;
-                $clone->wheres[] = [
-                    'type' => 'notNull',
-                    'column' => $column,
-                    'boolean' => $boolean,
-                ];
-                return $clone;
-            }
-            throw new InvalidArgumentException("Operator '{$operator}' cannot be used with NULL value.");
-        }
-
-        $clone = clone $this;
-        $clone->wheres[] = [
-            'type' => 'basic',
-            'column' => $column,
-            'operator' => $operator,
-            'boolean' => $boolean,
-        ];
-        $clone->bindings[] = $value;
-        return $clone;
     }
 
     public function whereIn(string $column, array $values): self
@@ -348,25 +310,6 @@ final class QueryBuilder
         return $result['aggregate'] ?? null;
     }
 
-    private function aggregateExpr(string $fn, string $column, bool $distinct): string
-    {
-        $inner = $column === '*' ? '*' : $this->quoteIdentifier($column);
-        $prefix = $distinct && $column !== '*' ? 'DISTINCT ' : '';
-        return $fn . '(' . $prefix . $inner . ') as aggregate';
-    }
-
-    private function aggregateClone(string $expr): self
-    {
-        $clone = clone $this;
-        $clone->columns = [$expr];
-        $clone->distinct = false;
-        return $clone;
-    }
-
-    private const string PAGINATE_TOTAL_ALIAS = '__fw_paginate_total';
-
-    private bool $appendCountWindow = false;
-
     /**
      * Paginate results.
      *
@@ -406,33 +349,6 @@ final class QueryBuilder
         ];
     }
 
-    /**
-     * @return array{items: array<int, array<string, mixed>>, total: int, per_page: int, current_page: int, last_page: int}
-     */
-    private function paginateWithWindow(int $perPage, int $page, int $offset): array
-    {
-        $clone = $this->limit($perPage)->offset($offset);
-        $clone->appendCountWindow = true;
-        $rows = $clone->get();
-
-        $total = $rows === [] ? 0 : (int) ($rows[0][self::PAGINATE_TOTAL_ALIAS] ?? 0);
-        $items = array_map(
-            function (array $row): array {
-                unset($row[self::PAGINATE_TOTAL_ALIAS]);
-                return $row;
-            },
-            $rows,
-        );
-
-        return [
-            'items' => $items,
-            'total' => $total,
-            'per_page' => $perPage,
-            'current_page' => $page,
-            'last_page' => $total === 0 ? 0 : (int) ceil($total / $perPage),
-        ];
-    }
-
     public function insert(array $data): int
     {
         $this->requireTable();
@@ -444,7 +360,7 @@ final class QueryBuilder
         $this->requireTable();
 
         if (empty($this->wheres)) {
-            throw new \LogicException(
+            throw new LogicException(
                 'Refusing mass update on "' . $this->table . '" without a WHERE clause. '
                 . 'Add ->where() to scope the update, or use ->where(\'1\', \'=\', \'1\') for an intentional bulk update.'
             );
@@ -465,7 +381,7 @@ final class QueryBuilder
         $this->requireTable();
 
         if (empty($this->wheres)) {
-            throw new \LogicException(
+            throw new LogicException(
                 'Refusing mass delete on "' . $this->table . '" without a WHERE clause. '
                 . 'Add ->where() to scope the delete, or use ->where(\'1\', \'=\', \'1\') for an intentional bulk delete.'
             );
@@ -510,6 +426,90 @@ final class QueryBuilder
         }
 
         return [$sql, $bindings];
+    }
+
+    private function addWhere(string $boolean, string $column, mixed $operator, mixed $value): self
+    {
+        $explicitOperator = is_string($operator) && in_array($operator, self::ALLOWED_OPERATORS, true);
+        if ($value === null && !$explicitOperator) {
+            $value = $operator;
+            $operator = '=';
+        }
+        $this->validateOperator($operator);
+
+        if ($value === null) {
+            if ($operator === '=') {
+                $clone = clone $this;
+                $clone->wheres[] = [
+                    'type' => 'null',
+                    'column' => $column,
+                    'boolean' => $boolean,
+                ];
+                return $clone;
+            }
+            if ($operator === '!=' || $operator === '<>') {
+                $clone = clone $this;
+                $clone->wheres[] = [
+                    'type' => 'notNull',
+                    'column' => $column,
+                    'boolean' => $boolean,
+                ];
+                return $clone;
+            }
+            throw new InvalidArgumentException("Operator '{$operator}' cannot be used with NULL value.");
+        }
+
+        $clone = clone $this;
+        $clone->wheres[] = [
+            'type' => 'basic',
+            'column' => $column,
+            'operator' => $operator,
+            'boolean' => $boolean,
+        ];
+        $clone->bindings[] = $value;
+        return $clone;
+    }
+
+    private function aggregateExpr(string $fn, string $column, bool $distinct): string
+    {
+        $inner = $column === '*' ? '*' : $this->quoteIdentifier($column);
+        $prefix = $distinct && $column !== '*' ? 'DISTINCT ' : '';
+        return $fn . '(' . $prefix . $inner . ') as aggregate';
+    }
+
+    private function aggregateClone(string $expr): self
+    {
+        $clone = clone $this;
+        $clone->columns = [$expr];
+        $clone->distinct = false;
+        return $clone;
+    }
+
+    /**
+     * @return array{items: array<int, array<string, mixed>>, total: int, per_page: int, current_page: int, last_page: int}
+     */
+    private function paginateWithWindow(int $perPage, int $page, int $offset): array
+    {
+        $clone = $this->limit($perPage)->offset($offset);
+        $clone->appendCountWindow = true;
+        $rows = $clone->get();
+
+        $total = $rows === [] ? 0 : (int) ($rows[0][self::PAGINATE_TOTAL_ALIAS] ?? 0);
+        $items = array_map(
+            function (array $row): array {
+                unset($row[self::PAGINATE_TOTAL_ALIAS]);
+                return $row;
+            },
+            $rows,
+        );
+
+        return [
+            'items' => $items,
+            'total' => $total,
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'last_page' => $total === 0 ? 0 : (int) ceil($total / $perPage),
+        ];
     }
 
     private function requireTable(): void

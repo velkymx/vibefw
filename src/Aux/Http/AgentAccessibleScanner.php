@@ -6,6 +6,7 @@ namespace Fw\Aux\Http;
 
 use Fw\Aux\AgentAccessible;
 use Fw\Core\Router;
+use ReflectionAttribute;
 use ReflectionMethod;
 
 final readonly class AgentAccessibleScanner
@@ -60,14 +61,14 @@ final readonly class AgentAccessibleScanner
         [$class, $action] = $handler;
         $class = is_object($class) ? $class::class : (string) $class;
 
-        if (!is_string($class) || !class_exists($class) || !method_exists($class, (string) $action)) {
+        if (!class_exists($class) || !method_exists($class, (string) $action)) {
             return [];
         }
 
         $reflection = new ReflectionMethod($class, (string) $action);
 
         return array_map(
-            fn(\ReflectionAttribute $a): string => $a->newInstance()->tool,
+            fn (ReflectionAttribute $a): string => $a->newInstance()->tool,
             $reflection->getAttributes(AgentAccessible::class),
         );
     }

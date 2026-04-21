@@ -67,35 +67,35 @@ final class MakeTestCommand extends Command
         }
 
         $content = <<<PHP
-<?php
+            <?php
 
-declare(strict_types=1);
+            declare(strict_types=1);
 
-namespace Tests\Unit;
+            namespace Tests\Unit;
 
-use App\Models\\{$model};
-use PHPUnit\Framework\Attributes\Test;
-use Fw\Tests\TestCase;
+            use App\Models\\{$model};
+            use PHPUnit\Framework\Attributes\Test;
+            use Fw\Tests\TestCase;
 
-final class {$model}ModelTest extends TestCase
-{
-    #[Test]
-    public function modelHasCorrectTable(): void
-    {
-        \$this->assertSame('{$table}', {$model}::\$table);
-    }
+            final class {$model}ModelTest extends TestCase
+            {
+                #[Test]
+                public function modelHasCorrectTable(): void
+                {
+                    \$this->assertSame('{$table}', {$model}::\$table);
+                }
 
-    #[Test]
-    public function modelHasCorrectFillable(): void
-    {
-{$fillableChecks}    }
+                #[Test]
+                public function modelHasCorrectFillable(): void
+                {
+            {$fillableChecks}    }
 
-    #[Test]
-    public function modelHasCorrectCasts(): void
-    {
-{$castsChecks}    }
-}
-PHP;
+                #[Test]
+                public function modelHasCorrectCasts(): void
+                {
+            {$castsChecks}    }
+            }
+            PHP;
 
         file_put_contents($path, $content . "\n");
         $this->success("Unit test created: tests/Unit/{$model}ModelTest.php");
@@ -110,71 +110,71 @@ PHP;
         $modelVar = Str::camel($model);
 
         $content = <<<PHP
-<?php
+            <?php
 
-declare(strict_types=1);
+            declare(strict_types=1);
 
-namespace Tests\Feature;
+            namespace Tests\Feature;
 
-use App\Models\\{$model};
-use Fw\Tests\TestCase;
-use PHPUnit\Framework\Attributes\Test;
+            use App\Models\\{$model};
+            use Fw\Tests\TestCase;
+            use PHPUnit\Framework\Attributes\Test;
 
-final class {$model}CrudTest extends TestCase
-{
-    protected function setUp(): void
-    {
-        parent::setUp();
-        \$this->createDatabase();
-        \$this->runMigrations();
-    }
+            final class {$model}CrudTest extends TestCase
+            {
+                protected function setUp(): void
+                {
+                    parent::setUp();
+                    \$this->createDatabase();
+                    \$this->runMigrations();
+                }
 
-    #[Test]
-    public function indexReturnsSuccessful(): void
-    {
-        \$response = \$this->get('/{$routePrefix}');
+                #[Test]
+                public function indexReturnsSuccessful(): void
+                {
+                    \$response = \$this->get('/{$routePrefix}');
 
-        \$this->assertSame(200, \$response->getStatusCode());
-    }
+                    \$this->assertSame(200, \$response->getStatusCode());
+                }
 
-    #[Test]
-    public function storeCreatesNew{$model}(): void
-    {
-        \$response = \$this->post('/{$routePrefix}', [
-            // Add required fields here
-        ]);
+                #[Test]
+                public function storeCreatesNew{$model}(): void
+                {
+                    \$response = \$this->post('/{$routePrefix}', [
+                        // Add required fields here
+                    ]);
 
-        \$this->assertContains(\$response->getStatusCode(), [201, 302]);
-    }
+                    \$this->assertContains(\$response->getStatusCode(), [201, 302]);
+                }
 
-    #[Test]
-    public function showReturns{$model}(): void
-    {
-        // Create a {$modelVar} first, then fetch it
-        \$response = \$this->get('/{$routePrefix}/1');
+                #[Test]
+                public function showReturns{$model}(): void
+                {
+                    // Create a {$modelVar} first, then fetch it
+                    \$response = \$this->get('/{$routePrefix}/1');
 
-        \$this->assertContains(\$response->getStatusCode(), [200, 404]);
-    }
+                    \$this->assertContains(\$response->getStatusCode(), [200, 404]);
+                }
 
-    #[Test]
-    public function updateModifies{$model}(): void
-    {
-        \$response = \$this->put('/{$routePrefix}/1', [
-            // Add fields to update here
-        ]);
+                #[Test]
+                public function updateModifies{$model}(): void
+                {
+                    \$response = \$this->put('/{$routePrefix}/1', [
+                        // Add fields to update here
+                    ]);
 
-        \$this->assertContains(\$response->getStatusCode(), [200, 302, 404]);
-    }
+                    \$this->assertContains(\$response->getStatusCode(), [200, 302, 404]);
+                }
 
-    #[Test]
-    public function destroyDeletes{$model}(): void
-    {
-        \$response = \$this->delete('/{$routePrefix}/1');
+                #[Test]
+                public function destroyDeletes{$model}(): void
+                {
+                    \$response = \$this->delete('/{$routePrefix}/1');
 
-        \$this->assertContains(\$response->getStatusCode(), [200, 204, 302]);
-    }
-}
-PHP;
+                    \$this->assertContains(\$response->getStatusCode(), [200, 204, 302]);
+                }
+            }
+            PHP;
 
         file_put_contents($path, $content . "\n");
         $this->success("Feature test created: tests/Feature/{$model}CrudTest.php");

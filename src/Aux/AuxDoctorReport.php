@@ -8,11 +8,6 @@ final class AuxDoctorReport
 {
     private const array BUILTIN_LEVELS = [1, 2, 3];
 
-    /**
-     * @param list<array{level: int, name: string, passed: bool, hint: string}> $checks
-     */
-    public function __construct(public readonly array $checks) {}
-
     public int $level {
         get {
             foreach (self::BUILTIN_LEVELS as $lvl) {
@@ -26,12 +21,17 @@ final class AuxDoctorReport
     }
 
     public int $score {
-        get => count(array_filter($this->checks, static fn(array $c): bool => $c['passed']));
+        get => count(array_filter($this->checks, static fn (array $c): bool => $c['passed']));
     }
 
     public int $total {
         get => count($this->checks);
     }
+
+    /**
+     * @param list<array{level: int, name: string, passed: bool, hint: string}> $checks
+     */
+    public function __construct(public readonly array $checks) {}
 
     private function allPassedAt(int $level): bool
     {

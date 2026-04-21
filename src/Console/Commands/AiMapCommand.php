@@ -7,6 +7,7 @@ namespace Fw\Console\Commands;
 use FilesystemIterator;
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Generator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -214,7 +215,7 @@ final class AiMapCommand extends Command
             // Extract public methods
             $methods = [];
             if (preg_match_all('/public\s+function\s+(\w+)\s*\(/', $content, $matches)) {
-                $methods = array_filter($matches[1], fn($m) => $m !== '__construct');
+                $methods = array_filter($matches[1], fn ($m) => $m !== '__construct');
             }
 
             $controllers[] = [
@@ -304,9 +305,9 @@ final class AiMapCommand extends Command
     }
 
     /**
-     * @return \Generator<string>
+     * @return Generator<string>
      */
-    private function phpFiles(string $directory): \Generator
+    private function phpFiles(string $directory): Generator
     {
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS)

@@ -21,6 +21,10 @@ final readonly class WorkflowResult
         public ?float $duration = null,
     ) {}
 
+    /**
+     * @param array<int, array<string, mixed>> $completed
+     * @param array<string, mixed> $metadata
+     */
     public static function success(array $completed = [], array $metadata = []): self
     {
         return new self(
@@ -32,6 +36,12 @@ final readonly class WorkflowResult
         );
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $completed
+     * @param array<int, array<string, mixed>> $failed
+     * @param array<int, array<string, mixed>> $pending
+     * @param array<string, mixed> $metadata
+     */
     public static function partial(
         array $completed,
         array $failed,
@@ -47,6 +57,9 @@ final readonly class WorkflowResult
         );
     }
 
+    /**
+     * @param array<string, mixed> $metadata
+     */
     public static function error(string $reason, array $metadata = []): self
     {
         return new self(
@@ -58,6 +71,9 @@ final readonly class WorkflowResult
         );
     }
 
+    /**
+     * @param array<string, mixed> $metadata
+     */
     public static function budgetExceeded(
         string $reason,
         float $actualMs,
@@ -137,6 +153,9 @@ final readonly class WorkflowResult
         return new self($completed, $failed, $pending, $metadata, $isError);
     }
 
+    /**
+     * @return list<array{type: string, text: string}>
+     */
     public function toMcpContent(): array
     {
         return [
@@ -147,6 +166,9 @@ final readonly class WorkflowResult
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         $metadata = $this->metadata;

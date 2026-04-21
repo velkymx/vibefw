@@ -15,9 +15,9 @@ final class SpaController extends Controller
     {
         $html = file_get_contents(BASE_PATH . '/frontend/dist/index.html');
         if ($html === false) {
-            return (new Response('Frontend not built. Run: npm run build in /frontend', 500))
+            return new Response('Frontend not built. Run: npm run build in /frontend', 500)
                 ->header('Content-Type', 'text/plain');
         }
-        return (new Response($html))->header('Content-Type', 'text/html');
+        return new Response($html)->header('Content-Type', 'text/html');
     }
 }

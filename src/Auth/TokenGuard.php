@@ -116,6 +116,8 @@ final class TokenGuard
      * Get the abilities of the current token.
      *
      * Delegates to the token model's `abilities` attribute; returns [] when unauthenticated.
+     *
+     * @return list<string>
      */
     public static function tokenAbilities(): array
     {
@@ -125,7 +127,11 @@ final class TokenGuard
         }
 
         $raw = $token->getAttribute('abilities')->unwrapOr(null);
-        return is_array($raw) ? $raw : [];
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        return array_values(array_filter($raw, 'is_string'));
     }
 
     /**

@@ -11,6 +11,9 @@ final readonly class ToolCalled implements Event
 {
     public DateTimeImmutable $occurredAt;
 
+    /**
+     * @param array<string, mixed> $input
+     */
     public function __construct(
         public string $toolName,
         public array $input,

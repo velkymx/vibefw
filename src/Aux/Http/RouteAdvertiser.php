@@ -64,7 +64,7 @@ final readonly class RouteAdvertiser
     private function summarizeMiddleware(array $middleware): array
     {
         return array_values(array_map(
-            fn(mixed $m): string => match (true) {
+            fn (mixed $m): string => match (true) {
                 is_string($m) => $m,
                 is_object($m) => $m::class,
                 default => 'callable',

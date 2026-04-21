@@ -12,10 +12,6 @@ use Fw\Support\Str;
 
 final class MakeResourceCommand extends Command
 {
-    protected string $name = 'make:resource';
-
-    protected string $description = 'Generate a full CRUD resource from a validated schema';
-
     private const array TYPE_CASTS = [
         'integer' => 'int',
         'boolean' => 'bool',
@@ -49,6 +45,10 @@ final class MakeResourceCommand extends Command
         'foreignId' => 'foreignId',
         'json' => 'json',
     ];
+
+    protected string $name = 'make:resource';
+
+    protected string $description = 'Generate a full CRUD resource from a validated schema';
 
     public function __construct(Application $app)
     {
@@ -111,7 +111,7 @@ final class MakeResourceCommand extends Command
             return;
         }
 
-        $fillable = array_map(fn(string $name) => "        '{$name}'", array_keys($schema->fields));
+        $fillable = array_map(fn (string $name) => "        '{$name}'", array_keys($schema->fields));
         $fillableStr = implode(",\n", $fillable);
 
         $casts = [];
@@ -124,28 +124,28 @@ final class MakeResourceCommand extends Command
         $castsStr = !empty($casts) ? implode(",\n", $casts) . ',' : '';
 
         $content = <<<PHP
-        <?php
+            <?php
 
-        declare(strict_types=1);
+            declare(strict_types=1);
 
-        namespace App\Models;
+            namespace App\Models;
 
-        use Fw\Model\Model;
+            use Fw\Model\Model;
 
-        class {$schema->model} extends Model
-        {
-            protected static ?string \$table = '{$schema->table}';
+            class {$schema->model} extends Model
+            {
+                protected static ?string \$table = '{$schema->table}';
 
-            protected static array \$fillable = [
-        {$fillableStr},
-            ];
+                protected static array \$fillable = [
+            {$fillableStr},
+                ];
 
-            protected static array \$casts = [
-        {$castsStr}
-            ];
-        }
+                protected static array \$casts = [
+            {$castsStr}
+                ];
+            }
 
-        PHP;
+            PHP;
 
         // Normalize indentation (we used heredoc with class indentation)
         $content = $this->dedent($content);
@@ -179,31 +179,31 @@ final class MakeResourceCommand extends Command
         $columnsStr = implode("\n", $columns);
 
         $content = <<<PHP
-        <?php
+            <?php
 
-        declare(strict_types=1);
+            declare(strict_types=1);
 
-        use Fw\Database\Migration\Migration;
-        use Fw\Database\Migration\Blueprint;
+            use Fw\Database\Migration\Migration;
+            use Fw\Database\Migration\Blueprint;
 
-        return new class extends Migration
-        {
-            public function up(): void
+            return new class extends Migration
             {
-                \$this->create('{$schema->table}', function (Blueprint \$table): void {
-                    \$table->id();
-        {$columnsStr}
-                    \$table->timestamps();
-                });
-            }
+                public function up(): void
+                {
+                    \$this->create('{$schema->table}', function (Blueprint \$table): void {
+                        \$table->id();
+            {$columnsStr}
+                        \$table->timestamps();
+                    });
+                }
 
-            public function down(): void
-            {
-                \$this->drop('{$schema->table}');
-            }
-        };
+                public function down(): void
+                {
+                    \$this->drop('{$schema->table}');
+                }
+            };
 
-        PHP;
+            PHP;
 
         $content = $this->dedent($content);
         file_put_contents($migrationPath, $content);
@@ -280,72 +280,72 @@ final class MakeResourceCommand extends Command
     private function buildApiController(ResourceSchema $schema, string $controllerName, string $modelVar, string $routePrefix): string
     {
         $content = <<<PHP
-        <?php
+            <?php
 
-        declare(strict_types=1);
+            declare(strict_types=1);
 
-        namespace App\Controllers;
+            namespace App\Controllers;
 
-        use App\Models\\{$schema->model};
-        use App\Requests\Store{$schema->model}Request;
-        use App\Requests\Update{$schema->model}Request;
-        use Fw\Core\Controller;
-        use Fw\Core\Request;
-        use Fw\Core\Response;
+            use App\Models\\{$schema->model};
+            use App\Requests\Store{$schema->model}Request;
+            use App\Requests\Update{$schema->model}Request;
+            use Fw\Core\Controller;
+            use Fw\Core\Request;
+            use Fw\Core\Response;
 
-        class {$controllerName} extends Controller
-        {
-            public function index(Request \$request): Response
+            class {$controllerName} extends Controller
             {
-                \${$modelVar}s = {$schema->model}::orderBy('created_at', 'desc')
-                    ->paginate(15, (int) \$request->get('page', 1));
-                return \$this->json(\${$modelVar}s);
-            }
-
-            public function store(Request \$request): Response
-            {
-                \$validated = Store{$schema->model}Request::fromArray(\$request->all());
-                if (\$validated->isErr()) {
-                    return \$this->json(['errors' => \$validated->unwrapErr()], 422);
-                }
-                \${$modelVar} = {$schema->model}::create(\$validated->unwrapOr([]));
-                return \$this->json(\${$modelVar}, 201);
-            }
-
-            public function show(Request \$request, string \$id): Response
-            {
-                return {$schema->model}::find((int) \$id)->match(
-                    some: fn(\${$modelVar}) => \$this->json(\${$modelVar}),
-                    none: fn() => \$this->json(['error' => '{$schema->model} not found'], 404),
-                );
-            }
-
-            public function update(Request \$request, string \$id): Response
-            {
-                \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
-                if (\${$modelVar} === null) {
-                    return \$this->json(['error' => '{$schema->model} not found'], 404);
+                public function index(Request \$request): Response
+                {
+                    \${$modelVar}s = {$schema->model}::orderBy('created_at', 'desc')
+                        ->paginate(15, (int) \$request->get('page', 1));
+                    return \$this->json(\${$modelVar}s);
                 }
 
-                \$validated = Update{$schema->model}Request::fromArray(\$request->all());
-                if (\$validated->isErr()) {
-                    return \$this->json(['errors' => \$validated->unwrapErr()], 422);
+                public function store(Request \$request): Response
+                {
+                    \$validated = Store{$schema->model}Request::fromArray(\$request->all());
+                    if (\$validated->isErr()) {
+                        return \$this->json(['errors' => \$validated->unwrapErr()], 422);
+                    }
+                    \${$modelVar} = {$schema->model}::create(\$validated->unwrapOr([]));
+                    return \$this->json(\${$modelVar}, 201);
                 }
-                \${$modelVar}->fill(\$validated->unwrapOr([]))->save()->match(ok: fn () => null, err: fn (\$e) => throw \$e);
-                return \$this->json(\${$modelVar});
+
+                public function show(Request \$request, string \$id): Response
+                {
+                    return {$schema->model}::find((int) \$id)->match(
+                        some: fn(\${$modelVar}) => \$this->json(\${$modelVar}),
+                        none: fn() => \$this->json(['error' => '{$schema->model} not found'], 404),
+                    );
+                }
+
+                public function update(Request \$request, string \$id): Response
+                {
+                    \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
+                    if (\${$modelVar} === null) {
+                        return \$this->json(['error' => '{$schema->model} not found'], 404);
+                    }
+
+                    \$validated = Update{$schema->model}Request::fromArray(\$request->all());
+                    if (\$validated->isErr()) {
+                        return \$this->json(['errors' => \$validated->unwrapErr()], 422);
+                    }
+                    \${$modelVar}->fill(\$validated->unwrapOr([]))->save()->match(ok: fn () => null, err: fn (\$e) => throw \$e);
+                    return \$this->json(\${$modelVar});
+                }
+
+                public function destroy(Request \$request, string \$id): Response
+                {
+                    \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
+                    if (\${$modelVar} !== null) {
+                        \${$modelVar}->delete();
+                    }
+                    return \$this->noContent();
+                }
             }
 
-            public function destroy(Request \$request, string \$id): Response
-            {
-                \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
-                if (\${$modelVar} !== null) {
-                    \${$modelVar}->delete();
-                }
-                return \$this->noContent();
-            }
-        }
-
-        PHP;
+            PHP;
 
         return $this->dedent($content);
     }
@@ -355,87 +355,87 @@ final class MakeResourceCommand extends Command
         $viewPath = Str::snake(Str::plural($schema->model));
 
         $content = <<<PHP
-        <?php
+            <?php
 
-        declare(strict_types=1);
+            declare(strict_types=1);
 
-        namespace App\Controllers;
+            namespace App\Controllers;
 
-        use App\Models\\{$schema->model};
-        use App\Requests\Store{$schema->model}Request;
-        use App\Requests\Update{$schema->model}Request;
-        use Fw\Core\Controller;
-        use Fw\Core\Request;
-        use Fw\Core\Response;
+            use App\Models\\{$schema->model};
+            use App\Requests\Store{$schema->model}Request;
+            use App\Requests\Update{$schema->model}Request;
+            use Fw\Core\Controller;
+            use Fw\Core\Request;
+            use Fw\Core\Response;
 
-        class {$controllerName} extends Controller
-        {
-            public function index(Request \$request): Response
+            class {$controllerName} extends Controller
             {
-                \${$modelVar}s = {$schema->model}::orderBy('created_at', 'desc')
-                    ->paginate(15, (int) \$request->get('page', 1));
-                return \$this->view('{$viewPath}.index', ['{$modelVar}s' => \${$modelVar}s]);
-            }
-
-            public function create(Request \$request): Response
-            {
-                return \$this->view('{$viewPath}.create');
-            }
-
-            public function store(Request \$request): Response
-            {
-                \$validated = Store{$schema->model}Request::fromArray(\$request->all());
-                if (\$validated->isErr()) {
-                    return \$this->view('{$viewPath}.create', ['errors' => \$validated->unwrapErr()]);
-                }
-                \${$modelVar} = {$schema->model}::create(\$validated->unwrapOr([]));
-                return \$this->redirect('/{$routePrefix}/' . \${$modelVar}->id);
-            }
-
-            public function show(Request \$request, string \$id): Response
-            {
-                \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
-                if (\${$modelVar} === null) {
-                    return \$this->notFound();
-                }
-                return \$this->view('{$viewPath}.show', ['{$modelVar}' => \${$modelVar}]);
-            }
-
-            public function edit(Request \$request, string \$id): Response
-            {
-                \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
-                if (\${$modelVar} === null) {
-                    return \$this->notFound();
-                }
-                return \$this->view('{$viewPath}.edit', ['{$modelVar}' => \${$modelVar}]);
-            }
-
-            public function update(Request \$request, string \$id): Response
-            {
-                \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
-                if (\${$modelVar} === null) {
-                    return \$this->notFound();
+                public function index(Request \$request): Response
+                {
+                    \${$modelVar}s = {$schema->model}::orderBy('created_at', 'desc')
+                        ->paginate(15, (int) \$request->get('page', 1));
+                    return \$this->view('{$viewPath}.index', ['{$modelVar}s' => \${$modelVar}s]);
                 }
 
-                \$validated = Update{$schema->model}Request::fromArray(\$request->all());
-                if (\$validated->isErr()) {
-                    return \$this->view('{$viewPath}.edit', ['{$modelVar}' => \${$modelVar}, 'errors' => \$validated->unwrapErr()]);
+                public function create(Request \$request): Response
+                {
+                    return \$this->view('{$viewPath}.create');
                 }
-                \${$modelVar}->fill(\$validated->unwrapOr([]))->save()->match(ok: fn () => null, err: fn (\$e) => throw \$e);
-                return \$this->redirect('/{$routePrefix}/' . \${$modelVar}->id);
+
+                public function store(Request \$request): Response
+                {
+                    \$validated = Store{$schema->model}Request::fromArray(\$request->all());
+                    if (\$validated->isErr()) {
+                        return \$this->view('{$viewPath}.create', ['errors' => \$validated->unwrapErr()]);
+                    }
+                    \${$modelVar} = {$schema->model}::create(\$validated->unwrapOr([]));
+                    return \$this->redirect('/{$routePrefix}/' . \${$modelVar}->id);
+                }
+
+                public function show(Request \$request, string \$id): Response
+                {
+                    \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
+                    if (\${$modelVar} === null) {
+                        return \$this->notFound();
+                    }
+                    return \$this->view('{$viewPath}.show', ['{$modelVar}' => \${$modelVar}]);
+                }
+
+                public function edit(Request \$request, string \$id): Response
+                {
+                    \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
+                    if (\${$modelVar} === null) {
+                        return \$this->notFound();
+                    }
+                    return \$this->view('{$viewPath}.edit', ['{$modelVar}' => \${$modelVar}]);
+                }
+
+                public function update(Request \$request, string \$id): Response
+                {
+                    \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
+                    if (\${$modelVar} === null) {
+                        return \$this->notFound();
+                    }
+
+                    \$validated = Update{$schema->model}Request::fromArray(\$request->all());
+                    if (\$validated->isErr()) {
+                        return \$this->view('{$viewPath}.edit', ['{$modelVar}' => \${$modelVar}, 'errors' => \$validated->unwrapErr()]);
+                    }
+                    \${$modelVar}->fill(\$validated->unwrapOr([]))->save()->match(ok: fn () => null, err: fn (\$e) => throw \$e);
+                    return \$this->redirect('/{$routePrefix}/' . \${$modelVar}->id);
+                }
+
+                public function destroy(Request \$request, string \$id): Response
+                {
+                    \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
+                    if (\${$modelVar} !== null) {
+                        \${$modelVar}->delete();
+                    }
+                    return \$this->redirect('/{$routePrefix}');
+                }
             }
 
-            public function destroy(Request \$request, string \$id): Response
-            {
-                \${$modelVar} = {$schema->model}::find((int) \$id)->unwrapOr(null);
-                if (\${$modelVar} !== null) {
-                    \${$modelVar}->delete();
-                }
-                return \$this->redirect('/{$routePrefix}');
-            }
-        }
-
-        PHP;
+            PHP;
 
         return $this->dedent($content);
     }
@@ -473,25 +473,25 @@ final class MakeResourceCommand extends Command
         $rulesStr = implode("\n", $rules);
 
         $content = <<<PHP
-        <?php
+            <?php
 
-        declare(strict_types=1);
+            declare(strict_types=1);
 
-        namespace App\Requests;
+            namespace App\Requests;
 
-        {$importsStr}
+            {$importsStr}
 
-        class {$className} extends FormRequest
-        {
-            public function rules(): array
+            class {$className} extends FormRequest
             {
-                return [
-        {$rulesStr}
-                ];
+                public function rules(): array
+                {
+                    return [
+            {$rulesStr}
+                    ];
+                }
             }
-        }
 
-        PHP;
+            PHP;
 
         $content = $this->dedent($content);
         $this->ensureDir(dirname($path));
@@ -549,28 +549,28 @@ final class MakeResourceCommand extends Command
         $definitionsStr = implode("\n", $definitions);
 
         $content = <<<PHP
-        <?php
+            <?php
 
-        declare(strict_types=1);
+            declare(strict_types=1);
 
-        namespace Database\Factories;
+            namespace Database\Factories;
 
-        use App\Models\\{$schema->model};
-        use Fw\Testing\Factory;
+            use App\Models\\{$schema->model};
+            use Fw\Testing\Factory;
 
-        class {$factoryName} extends Factory
-        {
-            protected string \$model = {$schema->model}::class;
-
-            public function definition(): array
+            class {$factoryName} extends Factory
             {
-                return [
-        {$definitionsStr}
-                ];
-            }
-        }
+                protected string \$model = {$schema->model}::class;
 
-        PHP;
+                public function definition(): array
+                {
+                    return [
+            {$definitionsStr}
+                    ];
+                }
+            }
+
+            PHP;
 
         $content = $this->dedent($content);
         $this->ensureDir(dirname($path));
@@ -612,21 +612,21 @@ final class MakeResourceCommand extends Command
         $firstField = array_key_first($schema->fields);
 
         return <<<PHP
-        <?php \$this->layout('main'); ?>
-        <?php \$title = '{$plural}'; ?>
+            <?php \$this->layout('main'); ?>
+            <?php \$title = '{$plural}'; ?>
 
-        <?php \$section('content'); ?>
-            <h1>{$plural}</h1>
-            <a href="/{$routePrefix}/create">Create {$schema->model}</a>
+            <?php \$section('content'); ?>
+                <h1>{$plural}</h1>
+                <a href="/{$routePrefix}/create">Create {$schema->model}</a>
 
-            <?php foreach (\${$modelVar}s['items'] as \${$modelVar}): ?>
-                <div>
-                    <a href="/{$routePrefix}/<?= \${$modelVar}->id ?>"><?= \$e(\${$modelVar}->{$firstField}) ?></a>
-                </div>
-            <?php endforeach; ?>
-        <?php \$endSection(); ?>
+                <?php foreach (\${$modelVar}s['items'] as \${$modelVar}): ?>
+                    <div>
+                        <a href="/{$routePrefix}/<?= \${$modelVar}->id ?>"><?= \$e(\${$modelVar}->{$firstField}) ?></a>
+                    </div>
+                <?php endforeach; ?>
+            <?php \$endSection(); ?>
 
-        PHP;
+            PHP;
     }
 
     private function buildFormView(ResourceSchema $schema, string $modelVar, string $routePrefix, string $action): string
@@ -657,21 +657,21 @@ final class MakeResourceCommand extends Command
             : "/{$routePrefix}/<?= \${$modelVar}->id ?>";
 
         return <<<PHP
-        <?php \$this->layout('main'); ?>
-        <?php \$title = '{$action} {$schema->model}'; ?>
+            <?php \$this->layout('main'); ?>
+            <?php \$title = '{$action} {$schema->model}'; ?>
 
-        <?php \$section('content'); ?>
-            <h1>{$action} {$schema->model}</h1>
+            <?php \$section('content'); ?>
+                <h1>{$action} {$schema->model}</h1>
 
-            <form method="POST" action="{$formAction}">
-                <?= \$csrf() ?>
-        {$fieldsStr}
+                <form method="POST" action="{$formAction}">
+                    <?= \$csrf() ?>
+            {$fieldsStr}
 
-                <button type="submit">{$action}</button>
-            </form>
-        <?php \$endSection(); ?>
+                    <button type="submit">{$action}</button>
+                </form>
+            <?php \$endSection(); ?>
 
-        PHP;
+            PHP;
     }
 
     private function buildShowView(ResourceSchema $schema, string $modelVar, string $routePrefix): string
@@ -684,20 +684,20 @@ final class MakeResourceCommand extends Command
         $fieldsStr = implode("\n\n", $fields);
 
         return <<<PHP
-        <?php \$this->layout('main'); ?>
-        <?php \$title = '{$schema->model} Details'; ?>
+            <?php \$this->layout('main'); ?>
+            <?php \$title = '{$schema->model} Details'; ?>
 
-        <?php \$section('content'); ?>
-            <h1>{$schema->model} Details</h1>
+            <?php \$section('content'); ?>
+                <h1>{$schema->model} Details</h1>
 
-            <dl>
-        {$fieldsStr}
-            </dl>
+                <dl>
+            {$fieldsStr}
+                </dl>
 
-            <a href="/{$routePrefix}/<?= \${$modelVar}->id ?>/edit">Edit</a>
-        <?php \$endSection(); ?>
+                <a href="/{$routePrefix}/<?= \${$modelVar}->id ?>/edit">Edit</a>
+            <?php \$endSection(); ?>
 
-        PHP;
+            PHP;
     }
 
     private function printRoutes(ResourceSchema $schema): void
@@ -739,7 +739,7 @@ final class MakeResourceCommand extends Command
         }
 
         return implode("\n", array_map(
-            fn(string $line) => trim($line) === '' ? '' : substr($line, $minIndent),
+            fn (string $line) => trim($line) === '' ? '' : substr($line, $minIndent),
             $lines
         ));
     }

@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace Fw\Providers;
 
+use Fw\Aux\AuxStats;
 use Fw\Aux\BuiltinTools;
 use Fw\Aux\FeatureIndex;
 use Fw\Aux\Http\AgentController;
+use Fw\Aux\Http\AgentMiddleware;
 use Fw\Aux\Http\McpSseController;
 use Fw\Aux\Http\RouteAdvertiser;
 use Fw\Aux\Mcp\McpProtocol;
 use Fw\Aux\Mcp\McpServer;
-use Fw\Aux\Notifications\DeliverAgentNotificationJob;
 use Fw\Aux\Notifications\AgentNotification;
+use Fw\Aux\Notifications\DeliverAgentNotificationJob;
 use Fw\Aux\Notifications\NotificationChannelFactory;
 use Fw\Aux\Notifications\NotificationChannelRegistry;
-use Fw\Aux\AuxStats;
 use Fw\Aux\ToolRegistry;
 use Fw\Core\ServiceProvider;
-use Fw\Aux\Http\AgentMiddleware;
 use Fw\Events\EventDispatcher;
 use Fw\Log\Logger;
 use Fw\Middleware\ApiAuthMiddleware;
@@ -26,11 +26,12 @@ use Fw\Middleware\RateLimitMiddleware;
 
 class AuxServiceProvider extends ServiceProvider
 {
+    /** @var list<class-string> */
     protected array $tools = [];
 
     public function register(): void
     {
-        $this->container->singleton(FeatureIndex::class, fn(): FeatureIndex => new FeatureIndex());
+        $this->container->singleton(FeatureIndex::class, fn (): FeatureIndex => new FeatureIndex());
 
         $this->container->singleton(AuxStats::class, function (): AuxStats {
             $path = defined('BASE_PATH')
@@ -84,7 +85,7 @@ class AuxServiceProvider extends ServiceProvider
 
         $this->container->singleton(NotificationChannelRegistry::class, function () {
             $factory = new NotificationChannelFactory(
-                loggerResolver: fn() => $this->container->has(Logger::class)
+                loggerResolver: fn () => $this->container->has(Logger::class)
                     ? $this->container->get(Logger::class)
                     : Logger::getInstance(),
                 events: $this->container->has(EventDispatcher::class)
@@ -111,14 +112,14 @@ class AuxServiceProvider extends ServiceProvider
         $router = $this->app->router;
 
         if ($this->app->config('aux.mcp_enabled', true)) {
-            $router->group('/mcp', function ($r) {
+            $router->group('/mcp', function ($r): void {
                 $r->get('/sse', [McpSseController::class, 'sse']);
                 $r->post('/messages', [McpSseController::class, 'messages']);
             }, middleware: [AgentMiddleware::class]);
         }
 
         if ($this->app->config('aux.http_agent_enabled', true)) {
-            $router->group('/agent', function ($r) {
+            $router->group('/agent', function ($r): void {
                 $r->get('/tools', [AgentController::class, 'index']);
                 $r->post('/tools/{name}', [AgentController::class, 'invoke']);
             }, middleware: [ApiAuthMiddleware::class, AgentMiddleware::class, RateLimitMiddleware::class]);

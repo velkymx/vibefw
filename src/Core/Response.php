@@ -39,6 +39,12 @@ final class Response
 
     private array $flash = [];
 
+    public function __construct(string $body = '', int $statusCode = 200)
+    {
+        $this->body = $body;
+        $this->statusCode = $statusCode;
+    }
+
     public static function setDefaultCsp(?string $csp): void
     {
         self::$defaultCsp = $csp;
@@ -49,12 +55,6 @@ final class Response
         $policy = $csp ?? self::$defaultCsp ?? self::DEFAULT_CSP;
         $escaped = htmlspecialchars($policy, ENT_QUOTES, 'UTF-8');
         return '<meta http-equiv="Content-Security-Policy" content="' . $escaped . '">';
-    }
-
-    public function __construct(string $body = '', int $statusCode = 200)
-    {
-        $this->body = $body;
-        $this->statusCode = $statusCode;
     }
 
     public function setBody(string $body): self

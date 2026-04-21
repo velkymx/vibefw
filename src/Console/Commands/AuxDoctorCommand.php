@@ -62,7 +62,7 @@ final class AuxDoctorCommand extends Command
         $this->table(
             ['Level', 'Label', 'Status'],
             array_map(
-                static fn(int $lvl): array => [
+                static fn (int $lvl): array => [
                     (string) $lvl,
                     self::LEVEL_LABELS[$lvl],
                     $lvl <= $report->level ? '✓' : '✗',

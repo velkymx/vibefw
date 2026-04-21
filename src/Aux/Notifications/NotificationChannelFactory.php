@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Fw\Aux\Notifications;
 
+use Closure;
 use Fw\Events\EventDispatcher;
 use Fw\Log\Logger;
+use InvalidArgumentException;
 
 final class NotificationChannelFactory
 {
     /**
-     * @param \Closure(): Logger $loggerResolver
+     * @param Closure(): Logger $loggerResolver
      */
     public function __construct(
-        private readonly \Closure $loggerResolver,
+        private readonly Closure $loggerResolver,
         private readonly ?EventDispatcher $events = null,
     ) {}
 
@@ -47,7 +49,7 @@ final class NotificationChannelFactory
                 url: $this->requireString($spec, 'url'),
                 timeout: (int) ($spec['timeout'] ?? 5),
             ),
-            default => throw new \InvalidArgumentException(
+            default => throw new InvalidArgumentException(
                 "Unknown notification channel driver: '{$driver}'"
             ),
         };
@@ -59,7 +61,7 @@ final class NotificationChannelFactory
     private function requireString(array $spec, string $key): string
     {
         if (!isset($spec[$key]) || !is_string($spec[$key]) || $spec[$key] === '') {
-            throw new \InvalidArgumentException("Notification channel config missing required '{$key}'.");
+            throw new InvalidArgumentException("Notification channel config missing required '{$key}'.");
         }
         return $spec[$key];
     }

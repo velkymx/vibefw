@@ -8,6 +8,7 @@ use Fw\Database\Connection;
 use LogicException;
 use ReflectionClass;
 use ReflectionProperty;
+use RuntimeException;
 
 /**
  * Validates data against rules defined as PHP 8 attributes.
@@ -165,7 +166,7 @@ final class Validator
         try {
             $connection = Connection::getInstance();
         } catch (LogicException $e) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'A database-backed validation rule requires an active database connection. ' .
                 $e->getMessage(),
                 0,

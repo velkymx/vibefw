@@ -7,6 +7,7 @@ namespace Fw\Console\Commands;
 use FilesystemIterator;
 use Fw\Console\Application;
 use Fw\Console\Command;
+use Generator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -320,9 +321,9 @@ final class CheckCommand extends Command
     }
 
     /**
-     * @return \Generator<string>
+     * @return Generator<string>
      */
-    private function phpFiles(string $directory): \Generator
+    private function phpFiles(string $directory): Generator
     {
         if (!is_dir($directory)) {
             return;

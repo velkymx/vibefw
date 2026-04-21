@@ -10,10 +10,6 @@ use Fw\Support\Str;
 
 final class AddFieldCommand extends Command
 {
-    protected string $name = 'add:field';
-
-    protected string $description = 'Add a field to an existing resource (migration + model + schema)';
-
     private const array VALID_TYPES = [
         'string', 'text', 'integer', 'boolean',
         'timestamp', 'date', 'decimal', 'foreignId', 'json',
@@ -40,6 +36,10 @@ final class AddFieldCommand extends Command
         'foreignId' => 'foreignId',
         'json' => 'json',
     ];
+
+    protected string $name = 'add:field';
+
+    protected string $description = 'Add a field to an existing resource (migration + model + schema)';
 
     public function __construct(Application $app)
     {
@@ -114,30 +114,30 @@ final class AddFieldCommand extends Command
         $columnLine = $this->buildColumnLine($fieldName, $type);
 
         $content = <<<PHP
-<?php
+            <?php
 
-declare(strict_types=1);
+            declare(strict_types=1);
 
-use Fw\Database\Migration\Migration;
-use Fw\Database\Migration\Blueprint;
+            use Fw\Database\Migration\Migration;
+            use Fw\Database\Migration\Blueprint;
 
-return new class extends Migration
-{
-    public function up(): void
-    {
-        \$this->table('{$tableName}', function (Blueprint \$table): void {
-            {$columnLine}
-        });
-    }
+            return new class extends Migration
+            {
+                public function up(): void
+                {
+                    \$this->table('{$tableName}', function (Blueprint \$table): void {
+                        {$columnLine}
+                    });
+                }
 
-    public function down(): void
-    {
-        \$this->table('{$tableName}', function (Blueprint \$table): void {
-            \$table->dropColumn('{$fieldName}');
-        });
-    }
-};
-PHP;
+                public function down(): void
+                {
+                    \$this->table('{$tableName}', function (Blueprint \$table): void {
+                        \$table->dropColumn('{$fieldName}');
+                    });
+                }
+            };
+            PHP;
 
         file_put_contents($migrationPath, $content . "\n");
         $this->success("Migration created: database/migrations/{$nextNumber}_{$migrationName}.php");

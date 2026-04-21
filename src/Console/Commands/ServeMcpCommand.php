@@ -30,7 +30,7 @@ final class ServeMcpCommand extends Command
 
         pcntl_async_signals(true);
 
-        $shutdown = function () {
+        $shutdown = function (): void {
             $this->info('Shutting down MCP server...');
             exit(0);
         };

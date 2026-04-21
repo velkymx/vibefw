@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use Fw\Core\Router;
-use App\Controllers\Api\SpaController;
-use App\Controllers\Api\UserController;
-use App\Controllers\Api\StatsController;
-use App\Controllers\Api\ProfileController;
 use App\Controllers\Api\ApiTokenController;
 use App\Controllers\Api\Auth\LoginController;
 use App\Controllers\Api\Auth\RegisterController;
+use App\Controllers\Api\ProfileController;
+use App\Controllers\Api\SpaController;
+use App\Controllers\Api\StatsController;
+use App\Controllers\Api\UserController;
+use Fw\Core\Router;
 use Fw\Middleware\ApiAuthMiddleware;
 
 return function (Router $router): void {

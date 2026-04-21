@@ -22,12 +22,12 @@ final readonly class AuxDoctor
     {
         $userTools = array_filter(
             $this->tools->all(),
-            static fn(Tool $t): bool => !in_array($t->name, self::BUILTIN_TOOL_NAMES, true),
+            static fn (Tool $t): bool => !in_array($t->name, self::BUILTIN_TOOL_NAMES, true),
         );
 
         $budgetTools = array_filter(
             $userTools,
-            static fn(Tool $t): bool => $t->budget !== [],
+            static fn (Tool $t): bool => $t->budget !== [],
         );
 
         $checks = [
