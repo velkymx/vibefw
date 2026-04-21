@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Fw\Database;
 
+use Closure;
 use InvalidArgumentException;
 use LogicException;
 use PDO;
+use PDOException;
 use PDOStatement;
 use RuntimeException;
 use Throwable;
@@ -36,6 +38,29 @@ final class Connection
     private array $queryLog = [];
 
     private bool $logging = false;
+
+    private int $retryAttempts = 3;
+
+    private int $retryBaseDelayMs = 10;
+
+    /**
+     * SQLSTATE / driver error codes that indicate a transient failure which
+     * can safely be retried outside of a transaction. Kept small on purpose —
+     * anything non-transient (constraint, syntax, auth) must bubble.
+     */
+    private const array RETRYABLE_SQLSTATES = [
+        '40001', // serialization failure (PG)
+        '40P01', // deadlock_detected (PG)
+    ];
+
+    private const array RETRYABLE_DRIVER_CODES = [
+        1213,    // MySQL deadlock
+        1205,    // MySQL lock wait timeout
+        2006,    // MySQL server has gone away
+        2013,    // MySQL lost connection during query
+        5,       // SQLITE_BUSY
+        6,       // SQLITE_LOCKED
+    ];
 
     /**
      * Optional callback for recording queries (breaks circular dependency with Core).
@@ -89,6 +114,8 @@ final class Connection
         }
 
         $this->logging = $config['logging'] ?? false;
+        $this->retryAttempts = max(1, (int) ($config['retry_attempts'] ?? 3));
+        $this->retryBaseDelayMs = max(0, (int) ($config['retry_base_delay_ms'] ?? 10));
         $this->connectionId = self::$connectionIdBase ??= bin2hex(random_bytes(8));
     }
 
@@ -150,25 +177,76 @@ final class Connection
 
     public function query(string $sql, array $params = []): PDOStatement
     {
-        $start = microtime(true);
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        $elapsed = microtime(true) - $start;
-        $elapsedMs = $elapsed * 1000;
+        return $this->runWithRetry(function () use ($sql, $params): PDOStatement {
+            $start = microtime(true);
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $elapsed = microtime(true) - $start;
+            $elapsedMs = $elapsed * 1000;
 
-        if ($this->queryRecorder !== null) {
-            ($this->queryRecorder)($sql, $params, $elapsedMs);
+            if ($this->queryRecorder !== null) {
+                ($this->queryRecorder)($sql, $params, $elapsedMs);
+            }
+
+            if ($this->logging) {
+                $this->queryLog[] = [
+                    'sql' => $sql,
+                    'params' => $params,
+                    'time' => $elapsed,
+                ];
+            }
+
+            return $stmt;
+        });
+    }
+
+    /**
+     * Execute $op with bounded retries for transient failures. Skips retry
+     * inside an active transaction — partial work would replay against a
+     * state the caller cannot reason about, so the original exception must
+     * surface so the caller can rollback and decide.
+     */
+    private function runWithRetry(Closure $op): mixed
+    {
+        if ($this->inTransaction()) {
+            return $op();
         }
 
-        if ($this->logging) {
-            $this->queryLog[] = [
-                'sql' => $sql,
-                'params' => $params,
-                'time' => $elapsed,
-            ];
+        $attempt = 0;
+        while (true) {
+            $attempt++;
+            try {
+                return $op();
+            } catch (PDOException $e) {
+                if ($attempt >= $this->retryAttempts || !$this->shouldRetry($e)) {
+                    throw $e;
+                }
+                $this->sleepBeforeRetry($attempt);
+            }
+        }
+    }
+
+    private function shouldRetry(PDOException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+        if (in_array($sqlState, self::RETRYABLE_SQLSTATES, true)) {
+            return true;
         }
 
-        return $stmt;
+        $driverCode = (int) ($e->errorInfo[1] ?? 0);
+        return in_array($driverCode, self::RETRYABLE_DRIVER_CODES, true);
+    }
+
+    private function sleepBeforeRetry(int $attempt): void
+    {
+        if ($this->retryBaseDelayMs === 0) {
+            return;
+        }
+        // Exponential backoff with small jitter so contending workers don't
+        // resynchronize on every deadlock cycle.
+        $backoff = $this->retryBaseDelayMs * (2 ** ($attempt - 1));
+        $jitter = random_int(0, $this->retryBaseDelayMs);
+        usleep(($backoff + $jitter) * 1000);
     }
 
     public function select(string $sql, array $params = []): array
