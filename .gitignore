@@ -58,3 +58,7 @@ public/frankenphp
 /storage/backups/
 ai-app-map.md
 .claude/worktrees/youthful-lamarr/
+
+# Working docs — release-pass todos + skill caches, not part of the distribution
+/todo.md
+/docs/superpowers/
