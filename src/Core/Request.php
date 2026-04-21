@@ -281,19 +281,55 @@ final class Request
 
     public function expectsJson(): bool
     {
-        $accept = $this->header('accept', '');
+        $weights = self::parseAcceptWeights($this->header('accept', ''));
 
-        // Always true when JSON is explicitly requested
-        if (str_contains($accept, 'application/json')) {
-            return true;
+        $json = $weights['application/json'] ?? null;
+        $html = $weights['text/html'] ?? null;
+        $wildcard = $weights['*/*'] ?? null;
+
+        // Ties and missing JSON fall through to HTML when the client announced it;
+        // browsers routinely send `text/html,*/*;q=0.8`, which must render HTML.
+        if ($json !== null && $json > 0.0) {
+            return $html === null || $json > $html;
         }
 
-        // Bare */* is sent by browsers alongside text/html — do NOT treat that
-        // as a JSON request, or HTML page visits break error handling.
-        // Only accept */* when there is no explicit text/html preference.
-        return (bool) (str_contains($accept, '*/*') && !str_contains($accept, 'text/html'))
+        return $wildcard !== null && $wildcard > 0.0 && $html === null;
+    }
 
-        ;
+    /**
+     * Parse an Accept header into a media-type → q-value map. Unparseable
+     * q values fall back to the RFC 7231 default of 1.0; malformed entries
+     * are skipped silently.
+     *
+     * @return array<string, float>
+     */
+    private static function parseAcceptWeights(string $accept): array
+    {
+        if ($accept === '') {
+            return [];
+        }
+
+        $weights = [];
+        foreach (explode(',', $accept) as $part) {
+            $segments = explode(';', trim($part));
+            $type = strtolower(trim(array_shift($segments)));
+            if ($type === '') {
+                continue;
+            }
+
+            $q = 1.0;
+            foreach ($segments as $param) {
+                $param = trim($param);
+                if (str_starts_with($param, 'q=')) {
+                    $q = (float) substr($param, 2);
+                    break;
+                }
+            }
+
+            $weights[$type] = isset($weights[$type]) ? max($weights[$type], $q) : $q;
+        }
+
+        return $weights;
     }
 
     public function wantsJson(): bool
