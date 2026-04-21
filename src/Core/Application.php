@@ -20,6 +20,8 @@ use Fw\Security\Csrf;
  */
 final class Application
 {
+    public const string VERSION = '3.0.0';
+
     private static ?self $instance = null;
 
     public private(set) Logger $log;
