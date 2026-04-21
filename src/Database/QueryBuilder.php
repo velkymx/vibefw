@@ -279,12 +279,21 @@ final class QueryBuilder
     }
 
     /**
+     * Find a row by its primary key (or the given column).
+     *
+     * The `$id` is bound as-is — no normalization between int and string keys.
+     * `find(0)` on a string PK emits `WHERE <col> = 0` and matches only when
+     * the DB's column affinity coerces the bound int to the stored string
+     * (SQLite TEXT affinity does; MySQL/PostgreSQL do not). Pass the correct
+     * type for the column rather than relying on coercion.
+     *
+     * `find('')` short-circuits to None without querying, because empty-string
+     * comparisons silently match rows whose values coerce to 0 on some engines.
+     *
      * @return Option<array<string, mixed>>
      */
     public function find(int|string $id, string $column = 'id'): Option
     {
-        // Reject empty string early — avoids WHERE id = '' which can silently
-        // match unexpected rows on DBs that coerce '' to 0.
         if ($id === '') {
             return Option::none();
         }
