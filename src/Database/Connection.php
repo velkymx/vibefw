@@ -17,6 +17,14 @@ final class Connection
 
     private static array $config = [];
 
+    /**
+     * Shared hex identifier used to namespace savepoint names. Savepoints are
+     * scoped per PDO connection, so every Connection instance can safely reuse
+     * the same namespace string; regenerating random entropy per instance was
+     * redundant. Generated lazily on first construction.
+     */
+    private static ?string $connectionIdBase = null;
+
     public private(set) string $driver;
 
     public private(set) string $connectionId;
@@ -81,7 +89,7 @@ final class Connection
         }
 
         $this->logging = $config['logging'] ?? false;
-        $this->connectionId = bin2hex(random_bytes(8));
+        $this->connectionId = self::$connectionIdBase ??= bin2hex(random_bytes(8));
     }
 
     public static function getInstance(?array $config = null): self
