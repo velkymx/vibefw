@@ -26,6 +26,9 @@ final class View
         'strLimit', 'strSlug', 'strUpper', 'strLower', 'strTitle', 'strExcerpt',
         'formatDate', 'timeAgo', 'Str', 'DateTime', 'Arr',
         'path', 'data', 'this', 'cache', 'endCache',
+        // Commonly injected framework state — shadowing these in view data
+        // silently hides auth/session/validation context from templates.
+        'auth', 'user', 'errors',
         // PHP superglobals
         '_GET', '_POST', '_SERVER', '_REQUEST', '_SESSION', '_COOKIE',
         '_FILES', '_ENV', 'GLOBALS', 'argc', 'argv',
