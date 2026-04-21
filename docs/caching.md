@@ -1,3 +1,19 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw cache:clear` — clear every application cache
+- `php fw cache:clear --views` — clear compiled/cached views only
+- `php fw config:cache` — compile configuration into a single file for production
+- `php fw config:clear` — drop the config cache (use during development)
+- `php fw route:cache` / `php fw route:clear` — same for the routing table
+- `php fw optimize` — cache routes + config and clear stale caches (the one-command deploy step)
+- `php fw optimize:clear` — drop all optimization caches at once
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Caching
 
 VibeFW provides a flexible caching system with multiple drivers for improved performance.

@@ -1,3 +1,18 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw serve:mcp` — start the stdio MCP server (point Claude Desktop / Cursor / any MCP client at `php /path/to/app/fw serve:mcp`)
+- `php fw serve:mcp --host 0.0.0.0 --port 8080` — dev-time variant with network binding
+- `php fw aux:list` — confirm which tools will appear in `tools/list`
+- `php fw aux:schema <tool_name>` — dump the exact MCP shape that will go on the wire
+- `php fw aux:call <tool_name> --input='{...}'` — invoke a tool locally without the MCP round trip (useful for debugging handler errors)
+- `php fw make:tool <Name>` — scaffold a new tool that becomes available over MCP automatically
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # MCP — Model Context Protocol
 
 VibeFW implements the [Model Context Protocol](https://modelcontextprotocol.io/) (version 2024-11-05) for AI agent connections. MCP lets Claude Desktop, Cursor, and other MCP-compatible clients discover and call your app's workflow tools.

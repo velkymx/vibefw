@@ -1,3 +1,13 @@
+# START HERE
+
+No CLI for this — `AsyncHttp` is a runtime library you call from code. Read past the BEWARE marker for the API.
+
+If you're building a tool or workflow that fans out HTTP calls, scaffold it with `php fw make:workflow` or `php fw make:tool` and call `AsyncHttp` from the handler.
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Async HTTP Client
 
 `AsyncHttp` is a non-blocking HTTP client built on Fibers and `EventLoop`. Requests execute concurrently without blocking the event loop.

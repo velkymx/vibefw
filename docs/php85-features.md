@@ -1,3 +1,16 @@
+# START HERE
+
+No CLI for this — this is a reference of PHP 8.5 language features the framework uses. Read past the BEWARE marker for examples.
+
+CLI touchpoints that enforce 8.5 usage:
+
+- `php fw check` — static analysis catches uses of removed pre-8.5 idioms
+- `php fw fix` — auto-adds `declare(strict_types=1)` to files missing it
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # PHP 8.5 Features
 
 VibeFW leverages PHP 8.5's new features for cleaner, more expressive code.

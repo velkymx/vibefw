@@ -1,3 +1,19 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:model Post` — create a model
+- `php fw make:model Post -m` — model + matching migration in one step
+- `php fw make:factory Post` — generate a model factory for tests/seeders
+- `php fw add:field Post status string` — append a field to an existing model + migration + schema
+- `php fw make:link Post Comment --hasMany` — wire a relationship between two models
+- `php fw model:inspect Post` — dump table, fillable, casts, and relationships
+- `php fw make:resource --schema=app/Schemas/Post.json` — generate model + controller + migration + requests + views from one JSON schema
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Models
 
 Models represent database tables using the Active Record pattern. They live in `app/Models/`.
@@ -187,6 +203,14 @@ $posts = $query->orderBy('created_at', 'desc')->get();
 $pagination = Post::orderBy('created_at', 'desc')->paginate(15, $page);
 // Returns: ['items' => [...], 'total' => 100, 'per_page' => 15, 'current_page' => 1, 'last_page' => 7]
 ```
+
+Opt into a single round-trip using a window function for the total:
+
+```php
+$pagination = Post::orderBy('created_at', 'desc')->paginate(15, $page, useWindow: true);
+```
+
+The window path emits `COUNT(*) OVER ()` alongside the page query. It falls back to the two-query path when `distinct()` or `groupBy()` would change the window semantics, so it's always safe to request.
 
 ### Scopes
 

@@ -1,3 +1,16 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw error:explain "Mass assignment violation on Post"` — parse an error message and suggest the most likely fix
+- `php fw validate:security` — scan for patterns that typically cause errors (SQL injection, unvalidated input)
+- `php fw check` — fail loudly at dev-time on the convention violations that most often surface as runtime errors
+- `php fw ai:next` — when you're stuck, ask the CLI for the next step based on current project state
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Error Handling & Response Formats
 
 This doc covers how errors are expressed across web and API responses, and how to handle them in controllers and middleware.
@@ -170,4 +183,4 @@ if ($post === null) {
 }
 ```
 
-Never call `->unwrap()` without checking — it throws `UnwrapException` if the Option is None.
+There is no plain `->unwrap()` — `Option` and `Result` expose `->match()`, `->unwrapOr($default)`, and `->unwrapOrElse(fn)` only. Consume the None/Err case explicitly; the type system will not let you forget.

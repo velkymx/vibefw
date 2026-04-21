@@ -1,3 +1,15 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:middleware AuthMiddleware` — scaffold a new middleware class under `app/Middleware/`
+- `php fw routes:list` — confirm which routes a middleware is wrapping
+- `php fw check` — catches middleware that isn't referenced via class constant in routes
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Middleware
 
 Middleware filters HTTP requests before they reach your controller.

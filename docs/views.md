@@ -1,3 +1,18 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:resource --schema=app/Schemas/Post.json` — generates `index.php`, `create.php`, `edit.php`, `show.php` alongside the controller + model + requests
+- `php fw make:schema Post` — JSON schema template you then feed to `make:resource`
+- `php fw cache:clear --views` — clear compiled/cached views during development
+- `php fw check` — detects class definitions or other architectural violations in view files
+
+There is no `make:view` command — views are expected to ride along with `make:resource`. For one-off templates, copy an existing view and edit it directly.
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Views
 
 Views are plain PHP templates. They live in `app/Views/` and use built-in helper functions.
@@ -289,9 +304,15 @@ Three utility classes are available in all views. See [View Helpers](helpers.md)
 
 ## Reserved Variable Names
 
-These cannot be used as view data keys:
+Passing any of these as a render-time data key raises `InvalidArgumentException`:
 
-`e`, `url`, `csrf`, `old`, `section`, `endSection`, `yield`, `strLimit`, `strSlug`, `strUpper`, `strLower`, `strTitle`, `strExcerpt`, `formatDate`, `timeAgo`, `Str`, `DateTime`, `Arr`, `path`, `data`, `this`, `cache`, `endCache`
+- **Helper closures**: `e`, `url`, `csrf`, `old`, `section`, `endSection`, `yield`, `strLimit`, `strSlug`, `strUpper`, `strLower`, `strTitle`, `strExcerpt`, `formatDate`, `timeAgo`, `cache`, `endCache`
+- **Support classes**: `Str`, `DateTime`, `Arr`
+- **Render internals**: `path`, `data`, `this`
+- **Framework state** (typically injected via `$view->share()`): `auth`, `user`, `errors`
+- **PHP superglobals**: `_GET`, `_POST`, `_SERVER`, `_REQUEST`, `_SESSION`, `_COOKIE`, `_FILES`, `_ENV`, `GLOBALS`, `argc`, `argv`
+
+`auth`, `user`, and `errors` are reserved because they are the canonical names for session user, auth status, and validation error bag — shadowing them in view data would silently hide the framework-injected values.
 
 ## Cache Invalidation
 

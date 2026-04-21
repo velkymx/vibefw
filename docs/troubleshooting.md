@@ -1,3 +1,24 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw check` — single entry point: conventions + architecture + static analysis
+- `php fw fix` — auto-correct the most common convention violations
+- `php fw validate:all` — run every validator (config, security, style, analysis)
+- `php fw validate:config` — validate config files against their schemas
+- `php fw validate:security` — scan for vulnerabilities (RCE, SQLi, XSS, hardcoded creds, debug code)
+- `php fw security:check` — basic application security audit
+- `php fw db:status` — connection state + pending migrations (first thing to run on DB errors)
+- `php fw routes:list` — confirm a route actually registered when "route not found" surfaces
+- `php fw model:inspect Post` — inspect a model's table, fillable, casts, and relationships
+- `php fw error:explain "<paste error message>"` — parse an error and suggest a fix
+- `php fw ai:next` — suggest the next step based on current project state
+- `php fw ai:context post` — dump every file for a feature (for pasting into an AI chat)
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Troubleshooting
 
 The `php fw` CLI is your primary tool for diagnosing problems. Before diving into code, use the inspection and validation commands to locate the issue.

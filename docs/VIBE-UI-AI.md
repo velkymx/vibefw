@@ -1,3 +1,22 @@
+# START HERE
+
+**VibeUI** is VibeFW's Vue 3 + TypeScript component library. It ships a Bootstrap 5-based set of form controls, layout primitives, overlays, and data components, all registered globally at app bootstrap so you never need to import them. A single `app.use(VibeUI)` call exposes every `<Vibe*>` tag (`VibeButton`, `VibeFormInput`, `VibeDataTable`, `VibeModal`, `VibeIcon`, etc.) in every template. Validation helpers (`validators`, `useFormValidation`) are the only named imports.
+
+- **GitHub:** https://github.com/velkymx/vibeui
+- **npm:** https://www.npmjs.com/package/@velkymx/vibeui
+
+The VibeFW SPA scaffold (`php fw make:spa`) wires VibeUI in automatically. You almost never install the package by hand — but when you do, it's `npm install @velkymx/vibeui`.
+
+CLI touchpoints when building the UI:
+
+- `php fw make:spa` — scaffold the Vue 3 + VibeUI frontend
+- `php fw dev` — run backend + frontend dev servers together
+- `php fw env:sync` — mirror `.env` → `frontend/.env.local`
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # VibeUI AI Blueprint
 
 This document defines the architectural and stylistic standards for AI agents building frontend interfaces with VibeUI and VibeFW.

@@ -1,3 +1,23 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:controller LoginController` — scaffold the login controller
+- `php fw make:controller RegisterController` — scaffold the register controller
+- `php fw make:request LoginRequest` — typed FormRequest for login credentials
+- `php fw make:request RegisterRequest` — typed FormRequest for registration
+- `php fw make:middleware AuthMiddleware` — wrap protected routes
+- `php fw make:middleware GuestMiddleware` — wrap guest-only routes
+- `php fw routes:list` — verify the auth routes register correctly
+
+Generate a valid `APP_KEY` (needed for session signing and remember-me cookies):
+
+- `php -r "echo bin2hex(random_bytes(32));"` — 64-char hex key; paste into `.env` as `APP_KEY=...`
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Authentication
 
 VibeFW provides session-based authentication for web apps and token-based authentication for APIs.
@@ -191,6 +211,27 @@ return function (Router $router): void {
         $r->get('/dashboard', [DashboardController::class, 'index'], 'dashboard');
     });
 };
+```
+
+## APP_KEY Validation
+
+`Auth::validateAppKey()` is the bootstrap hook for verifying `APP_KEY` before the first request. Call it at app start so a missing, short, or weak key fails loudly — the key backs `remember_token` cookie signing, and validating lazily means the error only surfaces on first login.
+
+```php
+// public/index.php or a boot provider
+\Fw\Auth\Auth::validateAppKey();
+```
+
+Rules enforced:
+
+- `APP_KEY` must be set and non-empty.
+- At least 32 characters (a 32-byte random key hex-encoded to 64 chars is ideal).
+- In `APP_ENV=production`, keys matching obvious weak patterns (single repeated character, letters-only, digits-only, common prefixes like `password`/`secret`/`demo`) are rejected.
+
+Generate a valid key:
+
+```bash
+php -r "echo bin2hex(random_bytes(32));"
 ```
 
 ## Session Cookie Configuration

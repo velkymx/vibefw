@@ -1,3 +1,16 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:command CreatePost` — scaffold a new CQRS command + handler
+- `php fw make:query GetPostById` — scaffold a new CQRS query + handler
+- `php fw make:workflow OnboardCustomer` — wrap multiple commands/queries behind a single workflow (AUX-friendly)
+- `php fw check` — enforces the rule that commands/queries implement their interfaces and controllers dispatch via the bus
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # CQRS — Commands & Queries
 
 VibeFW supports Command Query Responsibility Segregation: commands change state, queries read state.

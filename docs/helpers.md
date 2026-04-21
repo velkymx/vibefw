@@ -1,3 +1,13 @@
+# START HERE
+
+No CLI for this — this is a reference of the helpers injected into every view template. Read past the BEWARE marker for the full list and signatures.
+
+The closest CLI touchpoint is `php fw cache:clear --views` when a helper behaviour change isn't being picked up because compiled views are stale.
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # View Helpers
 
 Every view template automatically has access to built-in helper functions and support classes. These are pre-compiled closures created once in the View constructor for optimal performance.

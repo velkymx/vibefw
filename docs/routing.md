@@ -1,3 +1,18 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw routes:list` — list every registered route
+- `php fw routes:list --method=GET` — filter by HTTP method
+- `php fw route:for post` — show routes matching a feature topic
+- `php fw route:cache` — compile and cache routes for production
+- `php fw route:clear` — drop the route cache (use during development)
+- `php fw make:controller PostController -r` — resource controller that slots into a standard route group
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Routing
 
 Routes map URLs to controller actions. They're defined in `config/routes.php`.

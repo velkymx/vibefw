@@ -1,3 +1,22 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:migration create_posts_table` — new migration (auto-detects `create_*_table` pattern)
+- `php fw make:migration add_status_to_posts` — generic alter migration
+- `php fw migrate` — run pending migrations
+- `php fw migrate:status` — show which migrations ran / are pending
+- `php fw migrate:check` — analyze pending migrations for destructive operations before running
+- `php fw migrate:rollback` — rollback the last batch (`--step=N` for N migrations)
+- `php fw migrate:fresh` — drop all tables and re-run (`--seed` to seed after)
+- `php fw db:status` — connection state + pending migrations
+- `php fw db:seed` — run seeders
+- `php fw make:seeder DatabaseSeeder` — create a seeder
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Database & Migrations
 
 ## Configuration
@@ -17,6 +36,26 @@ DB_DATABASE=myapp
 DB_USERNAME=root
 DB_PASSWORD=secret
 DB_PERSISTENT=false
+```
+
+### Transient-error retries
+
+`Connection::query()` retries deadlocks, lock-wait timeouts, `SQLITE_BUSY`/`SQLITE_LOCKED`, and server-gone errors using exponential backoff with jitter. Retries are suppressed inside an active transaction so the caller still owns the rollback decision; non-transient errors (syntax, constraint, auth) bubble on the first attempt.
+
+| Config key | Default | Purpose |
+|---|---|---|
+| `retry_attempts` | `3` | Max attempts (set to `1` to disable). |
+| `retry_base_delay_ms` | `10` | Base sleep between attempts; `0` means "retry without sleeping". |
+
+Set them alongside the driver config in `config/database.php`:
+
+```php
+return [
+    'driver' => 'mysql',
+    // ...
+    'retry_attempts' => 5,
+    'retry_base_delay_ms' => 25,
+];
 ```
 
 ## Migrations
@@ -201,6 +240,14 @@ $users = $db->query('SELECT * FROM users WHERE active = ?', [1]);
 $db->execute('INSERT INTO users (name, email) VALUES (?, ?)', ['John', 'john@example.com']);
 ```
 
+### `find()` binding semantics
+
+`QueryBuilder::find($id, $column = 'id')` binds `$id` as-is — it does **not** normalize between int and string primary keys. A few concrete cases:
+
+- `find('')` short-circuits to `Option::none()` without touching the DB, because `WHERE col = ''` silently coerces to `0` on engines with loose typing.
+- `find(0)` on a string PK emits `WHERE col = 0` with the integer bound. SQLite's `TEXT` affinity coerces the comparison; MySQL and PostgreSQL do not. Pass the correct type for the column rather than relying on coercion.
+- Otherwise, `find($id)` is equivalent to `->where($column, $id)->first()`.
+
 ### Transactions
 
 ```php
@@ -209,6 +256,20 @@ $db->transaction(function () use ($db) {
     $db->execute('UPDATE users SET order_count = order_count + 1 WHERE id = ?', [1]);
 });
 ```
+
+Auto-retry is disabled while a transaction is open. If a statement inside the callback hits a deadlock or lock-wait, the exception bubbles out of `transaction()`, the outer savepoint/transaction rolls back, and the caller can re-issue the whole unit of work.
+
+### Aggregates & DISTINCT
+
+Aggregates (`count()`, `sum()`, `avg()`, `max()`, `min()`) always strip any outer `DISTINCT` flag from the query — an aggregate returns a single row, and a leaked `SELECT DISTINCT` would silently change semantics. For `COUNT(DISTINCT column)` pass the flag explicitly:
+
+```php
+$total   = $db->table('users')->count();                 // COUNT(*)
+$unique  = $db->table('orders')->count('user_id', true); // COUNT(DISTINCT user_id)
+$average = $db->table('orders')->avg('total', true);     // AVG(DISTINCT total)
+```
+
+`max()` and `min()` keep their two-arg signatures — `DISTINCT` is meaningless there.
 
 ## Seeders
 

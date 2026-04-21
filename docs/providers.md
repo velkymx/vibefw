@@ -1,3 +1,14 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:provider AppServiceProvider` — scaffold a new service provider under `app/Providers/`
+- `php fw check` — confirms the provider is registered in `config/providers.php` and doesn't violate layer rules
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Service Providers
 
 Service providers bootstrap and configure services in your application. They're the central place to register bindings, event listeners, and other setup logic.

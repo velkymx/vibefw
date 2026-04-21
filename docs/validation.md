@@ -1,3 +1,15 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:request StorePostRequest` — create a FormRequest with typed Rule objects wired up
+- `php fw make:resource --schema=app/Schemas/Post.json` — generates `StoreXRequest` + `UpdateXRequest` from the schema
+- `php fw check` — verifies every FormRequest implements `rules()` and no string-pipe rules slipped in
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Validation
 
 All validation uses typed Rule objects in FormRequest classes. String pipe rules (`'required|min:3'`) do not exist.
@@ -167,6 +179,16 @@ All rules are in `Fw\Validation\Rules`:
 - `Unique` does a case-sensitive database lookup. It does not exclude the current record — use explicit conditional logic for update scenarios.
 - `Exists` validates that the value exists in the given column. For `foreignId` fields, use `new Exists('users', 'id')`.
 - Fields without `Required` are **optional** — if the field is absent or empty, remaining rules are skipped.
+
+#### String-rule parameters
+
+When using the string rule shorthand (`'between:1,10'`, `'min:3'`, etc.) the parameter format is enforced strictly — typos fail fast rather than silently passing empty values. For `between:` specifically, the rule raises `InvalidArgumentException` at validate-time for:
+
+- non-numeric bounds (`between:abc`, `between:1,abc`)
+- wrong segment count (`between:5`, `between:`, `between:1,2,3`)
+- reversed range (`between:10,1`)
+
+Use the typed `new Between(1, 10)` form in new code to catch the same mistakes at the type-checker instead of runtime.
 
 For API validation patterns and the JSON error response format — see [errors.md](errors.md).
 

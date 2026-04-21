@@ -1,3 +1,17 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw` — list every registered command, grouped by namespace
+- `php fw help <command>` — show the signature, options, and arguments for a single command
+- `php fw <command> --help` — same thing, alternate syntax
+
+The `php fw` registry is the authoritative source for what commands exist. This doc is a curated reference; when the two disagree, trust `php fw`.
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # CLI Reference
 
 All commands use the `php fw` entry point.

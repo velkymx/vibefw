@@ -1,3 +1,18 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:spa` — scaffold the Vue 3 + TypeScript + VibeUI frontend + API starter kit
+- `php fw dev` — start backend + frontend dev servers together
+- `php fw env:sync` — mirror `.env` → `frontend/.env.local` (VITE_ prefix)
+- `php fw make:resource --schema=app/Schemas/Post.json` — generate the API side (controller + model + migration + requests)
+- `php fw migrate` — run the migration the SPA's API depends on
+- `php fw routes:list --method=GET` — sanity check API routes before wiring the frontend
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # SPA Quick Start Guide
 
 Build a full-stack Vue 3 + PHP application with VibeFW in under 5 minutes.

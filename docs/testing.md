@@ -1,3 +1,20 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw test` — run the full suite
+- `php fw test --testsuite=unit` — unit tests only
+- `php fw test --testsuite=architecture` — architecture/convention enforcement tests
+- `php fw test --filter=PostTest` — filter by test class name
+- `php fw test --coverage` — run with coverage (requires PCOV or Xdebug)
+- `php fw test:for post` — find test files for a feature topic
+- `php fw make:test Post` — generate unit + feature tests for an existing model
+- `php fw check` — conventions + architecture + static analysis (single entry point)
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Testing
 
 ## Running Tests

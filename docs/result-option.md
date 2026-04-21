@@ -1,3 +1,13 @@
+# START HERE
+
+No CLI for this — `Result<T, E>` and `Option<T>` are language-level types, not framework scaffolding. Read past the BEWARE marker for the API reference.
+
+The relevant CLI touchpoint is `php fw check`, which enforces the architectural rule that you never consume these types with a plain `unwrap()` — exhaustive `match()` or `unwrapOr()` only.
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Result & Option Types
 
 VibeFW uses `Result` and `Option` types instead of exceptions and null values. Both require exhaustive handling via `match()`.

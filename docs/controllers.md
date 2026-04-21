@@ -1,3 +1,19 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:controller PostController` — create a basic controller
+- `php fw make:controller PostController -r` — create a resource controller (CRUD methods wired up)
+- `php fw make:controller Api/PostController -r` — namespace via slash (creates `app/Controllers/Api/`)
+- `php fw make:resource --schema=app/Schemas/Post.json` — generate controller + model + migration + requests + views from one JSON schema
+- `php fw routes:list` — confirm the new routes are wired
+- `php fw route:for post` — show every route touching a feature topic
+- `php fw check` — validate conventions before committing
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Controllers
 
 Controllers handle HTTP requests and return responses. They live in `app/Controllers/` and extend `Fw\Core\Controller`.
@@ -74,9 +90,33 @@ $request->all();                // Combined input (query + post)
 $request->input('key');         // Get from combined input
 $request->has('key');           // Check if input exists
 $request->header('Accept');     // Get specific header
-$request->isAjax();            // Boolean
-$request->ip();                // Client IP address
+$request->isAjax();             // Boolean
+$request->ip();                 // Client IP address
+$request->isJson();             // Content-Type is application/json
+$request->expectsJson();        // Accept header prefers JSON (q-weighted)
 ```
+
+### Content negotiation
+
+`Request::expectsJson()` parses Accept q-values and returns true only when `application/json` strictly outweighs `text/html`. Ties and zero-weighted JSON fall through to HTML — browsers that send `text/html,application/xhtml+xml,...,*/*;q=0.8` therefore render pages. A bare `*/*` still returns true when no HTML preference is announced, preserving the common API-client idiom.
+
+### Request limits
+
+The raw request body is capped to protect workers from oversized POSTs. Default is 10 MB. Configure via `config/app.php`:
+
+```php
+'request' => [
+    'max_body_size' => Env::int('REQUEST_MAX_BODY_SIZE', 10 * 1024 * 1024),
+],
+```
+
+Or call the static setter at bootstrap (same pattern as `Request::setTrustedProxies()`):
+
+```php
+\Fw\Core\Request::setMaxBodySize(2 * 1024 * 1024); // 2MB
+```
+
+Reads exceeding the limit raise `RuntimeException` from `rawBody()` / `json()`.
 
 ## Response Helpers
 
@@ -103,9 +143,19 @@ return $this->json(['error' => 'Not found'], 404);
 ### Redirects
 
 ```php
-return $this->redirect('/posts');
+return $this->redirect('/posts');            // 302 Found
+return $this->redirect('/new-home', 301);    // 301 Moved Permanently
 return $this->back();
 ```
+
+Redirect responses carry cache headers that match the status code:
+
+| Codes | Cache-Control | Expires |
+|---|---|---|
+| 301, 308 (permanent) | `public, max-age=31536000` | one year from now |
+| 302, 303, 307 (temporary) | `no-store` | _omitted_ |
+
+Override by chaining `->header('Cache-Control', ...)` after the redirect.
 
 ### Flash Messages
 

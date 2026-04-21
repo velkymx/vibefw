@@ -1,6 +1,21 @@
+# START HERE
+
+Best practices for upgrading are to use the following CLI commands.
+
+- `php fw check` — show every convention, architecture, and static-analysis violation in the project
+- `php fw fix` — auto-correct the common ones (`$guarded` → `$fillable`, missing `declare(strict_types=1)`, etc.)
+- `php fw validate:all` — run every validator after you think the upgrade is done
+- `php fw test` — run the test suite; existing tests are your migration safety net
+
+Run them in that order — `check` tells you what's wrong, `fix` handles the mechanical cleanup, `validate:all` catches what's left, `test` confirms behaviour. Iterate until `check` is clean.
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Upgrading from Fw v2 to v3
 
-Fw v3.0 is a clean break. The patterns below are **removed**, not deprecated.
+Fw 3.0 is a clean break. The patterns below are **removed**, not deprecated.
 
 ## Breaking Changes
 
@@ -12,6 +27,75 @@ Update `composer.json`:
     "php": ">=8.5"
 }
 ```
+
+### Router — `dispatchLegacy()` Removed
+
+`Router::dispatchLegacy()` is gone. `Router::dispatch()` is the only entry point, returning `Result<array{...}, RouteError>`.
+
+**Before:**
+```php
+[$handler, $params] = $router->dispatchLegacy($method, $uri);
+```
+
+**After:**
+```php
+$router->dispatch($method, $uri)->match(
+    ok:  fn($match) => $kernel->run($match['handler'], $match['params']),
+    err: fn($err)   => $this->renderRouteError($err),
+);
+```
+
+The framework's `HttpKernel` already uses the Result form, so applications that route through `HttpKernel::handle()` need no change.
+
+### Fw\Database\Model — Deprecated
+
+`Fw\Database\Model` emits `E_USER_DEPRECATED` on first instantiation per subclass. Migrate to `Fw\Model\Model`, which returns `Option<T>` from reads and `Result<T, ModelError>` from writes.
+
+| Legacy (`Fw\Database\Model`) | Replacement (`Fw\Model\Model`) |
+|------------------------------|-------------------------------|
+| `Post::find($id)` returns `?static` | Returns `Option<static>` — use `->match(some: ..., none: ...)` |
+| `Post::findOrFail($id)` throws `RuntimeException` | `Post::find($id)->unwrapOrElse(fn() => throw ...)` or rely on controller-level `notFound()` |
+| `$model->save()` returns `bool` | Returns `Result<static, ModelError>` — use `->match(ok: ..., err: ...)` |
+| `protected static string $table = ''` | `protected static ?string $table = 'posts'` (nullable, inferred from class name) |
+| `Model::setConnection($conn)` in bootstrap | Connection resolved from container — no bootstrap wiring needed |
+| `$guarded` property | Removed — use `$fillable` exclusively |
+
+**Before:**
+```php
+namespace App\Models;
+
+use Fw\Database\Model;
+
+class Post extends Model
+{
+    protected static string $table = 'posts';
+}
+
+$post = Post::find(1);
+if ($post === null) {
+    return $this->notFound();
+}
+```
+
+**After:**
+```php
+namespace App\Models;
+
+use Fw\Model\Model;
+
+class Post extends Model
+{
+    protected static ?string $table = 'posts';
+    protected static array $fillable = ['title', 'content', 'user_id'];
+}
+
+return Post::find(1)->match(
+    some: fn($post) => $this->view('posts.show', ['post' => $post]),
+    none: fn()      => $this->notFound(),
+);
+```
+
+Legacy subclasses keep working, but the deprecation notice will surface in logs. Plan the migration at your own pace — `Fw\Database\Model` has no scheduled removal date yet.
 
 ### Controller — Removed Methods
 

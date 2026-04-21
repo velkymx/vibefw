@@ -1,3 +1,19 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:schema Post` — generate a JSON schema template at `app/Schemas/Post.json`
+- `php fw make:resource --schema=app/Schemas/Post.json` — generate model + migration + controller + `StorePostRequest` + `UpdatePostRequest` + factory + views in one step
+- `php fw add:field Post status string --default=draft` — append a field to an existing resource (schema + migration + model)
+- `php fw add:field Post category_id foreignId --constrained` — add a foreign-key field
+- `php fw make:link Post Comment --hasMany` — wire a relationship between two existing models
+- `php fw model:inspect Post` — verify the generated model's table, fillable, casts, and relationships
+- `php fw migrate` — run the migration that was generated alongside the resource
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Schema-Driven Resource Generation
 
 The schema-driven workflow is the primary way to build features. Define your resource once in JSON, and the CLI generates the model, migration, controller, form requests, factory, and views.

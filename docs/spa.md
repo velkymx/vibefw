@@ -1,3 +1,19 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:spa` — scaffold the Vue 3 + TypeScript + VibeUI frontend and matching API starter kit
+- `php fw make:spa --test` — same, with Vitest setup wired up
+- `php fw make:spa --force` — overwrite existing `frontend/` (use with care)
+- `php fw dev` — start backend and frontend dev servers concurrently (the normal dev loop)
+- `php fw serve` — backend only (port 8000 by default)
+- `php fw env:sync` — mirror `.env` keys into `frontend/.env.local` with the `VITE_` prefix
+- `php fw routes:list` — verify your API routes after generating controllers
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # SPA (Vue 3 + TypeScript)
 
 VibeFW includes a full-stack SPA scaffold: Vue 3 + TypeScript + VibeUI frontend with a PHP API backend.

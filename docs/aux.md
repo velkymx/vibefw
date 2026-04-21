@@ -1,3 +1,22 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw make:tool ProcessTicketQueue` — scaffold a new AUX tool under `app/Tools/`
+- `php fw make:workflow TicketResolution` — scaffold a WorkflowAction subclass under `app/Workflows/`
+- `php fw aux:list` — list every registered AUX tool (name, abilities, annotations)
+- `php fw aux:schema process_ticket_queue` — dump the MCP tool shape (inputSchema, description) for a specific tool
+- `php fw aux:features` — show the agent-facing feature index (name, url, abilities)
+- `php fw aux:call process_ticket_queue --input='{"queue_id": 147}'` — invoke a tool from the terminal; useful for smoke tests
+- `php fw aux:stats` — per-tool call count, avg duration, error rate, budget vs actual
+- `php fw aux:doctor` — audit the AUX surface against the maturity model; prints score + next steps
+- `php fw aux:notifications:test <channel>` — send a dummy `AgentNotification` through a channel
+- `php fw serve:mcp` — run the MCP server for stdio clients (Claude Desktop, Cursor)
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # AUX — Agentic User Experience
 
 AUX makes your VibeFW app usable by AI agents, not just reachable. Instead of exposing atomic API endpoints that force agents to chain 5+ calls, you define **workflow tools** — single operations that encapsulate an entire business process.

@@ -1,3 +1,28 @@
+# START HERE
+
+Best practices for this part of the codebase are to use the following CLI commands.
+
+- `php fw optimize` — cache routes + config and clear stale caches (run on every deploy)
+- `php fw migrate --force` — run pending migrations in production (the `--force` flag bypasses the confirm prompt)
+- `php fw migrate:check` — pre-flight: analyze pending migrations for destructive operations
+- `php fw optimize:clear` — drop optimization caches (useful when debugging production)
+- `php fw config:cache` / `php fw route:cache` — individual cache commands if you need fine-grained control
+- `php fw security:check` — basic security audit of the application
+- `php fw validate:security` — scan code for vulnerabilities (RCE, SQL injection, hardcoded creds)
+- `php fw db:status` — verify the database connection and pending migrations at bootstrap time
+
+Deploy sequence:
+
+1. `git pull`
+2. `composer install --no-dev --optimize-autoloader`
+3. `php fw migrate --force`
+4. `php fw optimize`
+5. restart PHP-FPM / FrankenPHP
+
+# BEWARE
+
+Only read past here if you are unable to use the CLI.
+
 # Production Hosting Guide
 
 This guide covers optimal production deployment for the VibeFw Framework on PHP 8.5.
@@ -484,6 +509,40 @@ Request::setMaxBodySize(10 * 1024 * 1024);  // 10MB
 Request::setReadTimeout(30);                 // 30 seconds
 ```
 
+Or drive them from `.env` via `config/app.php`:
+
+```php
+'request' => [
+    'max_body_size' => Env::int('REQUEST_MAX_BODY_SIZE', 10 * 1024 * 1024),
+],
+```
+
+### APP_KEY Validation
+
+Call `Auth::validateAppKey()` at bootstrap so misconfigured keys fail loudly at startup instead of the first login. In `APP_ENV=production`, the check also rejects weak patterns (single repeated character, letters-only, digits-only, common prefixes like `password`/`secret`/`demo`).
+
+```php
+// public/index.php, before handling any request
+\Fw\Auth\Auth::validateAppKey();
+```
+
+Generate a valid 64-char hex key:
+
+```bash
+php -r "echo bin2hex(random_bytes(32));"
+```
+
+### Database Retry Behaviour
+
+`Connection::query()` automatically retries transient failures (deadlocks, lock waits, `SQLITE_BUSY`/`SQLITE_LOCKED`, MySQL server-gone 2006/2013) using exponential backoff with jitter. Tune in `config/database.php`:
+
+```php
+'retry_attempts'       => 3,   // Max attempts (set to 1 to disable)
+'retry_base_delay_ms'  => 10,  // Base sleep between attempts
+```
+
+Retries are suppressed inside an active transaction — the caller still owns the rollback decision.
+
 ---
 
 ## Performance Optimization
@@ -597,17 +656,32 @@ curl -I https://example.com
 
 ### Health Check Endpoint
 
-Add a health check route:
+Add a health check route. Closures are rejected at registration — use a single-action controller:
+
+```php
+// app/Controllers/HealthController.php
+namespace App\Controllers;
+
+use Fw\Core\Controller;
+use Fw\Core\Request;
+use Fw\Core\Response;
+
+class HealthController extends Controller
+{
+    public function __invoke(Request $request): Response
+    {
+        return $this->json([
+            'status'      => 'ok',
+            'timestamp'   => time(),
+            'php_version' => PHP_VERSION,
+        ]);
+    }
+}
+```
 
 ```php
 // config/routes.php
-$router->get('/health', function () {
-    return [
-        'status' => 'ok',
-        'timestamp' => time(),
-        'php_version' => PHP_VERSION,
-    ];
-}, 'health');
+$router->get('/health', HealthController::class, 'health');
 ```
 
 ### Log Rotation
