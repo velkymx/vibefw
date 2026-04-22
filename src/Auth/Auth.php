@@ -99,8 +99,8 @@ final class Auth
      */
     public static function login(Model $user, bool $remember = false): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        if (!self::ensureSessionStarted()) {
+            return;
         }
         session_regenerate_id(true);
 
@@ -248,6 +248,36 @@ final class Auth
     {
         // Generate new CSRF token - this invalidates any pre-auth CSRF tokens
         $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    /**
+     * Ensure a PHP session is active before session-sensitive work.
+     *
+     * Returns false (without warning) if the session is disabled or if
+     * headers have already been sent, in which case the blocking frame
+     * is logged. This keeps worker-mode callers from emitting spurious
+     * warnings and makes session-fixation protection a no-op rather
+     * than a fatal when output has already been flushed.
+     */
+    private static function ensureSessionStarted(): bool
+    {
+        $status = session_status();
+        if ($status === PHP_SESSION_ACTIVE) {
+            return true;
+        }
+        if ($status !== PHP_SESSION_NONE) {
+            return false;
+        }
+        if (headers_sent($file, $line)) {
+            error_log(sprintf(
+                'Cannot start session for Auth: headers already sent in %s on line %d',
+                $file,
+                $line,
+            ));
+            return false;
+        }
+
+        return session_start();
     }
 
     /**
