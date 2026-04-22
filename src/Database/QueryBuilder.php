@@ -88,11 +88,19 @@ final class QueryBuilder
 
     public function where(string $column, mixed $operator = null, mixed $value = null): self
     {
+        // Two-arg form is always (column, value); only promote the 2nd
+        // argument to an operator when the caller actually passed a 3rd.
+        if (func_num_args() === 2) {
+            return $this->addWhere('AND', $column, '=', $operator);
+        }
         return $this->addWhere('AND', $column, $operator, $value);
     }
 
     public function orWhere(string $column, mixed $operator = null, mixed $value = null): self
     {
+        if (func_num_args() === 2) {
+            return $this->addWhere('OR', $column, '=', $operator);
+        }
         return $this->addWhere('OR', $column, $operator, $value);
     }
 
@@ -439,10 +447,12 @@ final class QueryBuilder
 
     private function addWhere(string $boolean, string $column, mixed $operator, mixed $value): self
     {
-        $explicitOperator = is_string($operator) && in_array($operator, self::ALLOWED_OPERATORS, true);
-        if ($value === null && !$explicitOperator) {
-            $value = $operator;
-            $operator = '=';
+        // where()/orWhere() always hand this a concrete operator string —
+        // the legacy "maybe the operator is actually the value" inference
+        // is gone because it misfired when a value happened to match an
+        // operator name (e.g. where('name', 'LIKE')).
+        if (!is_string($operator)) {
+            throw new InvalidArgumentException('WHERE operator must be a string.');
         }
         $this->validateOperator($operator);
 

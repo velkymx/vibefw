@@ -75,14 +75,18 @@ final class ModelQueryBuilder
     public function where(string $column, mixed $operator = null, mixed $value = null): self
     {
         $clone = clone $this;
-        $clone->query = $this->query->where($column, $operator, $value);
+        $clone->query = func_num_args() === 2
+            ? $this->query->where($column, $operator)
+            : $this->query->where($column, $operator, $value);
         return $clone;
     }
 
     public function orWhere(string $column, mixed $operator = null, mixed $value = null): self
     {
         $clone = clone $this;
-        $clone->query = $this->query->orWhere($column, $operator, $value);
+        $clone->query = func_num_args() === 2
+            ? $this->query->orWhere($column, $operator)
+            : $this->query->orWhere($column, $operator, $value);
         return $clone;
     }
 

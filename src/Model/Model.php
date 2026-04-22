@@ -344,7 +344,9 @@ abstract class Model implements JsonSerializable
      */
     public static function where(string $column, mixed $operator = null, mixed $value = null): ModelQueryBuilder
     {
-        return static::query()->where($column, $operator, $value);
+        return func_num_args() === 2
+            ? static::query()->where($column, $operator)
+            : static::query()->where($column, $operator, $value);
     }
 
     /**

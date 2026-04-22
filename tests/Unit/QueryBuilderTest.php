@@ -112,6 +112,34 @@ final class QueryBuilderTest extends TestCase
         $this->assertCount(2, $users);
     }
 
+    public function testTwoArgWhereTreatsOperatorLikeValueAsValue(): void
+    {
+        // A 2-arg where() with a value that happens to equal an operator name
+        // (e.g. 'LIKE') must still be treated as a value, not an operator.
+        $this->db->insert('users', ['name' => 'LIKE', 'email' => 'literal@test.com', 'role' => 'user']);
+
+        $rows = $this->query()->where('name', 'LIKE')->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('LIKE', $rows[0]['name']);
+    }
+
+    public function testTwoArgWhereCompilesWithEqualsOperator(): void
+    {
+        [$sql, $bindings] = $this->query()->where('name', 'LIKE')->toSql();
+
+        $this->assertStringContainsString('= ?', $sql);
+        $this->assertSame(['LIKE'], array_values($bindings));
+    }
+
+    public function testThreeArgWhereStillHonoursExplicitOperator(): void
+    {
+        [$sql, $bindings] = $this->query()->where('name', 'LIKE', 'J%')->toSql();
+
+        $this->assertStringContainsString('LIKE ?', $sql);
+        $this->assertSame(['J%'], array_values($bindings));
+    }
+
     public function testWhereInRejectsEmptyArray(): void
     {
         $this->expectException(\InvalidArgumentException::class);
