@@ -27,7 +27,10 @@ final class Response
         503 => 'Service Unavailable',
     ];
 
-    public const string DEFAULT_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self';";
+    // Intentionally excludes `data:` from img-src — it is a known XSS/exfil
+    // vector when user-uploaded markup is rendered. Apps that need inline
+    // image data URIs must opt in via Response::setDefaultCsp().
+    public const string DEFAULT_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self';";
 
     private static ?string $defaultCsp = null;
 
