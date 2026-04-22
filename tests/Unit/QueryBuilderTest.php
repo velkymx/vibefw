@@ -112,6 +112,31 @@ final class QueryBuilderTest extends TestCase
         $this->assertCount(2, $users);
     }
 
+    public function testWhereInRejectsEmptyArray(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('whereIn requires at least one value');
+
+        $this->query()->whereIn('name', []);
+    }
+
+    public function testWhereInRejectsNonScalarValues(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('whereIn values must be scalar');
+
+        $this->query()->whereIn('name', ['ok', ['nested']]);
+    }
+
+    public function testWhereInBindingsMatchPlaceholderCount(): void
+    {
+        [$sql, $bindings] = $this->query()->whereIn('id', [1, 2, 3, 4])->toSql();
+
+        $this->assertSame(4, substr_count($sql, '?'));
+        $this->assertCount(4, $bindings);
+        $this->assertSame([1, 2, 3, 4], array_values($bindings));
+    }
+
     public function testWhereNullFiltersResults(): void
     {
         // Update one user to have null age

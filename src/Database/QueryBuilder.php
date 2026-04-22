@@ -98,15 +98,24 @@ final class QueryBuilder
 
     public function whereIn(string $column, array $values): self
     {
-        $clone = clone $this;
-        $clone->wheres[] = [
-            'type' => 'in',
-            'column' => $column,
-            'count' => count($values),
-            'boolean' => 'AND',
-        ];
-        $clone->bindings = array_merge($clone->bindings, $values);
-        return $clone;
+        if ($values === []) {
+            throw new InvalidArgumentException('whereIn requires at least one value');
+        }
+        foreach ($values as $v) {
+            if ($v !== null && !is_scalar($v)) {
+                throw new InvalidArgumentException('whereIn values must be scalar or null');
+            }
+        }
+
+        return clone($this, [
+            'wheres' => [...$this->wheres, [
+                'type' => 'in',
+                'column' => $column,
+                'count' => count($values),
+                'boolean' => 'AND',
+            ]],
+            'bindings' => [...$this->bindings, ...array_values($values)],
+        ]);
     }
 
     public function whereNull(string $column): self
