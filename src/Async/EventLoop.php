@@ -319,6 +319,19 @@ final class EventLoop
     }
 
     /**
+     * True when every pending-work tracker is empty. Used by the request
+     * kernel to detect a stalled fiber (suspended but with nothing left
+     * to resume it) without repeating the 4-way count check inline.
+     */
+    public function isIdle(): bool
+    {
+        return $this->deferred->count() === 0
+            && count($this->readStreams) === 0
+            && count($this->writeStreams) === 0
+            && count($this->timers) === 0;
+    }
+
+    /**
      * Get the count of active read stream watchers.
      */
     public function getReadStreamCount(): int

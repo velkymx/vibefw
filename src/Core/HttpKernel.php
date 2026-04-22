@@ -282,10 +282,16 @@ final class HttpKernel
 
         while (!$fiber->isCompleted()) {
             $loop->tick();
-            if (!$fiber->isCompleted() && $loop->getDeferredCount() === 0 &&
-                $loop->getReadStreamCount() === 0 && $loop->getWriteStreamCount() === 0 &&
-                $loop->getTimerCount() === 0) {
-                break;
+            // Stall: fiber still suspended but the loop has nothing left to
+            // resume it. Surface that as an explicit error instead of
+            // silently falling through and producing a misleading
+            // "must return Response" downstream.
+            if (!$fiber->isCompleted() && $loop->isIdle()) {
+                throw new RuntimeException(
+                    'Request fiber suspended with no pending work — nothing will resume it. '
+                    . 'The handler likely awaited an event loop operation (timer/stream/deferred) '
+                    . 'that was never scheduled.'
+                );
             }
         }
 
