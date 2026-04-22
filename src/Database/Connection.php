@@ -78,6 +78,20 @@ final class Connection
         $password = $config['password'] ?? '';
         $charset = $config['charset'] ?? 'utf8mb4';
 
+        // Defense-in-depth: DSN is built by string interpolation, so any
+        // ';' / '=' / control char in host/database/charset would inject
+        // extra DSN parameters (or, for charset, SQL into the init command).
+        // Port must be a non-negative integer.
+        self::assertDsnComponent('host', (string) $host, '/^[A-Za-z0-9._:\[\]\-\/]+$/');
+        self::assertDsnPort($port);
+        self::assertDsnComponent('charset', (string) $charset, '/^[A-Za-z0-9_]+$/');
+        // Database name has to allow sqlite paths (':memory:', dirs, dots).
+        if ($this->driver === 'sqlite') {
+            self::assertDsnNoControl('database', (string) $database);
+        } else {
+            self::assertDsnComponent('database', (string) $database, '/^[A-Za-z0-9_\-\.]+$/');
+        }
+
         $dsn = match ($this->driver) {
             'mysql' => "mysql:host=$host;port=$port;dbname=$database;charset=$charset",
             'pgsql' => "pgsql:host=$host;port=$port;dbname=$database",
@@ -117,6 +131,31 @@ final class Connection
         $this->retryAttempts = max(1, (int) ($config['retry_attempts'] ?? 3));
         $this->retryBaseDelayMs = max(0, (int) ($config['retry_base_delay_ms'] ?? 10));
         $this->connectionId = self::$connectionIdBase ??= bin2hex(random_bytes(8));
+    }
+
+    private static function assertDsnComponent(string $name, string $value, string $pattern): void
+    {
+        if ($value === '' || preg_match($pattern, $value) !== 1) {
+            throw new InvalidArgumentException("Invalid DSN component '{$name}'");
+        }
+    }
+
+    private static function assertDsnPort(mixed $port): void
+    {
+        if (!is_int($port) && !(is_string($port) && ctype_digit($port))) {
+            throw new InvalidArgumentException("Invalid DSN component 'port'");
+        }
+        $n = (int) $port;
+        if ($n < 0 || $n > 65535) {
+            throw new InvalidArgumentException("Invalid DSN component 'port'");
+        }
+    }
+
+    private static function assertDsnNoControl(string $name, string $value): void
+    {
+        if ($value === '' || preg_match('/[\x00-\x1F\x7F;]/', $value) === 1) {
+            throw new InvalidArgumentException("Invalid DSN component '{$name}'");
+        }
     }
 
     public static function getInstance(?array $config = null): self
