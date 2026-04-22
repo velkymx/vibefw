@@ -114,7 +114,11 @@ final class Application
         $this->errorHandler = new ErrorHandler($this->response, $this->log, $this->configRepository);
         $this->kernel = new HttpKernel($this, $this->container, $this->router, $this->events, $this->errorHandler, $this->configRepository);
 
-        // 11. Done
+        // 11. Re-register now that View/Connection/HttpKernel exist so
+        // ApplicationBooted listeners can resolve them from the container.
+        $this->registerContainerInstances();
+
+        // 12. Done
         $this->events->dispatch(new ApplicationBooted($this));
     }
 
@@ -223,6 +227,15 @@ final class Application
         }
         if (isset($this->log)) {
             $this->container->instance(Logger::class, $this->log, true);
+        }
+        if (isset($this->view)) {
+            $this->container->instance(View::class, $this->view, true);
+        }
+        if (isset($this->kernel)) {
+            $this->container->instance(HttpKernel::class, $this->kernel, true);
+        }
+        if ($this->db instanceof Connection) {
+            $this->container->instance(Connection::class, $this->db, true);
         }
 
         $this->container->singleton(EventLoop::class, fn () => new EventLoop(), true);
