@@ -320,14 +320,39 @@ final class Container
         return $reflector->newInstanceArgs($dependencies);
     }
 
-    public function flush(int|string|null $contextKey = null): void
+    /**
+     * Flush cached singleton instances from the current context.
+     *
+     * With no argument, clears every cached non-global instance
+     * belonging to the current Fiber (or `mainInstances` when not
+     * running inside a Fiber). With a string $contextKey, clears
+     * only that single binding from the current context — useful
+     * for invalidating one service without evicting every cached
+     * dependency at a request boundary.
+     *
+     * Global bindings (registered with $global = true) are never
+     * touched; use flushGlobal() or flushAll() for those.
+     */
+    public function flush(?string $contextKey = null): void
     {
         $fiber = Fiber::getCurrent();
+
+        if ($contextKey !== null) {
+            if ($fiber !== null && $this->fiberInstances !== null && isset($this->fiberInstances[$fiber][$contextKey])) {
+                $data = $this->fiberInstances[$fiber];
+                unset($data[$contextKey]);
+                $this->fiberInstances[$fiber] = $data;
+                return;
+            }
+            unset($this->mainInstances[$contextKey]);
+            return;
+        }
+
         if ($fiber !== null && $this->fiberInstances !== null) {
             unset($this->fiberInstances[$fiber]);
-        } else {
-            $this->mainInstances = [];
+            return;
         }
+        $this->mainInstances = [];
     }
 
     public function flushGlobal(): void
