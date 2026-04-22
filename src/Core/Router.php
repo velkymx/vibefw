@@ -359,16 +359,24 @@ final class Router
 
         $path = $this->namedRoutes[$name];
 
-        foreach ($params as $key => $value) {
-            $path = preg_replace(
-                '/\{' . preg_quote($key, '/') . '(?::[^}]+)?\}/',
-                rawurlencode((string) $value),
-                $path
-            );
-        }
+        $path = preg_replace_callback(
+            '/\{(\w+)(?::[^}]+)?\}/',
+            static function (array $m) use ($params, &$missing): string {
+                $key = $m[1];
+                if (!array_key_exists($key, $params)) {
+                    $missing[] = $key;
+                    return $m[0];
+                }
+                return rawurlencode((string) $params[$key]);
+            },
+            $path,
+        );
 
-        if (preg_match('/\{(\w+)/', $path)) {
-            throw new InvalidArgumentException("Missing required parameters for route '$name'");
+        $missing ??= [];
+        if ($missing !== []) {
+            throw new InvalidArgumentException(
+                "Missing required parameters for route '$name': " . implode(', ', $missing),
+            );
         }
 
         return $path;

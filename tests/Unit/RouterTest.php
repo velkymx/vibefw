@@ -173,6 +173,56 @@ final class RouterTest extends TestCase
         $this->router->url('users.show');
     }
 
+    public function testNamedRouteEscapesRegexReplacementMetachars(): void
+    {
+        $this->router->get('/users/{id}', [self::class, 'dummyAction'], 'users.show');
+
+        $url = $this->router->url('users.show', ['id' => '$1\\0']);
+
+        $this->assertEquals('/users/%241%5C0', $url);
+    }
+
+    public function testNamedRouteEncodesSpecialUrlCharacters(): void
+    {
+        $this->router->get('/search/{q}', [self::class, 'dummyAction'], 'search');
+
+        $url = $this->router->url('search', ['q' => 'hello world/foo?bar']);
+
+        $this->assertEquals('/search/hello%20world%2Ffoo%3Fbar', $url);
+    }
+
+    public function testNamedRouteHandlesMultipleDistinctParams(): void
+    {
+        $this->router->get('/posts/{year}/{slug}', [self::class, 'dummyAction'], 'post.show');
+
+        $url = $this->router->url('post.show', ['year' => 2026, 'slug' => 'hello-world']);
+
+        $this->assertEquals('/posts/2026/hello-world', $url);
+    }
+
+    public function testNamedRouteMissingParamMessageNamesMissingKeys(): void
+    {
+        $this->router->get('/posts/{year}/{slug}', [self::class, 'dummyAction'], 'post.show');
+
+        try {
+            $this->router->url('post.show', ['year' => 2026]);
+            $this->fail('Expected InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('slug', $e->getMessage());
+        }
+    }
+
+    public function testNamedRouteParamKeyMatchesLiterally(): void
+    {
+        // A param key that looked like a regex would previously still work via preg_quote.
+        // Verify literal replacement: a key with a dot only matches the exact placeholder.
+        $this->router->get('/a/{x}/b/{x2}', [self::class, 'dummyAction'], 'compound');
+
+        $url = $this->router->url('compound', ['x' => 'one', 'x2' => 'two']);
+
+        $this->assertEquals('/a/one/b/two', $url);
+    }
+
     public function testRouteGroupAppliesPrefix(): void
     {
         $this->router->group('/api', function (Router $router) {
