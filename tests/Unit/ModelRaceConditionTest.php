@@ -193,4 +193,40 @@ final class ModelRaceConditionTest extends TestCase
         $this->assertSame('Updated By Race Winner', $model->name);
         $this->assertSame(1, $this->db->table('members')->count());
     }
+
+    // -------------------------------------------------------------------------
+    // Bounded-retry guard: the SQLSTATE 23 retry must cap out rather than
+    // recurse forever when the conflict is on a column NOT in the search
+    // attributes (so the SELECT never matches the row that's blocking us).
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function updateOrCreateStopsRetryingAfterCapOnPermanentConflict(): void
+    {
+        // Pre-populate the UNIQUE email so any INSERT with the same email fails.
+        $this->db->insert('members', ['email' => 'blocker@test.com', 'name' => 'Blocker']);
+
+        $this->expectException(PDOException::class);
+
+        // Search attribute is `name` (no match), insert values collide on `email`.
+        // SELECT by name finds nothing on every attempt, INSERT fails on every
+        // attempt, so the recursion has no fixed point — the cap must fire.
+        UniqueEmailModel::updateOrCreate(
+            ['name' => 'Missing Name That Will Never Match'],
+            ['email' => 'blocker@test.com'],
+        );
+    }
+
+    #[Test]
+    public function firstOrCreateStopsRetryingAfterCapOnPermanentConflict(): void
+    {
+        $this->db->insert('members', ['email' => 'blocker2@test.com', 'name' => 'Blocker2']);
+
+        $this->expectException(PDOException::class);
+
+        UniqueEmailModel::firstOrCreate(
+            ['name' => 'Another Missing Name'],
+            ['email' => 'blocker2@test.com'],
+        );
+    }
 }

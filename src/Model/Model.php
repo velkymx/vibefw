@@ -49,6 +49,15 @@ use Throwable;
 abstract class Model implements JsonSerializable
 {
     /**
+     * Maximum retries for updateOrCreate()/firstOrCreate() when a
+     * SQLSTATE 23xxx (integrity violation) interrupts the INSERT.
+     * Retries are attempts *after* the initial try (total tries =
+     * MAX_UPSERT_RETRIES + 1) so the loop terminates rather than
+     * recursing forever on a permanent conflict.
+     */
+    private const int MAX_UPSERT_RETRIES = 3;
+
+    /**
      * The database connection instance.
      */
     protected static ?Connection $connection = null;
@@ -443,35 +452,46 @@ abstract class Model implements JsonSerializable
             );
         }
 
-        $model = static::where(array_key_first($attributes), $attributes[array_key_first($attributes)]);
+        $lastException = null;
+        for ($attempt = 0; $attempt <= self::MAX_UPSERT_RETRIES; $attempt++) {
+            $query = static::where(array_key_first($attributes), $attributes[array_key_first($attributes)]);
+            foreach (array_slice($attributes, 1) as $key => $value) {
+                $query = $query->where($key, $value);
+            }
 
-        foreach (array_slice($attributes, 1) as $key => $value) {
-            $model = $model->where($key, $value);
-        }
+            $existing = $query->first();
 
-        $existing = $model->first();
+            $updated = $existing->match(
+                some: function ($instance) use ($values) {
+                    $instance->fill($values);
+                    $instance->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
+                    return $instance;
+                },
+                none: fn () => null,
+            );
+            if ($updated !== null) {
+                return $updated;
+            }
 
-        return $existing->match(
-            some: function ($instance) use ($values) {
-                $instance->fill($values);
-                $instance->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
-                return $instance;
-            },
-            none: function () use ($attributes, $values): static {
-                try {
-                    return static::create(array_merge($attributes, $values));
-                } catch (PDOException $e) {
-                    // Race condition: concurrent worker inserted between our SELECT
-                    // and INSERT (SQLSTATE 23xxx = unique/integrity violation).
-                    // Re-run updateOrCreate — the SELECT on the second attempt will
-                    // find the row the other worker created, hit the `some:` branch,
-                    // apply our updates, and return it with the correct static type.
-                    if (str_starts_with((string) $e->getCode(), '23')) {
-                        return static::updateOrCreate($attributes, $values);
-                    }
+            try {
+                return static::create(array_merge($attributes, $values));
+            } catch (PDOException $e) {
+                // Race condition: concurrent worker inserted between our SELECT
+                // and INSERT (SQLSTATE 23xxx = unique/integrity violation).
+                // Loop back: the SELECT on the next attempt will find the row
+                // the other worker created and hit the `some:` branch.
+                if (!str_starts_with((string) $e->getCode(), '23')) {
                     throw $e;
                 }
-            },
+                $lastException = $e;
+            }
+        }
+
+        // Retry budget exhausted — conflict is permanent (e.g. unique
+        // violation on a column not covered by $attributes). Surface the
+        // last driver exception so callers see the real cause.
+        throw $lastException ?? new RuntimeException(
+            static::class . '::updateOrCreate() exhausted its retry budget.'
         );
     }
 
@@ -483,30 +503,30 @@ abstract class Model implements JsonSerializable
      */
     public static function firstOrCreate(array $attributes, array $values = []): static
     {
-        $query = static::query();
+        $lastException = null;
+        for ($attempt = 0; $attempt <= self::MAX_UPSERT_RETRIES; $attempt++) {
+            $query = static::query();
+            foreach ($attributes as $key => $value) {
+                $query = $query->where($key, $value);
+            }
 
-        foreach ($attributes as $key => $value) {
-            $query = $query->where($key, $value);
-        }
+            $existing = $query->first()->unwrapOr(null);
+            if ($existing !== null) {
+                return $existing;
+            }
 
-        $existing = $query->first();
-
-        return $existing->match(
-            some: fn ($instance) => $instance,
-            none: function () use ($attributes, $values): static {
-                try {
-                    return static::create(array_merge($attributes, $values));
-                } catch (PDOException $e) {
-                    // Race condition: another worker inserted the same unique record
-                    // between our SELECT and INSERT (SQLSTATE 23xxx = integrity violation).
-                    // Re-run firstOrCreate — the SELECT on the second attempt finds
-                    // the row the concurrent worker created and returns it directly.
-                    if (str_starts_with((string) $e->getCode(), '23')) {
-                        return static::firstOrCreate($attributes, $values);
-                    }
+            try {
+                return static::create(array_merge($attributes, $values));
+            } catch (PDOException $e) {
+                if (!str_starts_with((string) $e->getCode(), '23')) {
                     throw $e;
                 }
-            },
+                $lastException = $e;
+            }
+        }
+
+        throw $lastException ?? new RuntimeException(
+            static::class . '::firstOrCreate() exhausted its retry budget.'
         );
     }
 
