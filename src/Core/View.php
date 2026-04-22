@@ -96,6 +96,9 @@ final class View
 
     public function share(string $key, mixed $value): self
     {
+        // Keep the key validated up-front so a reserved/malformed name
+        // blows up at the share() call, not silently at render time.
+        $this->validateViewDataKey($key);
         $this->shared[$key] = $value;
         return $this;
     }
@@ -402,20 +405,21 @@ final class View
     private function validateViewData(array $data): void
     {
         foreach (array_keys($data) as $key) {
-            // Check for reserved names (superglobals, helpers, internals)
-            if (in_array($key, self::RESERVED_NAMES, true)) {
-                throw new InvalidArgumentException(
-                    "View data contains reserved variable name: {$key}"
-                );
-            }
+            $this->validateViewDataKey((string) $key);
+        }
+    }
 
-            // Ensure valid PHP variable name
-            // Must start with letter, contain only alphanumeric + underscore
-            if (!preg_match(self::VALID_VAR_PATTERN, $key)) {
-                throw new InvalidArgumentException(
-                    "Invalid view variable name: {$key}. Must start with a letter and contain only alphanumeric characters and underscores."
-                );
-            }
+    private function validateViewDataKey(string $key): void
+    {
+        if (in_array($key, self::RESERVED_NAMES, true)) {
+            throw new InvalidArgumentException(
+                "View data contains reserved variable name: {$key}"
+            );
+        }
+        if (!preg_match(self::VALID_VAR_PATTERN, $key)) {
+            throw new InvalidArgumentException(
+                "Invalid view variable name: {$key}. Must start with a letter and contain only alphanumeric characters and underscores."
+            );
         }
     }
 
