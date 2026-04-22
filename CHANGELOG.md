@@ -7,6 +7,221 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-04-21
+
+First major release on PHP 8.5. Clean break from v2: typed validation rules, prescriptive errors, AUX (Agentic User Experience) layer, and a full release-prep hardening pass. See `UPGRADE-v3.md` for migration steps.
+
+### Added
+
+#### AUX (Agentic User Experience) Layer
+
+- **AUX framework** — first-class agentic workflows: `Tool`, `WorkflowAction`, `WorkflowResult`, MCP protocol, SSE transport.
+- **MCP endpoints** — `/mcp/*` SSE + message endpoints; `ServeMcpCommand` resolves `McpServer` via container.
+- **Agent endpoints** — `/agent/*` routes with `AgentMiddleware` enforcing `Accept: application/json` and injecting `X-AUX-Version`.
+- **`AuxServiceProvider`** — boots AUX routes and wires the middleware stack.
+- **Feature index** (`[F1]`–`[F4]`) — `FeatureIndex` value object, auto-registered `list_features` builtin tool, `aux:features` CLI, `FeatureIndexProvider` app template.
+- **Canonical onboarding workflow** (`[W1]`–`[W2]`) — workflow stub + `make:workflow --template` option.
+- **Notifications** (`[N1]`–`[N5]`) — `AgentNotification` value object, `WorkflowAction::notify()` queue-backed helper, pluggable channels, `AgentNotified` event, `aux:notifications:test` CLI.
+- **Budgets & stats** (`[B1]`–`[B4]`) — tool budget hints, rolling-average duration tracking, `aux:stats` CLI, `budget_exceeded` workflow status.
+- **Route discovery** (`[U1]`–`[U3]`, `[X2]`) — `RouteAdvertiser` + `list_routes` builtin, `#[AgentAccessible]` attribute, `make:tool --from-route` scaffold, `aux:doctor` audits AUX maturity.
+- **Developer experience** (`[D1]`–`[D3]`, `[O1]`–`[O2]`, `[R1]`, `[C1]`–`[C2]`) — CLI tools, events, duration tracking, rate limiting, composability.
+- **Stubs** — `tool.stub` and `workflow.stub` with `// CUSTOMIZE:` markers.
+- **Tests** — `AgentEndpointTest`, `McpSseTest` feature coverage for `/agent/*` and `/mcp/*`.
+
+#### Schema-Driven Scaffolding
+
+- `make:schema` — generate resource schema JSON templates.
+- `make:resource --schema=...` — generate Model, Migration, Controller, FormRequests, Views, Factory from a schema.
+- `add:field` — create migration, update Model `$fillable`/`$casts`, update schema JSON.
+- `make:link` — generate relationship migrations and wire both model files.
+- `make:test` — generate unit tests (fillable, casts) and feature tests (CRUD routes) from an existing model.
+
+#### Inspection & AI Context
+
+- `check` — single entry point for convention + architecture + PHPStan checks.
+- `fix` — auto-correct convention violations.
+- `model:inspect`, `route:for`, `db:status`, `test:for`, `error:explain` — introspection commands.
+- `ai:map`, `ai:context`, `ai:next` — AI context helpers.
+
+#### Types & Patterns
+
+- `ResourceSchema` value object and `ResourceSchemaValidator` with prescriptive errors.
+- `PrescriptiveException` interface — framework exceptions now surface fix commands.
+- `RevocableTokenInterface` — narrows `TokenGuard::currentToken()`.
+- `NoServiceLocationRule` PHPStan custom rule + v3 convention rules.
+- `ConventionTest` suite (12 tests) enforcing controller/model/FormRequest patterns.
+
+#### Release Blockers
+
+- **`[R2]`** — typed `Application::VERSION` constant (PHP 8.3+ typed constants).
+- **`[R3]`** — `composer.json` declares `version: 3.0.0`; sync-lock test prevents drift.
+- **`[R4]`** — `.gitignore` excludes working docs (`/todo.md`, `/docs/superpowers/`) from distribution.
+- **`[R5]`** — `Model::$lazyLoadReporter` — injectable N+1 warning reporter; silences stderr in tests.
+- **`[R7]`** — `ReleaseTagIntegrityTest` locks `[R1]`–`[R5]` subjects into the `v3.0.0` tag.
+
+### Changed
+
+#### Breaking Changes
+
+- **PHP 8.5 required** — `#[\NoDiscard]` applied to `Result`, `Option`, `Controller`, `Model`.
+- **Controller** — removed v2 `dbQuery`, `validate`, `abort`, and input helpers.
+- **Model** — removed `$guarded`; `$fillable`-only mass assignment is now enforced.
+- **Router** — rejects closures; handlers must declare `Response` return type.
+- **FormRequest** — uses typed `rules()` method returning `array<string, list<Rule>>`; string pipe rules (`'required|min:3'`) are no longer accepted.
+- **Monads** — removed `Result::unwrap`/`getValue`/`getError` and `Option::unwrap`. Use named `match()` params (`ok`/`err`, `some`/`none`).
+- **QueryBuilder** — requires `table()` before terminal ops; rejects `join()` after `limit()`; `null` comparisons translate to `IS NULL` / `IS NOT NULL`.
+- **Router middleware** — typed registration via `Router::with()`; plain-string middleware names rejected.
+- **`Auth::user()`** — returns `Option<Model>` instead of `?Model` (`[BP3]`).
+- **`Model::save()`** — returns `Result<static, Throwable>` instead of `bool` (`[BP2]`).
+- **`QueryBuilder::first()`/`find()`** — return `Option<array>` (`[B-01]`).
+- **`Model::getAttribute()`** — returns `Option<mixed>` (`[B-02]`).
+- **SPA scaffold** — login uses token-only auth, skipping session (`[H7]`).
+
+#### Hardening
+
+- **Static analysis** — PHPStan level 8 clean across the framework.
+- **Stubs** — all stubs carry `// CUSTOMIZE:` markers and v3 patterns.
+- **Exceptions** — prescriptive error messages with fix commands.
+- **CLAUDE.md / upgrade guide** — rewritten for v3; v2→v3 migration steps documented.
+- **Branding** — project renamed to VibeFw; SPA package versions bumped.
+- **CLI** — `make:spa` refactored for v3 (FormRequest, typed rules, `match()`); `--force` flag for non-interactive scaffolding.
+- **Auth** — `Auth::validateAppKey()` bootstrap hook (`[M6]`); auth/user/errors view names reserved (`[M5]`).
+
+#### Phase 11 Quality Pass
+
+- **Correctness** (`[C2]`–`[C5]`) — QueryBuilder null → `IS NULL`; `View::endCache` stores before output; `Connection::lastInsertId` returns `string`; `Request::input` uses explicit null-coalesce on JSON body.
+- **Security** (`[S1]`–`[S5]`) — configurable CSP via `Response::securityHeaders`; `cspMetaTag` renders `<meta http-equiv>`; `Auth::isHttps` defers to `Request::isSecure`; `AuthMiddleware` URL-decodes before open-redirect check; `QueryBuilder` resets distinct flag in aggregates with optional `distinct` param.
+- **Performance** (`[P1]`–`[P5]`) — regression tests for lazy-relation caching; Router buckets dispatch by first URI segment; Cache uses dedicated miss marker instead of `$this`; Container drops reflection spin-wait (idempotent); opt-in single-query paginate via `COUNT(*) OVER ()`.
+- **Maintenance** (`[M1]`–`[M6]`) — `Database\Model` emits `E_USER_DEPRECATED` on first instantiation; removed `Router::dispatchLegacy()`; configurable `Request` max body size via setter + config; `Connection` caches connection-id entropy at class level.
+- **Edge cases** (`[E1]`–`[E5]`) — documented `find()` binding semantics; Accept q-values weighted in `expectsJson()`; malformed `between:` params rejected; cache-aware redirect responses; retry transient PDO errors.
+
+### Fixed
+
+#### Release Blockers
+
+- **`[R1]`** — `WebhookChannel` swaps deprecated `$http_response_header` for `http_get_last_response_headers()`; source-level regression test pins the contract.
+
+#### Controllers & Routing
+
+- SPA scaffold missing `UserController` (closure-route crash).
+- SPA root-route controller added to scaffold.
+- `check` and `fix` detect and auto-correct closure routes.
+- SPA fallback route serves frontend on root URL.
+- Router preserves named route params instead of stripping keys.
+- Router `group()` no longer produces double-slash when prefix is empty or `/` (`[L1]`).
+- `Router::saveCache` skips object-instance and object-middleware routes (`[L5]`).
+
+#### Requests & Responses
+
+- `Request::all()` now includes JSON request bodies.
+- `Request::has()` uses `array_key_exists` for nullable input detection (`[M1]`).
+- `paginated()` returns a single envelope (no more double-wrap) (`[M2]`).
+- `Controller::back()` open-redirect via unvalidated `HTTP_REFERER` closed.
+- `Controller::user()` reads the correct session key.
+- Controller bus method docblocks use `\Throwable` (FQCN) (`[M4]`).
+
+#### Auth & Security
+
+- `Auth::login()` no longer crashes when no session is active.
+- `Auth::user()` cleans stale session keys for deleted users.
+- API logout revokes the Bearer token before clearing session; auth enforcement fixed on the logout route.
+- `RegisterController` returns `422` on duplicate email instead of `500`.
+- Bearer token length validated (32–512 chars) (`[S-03]`).
+- Expired-token paths no longer eagerly `DELETE` (`[S-NEW-01]`, `[S-NEW-04]`).
+- API token body is opaque — user ID removed (`[S-NEW-05]`).
+- `app.session_same_site` — session `SameSite` is now configurable (`[S-NEW-06]`).
+- `RuntimeException` thrown on weak `APP_KEY` in production (`[L2]`).
+- Hardcoded bcrypt `DUMMY_HASH` replaced with `PASSWORD_DEFAULT` lazy init (`[L6]`).
+- SECURITY warning logged when `RateLimitMiddleware` cache fails.
+
+#### Database & Model
+
+- `QueryBuilder::delete()` / `::update()` guard against missing `WHERE` clause.
+- `Connection::delete()` / `::update()` guard against empty where/data.
+- `Model::updateOrCreate()` no longer crashes on empty `$attributes`.
+- User model — `save()` returns `void`; `remember_token` hidden from JSON.
+- `Model::find()` guarded against empty string ID (`[B-NEW-01/02]`).
+- Concurrent-insert race handled in `firstOrCreate` / `updateOrCreate` (`[E-NEW-05/06]`).
+- `Model::resetConnection()` added and called from `HttpKernel::resetState()` (`[M6]`).
+- `ModelMetadata` caches public property names to avoid per-row `ReflectionClass` (`[H2]`).
+- Lazy-relation cache regression tests (`[P1]`).
+- `paginate()` count/data race limitation documented (`[M1]`).
+
+#### Migrations & Stubs
+
+- Migration system: anonymous classes, missing methods, Blueprint gaps.
+- SPA migration stubs: duplicate indexes, stale API, direct db access.
+- SPA migration stubs converted to anonymous-class pattern.
+- `PersonalAccessToken` model added to SPA scaffold.
+
+#### SPA Scaffold
+
+- Pinia auth store, axios instance (now native `fetch` wrapper), Profile page.
+- Router guard uses static import for auth store.
+- SPA scaffold deps bumped; `ApiTokenController` stub fixed.
+- `ScaffoldSpaCommand` — `projectPath` injectable for test isolation (`[H2]`).
+- `SpaController` stub — false-check `file_get_contents`, fix Response API (`[S1]`).
+- FormRequest classes added under `app/Requests/` (`[C2][C3][H1]`).
+
+#### Workers & Async
+
+- `EventLoop` stream ID collision fixed via monotonic counter (`[L3]`).
+- Nullable watcher IDs guarded before `removeWriteStream`/`removeReadStream` (`[H4]`).
+- `Worker::work()` restores signal handlers on exception (`[E-07]`).
+- TOCTOU-safe `mkdir` in `Worker::logFailedJob` (`[Q-01]`).
+- Log entry written before rotation to prevent data loss (`[Q-02]`).
+- Skip `usleep` spin outside Fiber (`[M7]`).
+
+#### View & Cache
+
+- View fragment cache `ob` cleanup regression tests (`[L4]`).
+- `View::old()` guard (`[M3]`).
+- `FileCache::get()` uses `isset()` for null-safe validation (`[B-NEW-05]`).
+
+#### CLI & Static Analysis
+
+- 50 risky tests fixed: buffer CLI output instead of writing to stdout.
+- `#[\NoDiscard]` warnings fixed in tests and production code.
+- `CommandBus` — clearer handler-not-found error (`[CB-02]`).
+- All 26 PHPStan errors cleared; `php fw check` now passes (`[BP1]`).
+- Dead `TestCase::createApplication()` helper removed (`[L1]`).
+
+#### Validation
+
+- `Exists` / `Unique` DB validation rules implemented (`[S-02]`).
+
+#### Misc
+
+- `.env` update — corruption for values with backreference tokens fixed (`[H3]`).
+- Connection config mismatch check is now key-order independent.
+- Bearer token bounds extracted as named constants in `Request` (`[M-NEW-01]`).
+- `M3` — Pipeline alias cache cleared in `HttpKernel::resetState()`.
+- `AsyncHttp` — `withKeepAlive()` and `Content-Length`/chunked completion (`[M-01]`); dead count guard fixed + chunked transfer decoding (`[M-NEW-03]`).
+- Pipeline middleware file-alias load cached in `Pipeline` static property (`[P-03]`).
+- Circular-dep detection in `Container::buildClass`; Pipeline resolve errors wrapped (`[P-04]`).
+
+### Deprecated
+
+- `Fw\Database\Model` — emits `E_USER_DEPRECATED` on first instantiation. Use `Fw\Model\Model`.
+
+### Removed
+
+- `Router::dispatchLegacy()` (`[M2]`).
+- `Result::unwrap`, `Result::getValue`, `Result::getError`, `Option::unwrap`.
+- `Model::$guarded`.
+- v2 Controller helpers: `dbQuery`, `validate`, `abort`, input helpers.
+- Closure route handlers.
+- String pipe validation rules (`'required|min:3|max:255'`).
+
+### Security
+
+- CSP headers — configurable via `Response::securityHeaders`; `<meta http-equiv>` rendered by `Response::cspMetaTag` (`[S1]`, `[S2]`).
+- `Auth::isHttps` — always defers to `Request::isSecure` (`[S3]`).
+- `AuthMiddleware` — URL-decodes before open-redirect check (`[S4]`).
+- Bearer-token format tightened — length-bounded, opaque (no embedded user ID).
+- Expired-token paths no longer reveal existence via eager `DELETE`.
+- Weak `APP_KEY` in production now raises `RuntimeException`.
+
 ## [2.1.19] - 2026-03-09
 
 ### Fixed (Static Analysis)
