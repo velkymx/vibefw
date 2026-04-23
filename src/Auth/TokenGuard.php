@@ -50,19 +50,28 @@ final class TokenGuard
             return null;
         }
 
-        // Update last used timestamp (suppressed in phpstan.neon for Model base type)
-        $accessToken->touchLastUsed();
-
-        // Get the user via relationship (suppressed in phpstan.neon for Model base type)
-        $user = $accessToken->user()->get()->unwrapOr(null);
-
-        if ($user === null) {
+        // Enforce the token model contract BEFORE invoking any
+        // contract-specific method. Misconfigured apps (setTokenModel()
+        // accepts any class string) previously crashed with a fatal
+        // "call to undefined method touchLastUsed()" instead of failing
+        // authentication cleanly.
+        if (!$accessToken instanceof RevocableTokenInterface) {
             return null;
         }
 
-        // Store in RequestContext — guard ensures the concrete token model implements
-        // RevocableTokenInterface as required by setContextToken's intersection type.
-        if (!$accessToken instanceof RevocableTokenInterface) {
+        // user() is a relationship declared by the token model, not the
+        // interface — keep it out of the contract to avoid dragging the
+        // Model relation classes into Fw\Auth\Contracts. A misconfigured
+        // model without that relation decays to a null auth result.
+        if (!method_exists($accessToken, 'user')) {
+            return null;
+        }
+
+        $accessToken->touchLastUsed();
+
+        $user = $accessToken->user()->get()->unwrapOr(null);
+
+        if ($user === null) {
             return null;
         }
 
