@@ -162,12 +162,7 @@ final class DatabaseDriver implements DriverInterface
             }
             $job->setJobId($row['id']);
 
-            // attempts was already incremented in the UPDATE above, so
-            // $row['attempts'] now holds the *previous* count. The in-memory
-            // counter must match the stored value after the UPDATE.
-            for ($i = 0; $i < $row['attempts'] + 1; $i++) {
-                $job->incrementAttempts();
-            }
+            $this->replayAttemptsFromStoredRow($job, (int) $row['attempts']);
 
             return [
                 'id' => $row['id'],
@@ -210,6 +205,29 @@ final class DatabaseDriver implements DriverInterface
             "DELETE FROM {$this->quotedTable} WHERE queue = ?",
             [$queue]
         )->rowCount();
+    }
+
+    /**
+     * Catch up a freshly-deserialised Job's in-memory `$attempts`
+     * counter to the DB value after `pop()`'s UPDATE.
+     *
+     * Jobs are serialised once at push time with `attempts = 0` and
+     * never re-serialised, so every deserialised job starts at 0.
+     * Given `$storedAttemptsBeforeUpdate = N` (the value fetched from
+     * the SELECT), the UPDATE sets the DB column to `N + 1`. Replay
+     * must call `incrementAttempts()` `N + 1` times so the in-memory
+     * counter converges to the DB value.
+     *
+     * Precondition: `$job` is a freshly-deserialised instance with
+     * `$attempts = 0`. Calling this method twice on the same instance
+     * double-counts.
+     */
+    private function replayAttemptsFromStoredRow(JobInterface $job, int $storedAttemptsBeforeUpdate): void
+    {
+        $target = $storedAttemptsBeforeUpdate + 1;
+        for ($i = 0; $i < $target; $i++) {
+            $job->incrementAttempts();
+        }
     }
 
     /**
