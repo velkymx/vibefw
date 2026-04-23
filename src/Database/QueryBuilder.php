@@ -599,15 +599,52 @@ final class QueryBuilder
         return ' WHERE ' . implode(' ', $parts);
     }
 
+    /**
+     * Raw expression whitelist. Matches exactly the shapes the QueryBuilder
+     * itself produces via aggregateExpr() (post-quoteIdentifier) plus the
+     * user-facing forms validateIdentifier() already greenlights in select().
+     *
+     * Components:
+     *   - function:     COUNT|SUM|AVG|MAX|MIN|COALESCE|IFNULL|NULLIF
+     *   - inner:        `*`  |  DISTINCT? identifier  |  DISTINCT? `col` / "col"  (optional `table.` prefix, quoted or bare)
+     *   - alias:        optional `AS? plain_identifier`
+     *
+     * Anything outside this shape — BENCHMARK, SLEEP, stacked statements,
+     * UNION injection, nested function calls — is rejected.
+     */
+    private const string RAW_SELECT_WHITELIST = '/^
+        (?:COUNT|SUM|AVG|MAX|MIN|COALESCE|IFNULL|NULLIF)
+        \s*\(\s*
+        (?:
+            \*
+            |
+            (?:DISTINCT\s+)?
+            (?:
+                [`"][A-Za-z_][A-Za-z0-9_]*[`"](?:\.[`"][A-Za-z_][A-Za-z0-9_]*[`"])?
+                |
+                [A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?
+            )
+        )
+        \s*\)
+        (?:\s+(?:AS\s+)?[A-Za-z_][A-Za-z0-9_]*)?
+    $/ix';
+
     private function compileSelectColumn(string $column): string
     {
         // Wildcard
         if ($column === '*') {
             return '*';
         }
-        // Raw expressions: function calls (contain '(') or already-built aliases (contain ' ')
-        // e.g. "COUNT(*) as aggregate", "SUM(`price`) as aggregate"
+        // Raw expressions: function calls (contain '(') or already-built aliases (contain ' ').
+        // select() already validates user-provided columns, but defence in depth
+        // matters — a future callsite that bypasses select() must not be an
+        // SQL-injection foothold. Re-validate against the same aggregate
+        // whitelist, tolerant of the post-quoteIdentifier form emitted by
+        // aggregateExpr() (backticked or double-quoted inner identifier).
         if (str_contains($column, '(') || str_contains($column, ' ')) {
+            if (!preg_match(self::RAW_SELECT_WHITELIST, $column)) {
+                throw new InvalidArgumentException("Invalid column: unsafe raw expression '{$column}' — only aggregate functions (COUNT/SUM/AVG/MAX/MIN/COALESCE/IFNULL/NULLIF) over plain identifiers are allowed.");
+            }
             return $column;
         }
         // Plain identifier or table.column — quote it
