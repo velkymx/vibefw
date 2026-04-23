@@ -321,14 +321,27 @@ final class ApiResponse
     }
 
     /**
-     * Send the response and exit.
-     * @deprecated Use Kernel to emit response
+     * Send the response and exit the PHP process.
+     *
+     * @deprecated 3.0.0 Use `Kernel::respond()` or return the `Response`
+     *     object from a controller action. This method calls `exit`,
+     *     which in any worker / long-running runtime (FrankenPHP,
+     *     RoadRunner, Swoole, ReactPHP, pcntl_fork-based workers)
+     *     terminates the worker process itself — not just the current
+     *     request. The next request routed to that worker will fail
+     *     until the supervisor respawns it. It also bypasses
+     *     middleware, response finalisation, and any registered
+     *     shutdown hooks.
+     *
+     *     Safe only in classic one-shot PHP-FPM / mod_php where a
+     *     `exit` coincides with request teardown. Retained only for
+     *     backwards compatibility with pre-3.0 consumers.
      */
     public function send(array $data): never
     {
         $response = $this->success($data);
-        // This is problematic in worker mode, but we keep it for legacy compatibility
-        // while marking it as deprecated.
+        // Retained for legacy CGI-style callers only. See @deprecated notice
+        // above — never call this from a worker-mode runtime.
         foreach ($response->getHeaders() as $name => $value) {
             header("$name: $value");
         }
