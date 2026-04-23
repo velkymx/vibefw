@@ -175,11 +175,35 @@ final class EventDispatcher
 
     /**
      * Resolve a listener class.
+     *
+     * When a container resolver is configured it always wins, so listeners
+     * with constructor deps can be wired up. Without a resolver only
+     * listeners whose constructor takes no *required* args are safe —
+     * calling `new $listenerClass()` on a DI-hungry class used to fail
+     * with a cryptic `ArgumentCountError`. Detect that up front and
+     * throw a `RuntimeException` naming the class so the caller knows
+     * to register a resolver.
      */
     private function resolveListener(string $listenerClass): object
     {
         if ($this->resolver !== null) {
             return ($this->resolver)($listenerClass);
+        }
+
+        if (!class_exists($listenerClass)) {
+            throw new \RuntimeException(
+                "Event listener class does not exist: {$listenerClass}"
+            );
+        }
+
+        $ctor = (new \ReflectionClass($listenerClass))->getConstructor();
+        if ($ctor !== null && $ctor->getNumberOfRequiredParameters() > 0) {
+            throw new \RuntimeException(
+                "Event listener {$listenerClass} has required constructor "
+                . 'parameters but no container resolver is configured. '
+                . 'Register a resolver via `new EventDispatcher($resolver)` '
+                . 'so listener dependencies can be injected.'
+            );
         }
 
         return new $listenerClass();
