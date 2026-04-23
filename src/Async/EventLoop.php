@@ -380,6 +380,17 @@ final class EventLoop
      */
     private function processStreams(): void
     {
+        if (empty($this->readStreams) && empty($this->writeStreams)) {
+            return;
+        }
+
+        // Always reconcile broken watchers FIRST. Otherwise watchers whose
+        // streams were closed out-of-band (another Fiber, a callback in
+        // the same tick) stay registered forever — `hasPendingWork()`
+        // would keep reporting work and `runOnce()` would loop until the
+        // heat death of the universe.
+        $this->cleanupBrokenStreams();
+
         $read = array_column($this->readStreams, 'stream');
         $write = array_column($this->writeStreams, 'stream');
         $except = null;
@@ -388,19 +399,14 @@ final class EventLoop
             return;
         }
 
-        // Filter out any invalid/closed streams before select
-        $read = array_filter($read, fn ($s) => is_resource($s) && get_resource_type($s) !== 'Unknown');
-        $write = array_filter($write, fn ($s) => is_resource($s) && get_resource_type($s) !== 'Unknown');
-
-        if (empty($read) && empty($write)) {
-            return;
-        }
-
         // Clear any previous errors
         error_clear_last();
 
-        // Non-blocking select with 10ms timeout
-        $changed = stream_select($read, $write, $except, 0, 10000);
+        // Non-blocking select with 10ms timeout. `@`-suppress the warning
+        // that stream_select emits if a resource is closed between the
+        // cleanup pass above and this call (still possible on a Fiber
+        // context switch). We already inspect the return value below.
+        $changed = @stream_select($read, $write, $except, 0, 10000);
 
         // Handle stream_select errors properly
         if ($changed === false) {
