@@ -18,7 +18,6 @@ use NoDiscard;
 use PDOException;
 use ReflectionClass;
 use RuntimeException;
-use stdClass;
 use Throwable;
 
 /**
@@ -122,13 +121,6 @@ abstract class Model implements JsonSerializable
     private static array $metadataCache = [];
 
     /**
-     * Classes currently being initialized with their initialization tokens.
-     * Token is used to detect ownership in concurrent Fiber scenarios.
-     * @var array<class-string, int>
-     */
-    private static array $metadataInitializing = [];
-
-    /**
      * Reporter invoked when a lazy relation load is detected in debug mode.
      *
      * `null` delegates to `error_log()`. Tests can swap in a capturing
@@ -209,10 +201,8 @@ abstract class Model implements JsonSerializable
     {
         if ($class !== null) {
             unset(self::$metadataCache[$class]);
-            unset(self::$metadataInitializing[$class]);
         } else {
             self::$metadataCache = [];
-            self::$metadataInitializing = [];
         }
     }
 
@@ -614,89 +604,29 @@ abstract class Model implements JsonSerializable
     /**
      * Get model metadata (cached).
      *
-     * Thread-safe for Fiber concurrency using atomic initialization pattern.
-     * If multiple Fibers attempt to initialize simultaneously, the operation
-     * is idempotent - the second initialization simply overwrites with
-     * identical data, which is safe.
+     * Fiber-safe by construction: ModelMetadata is a pure function of the
+     * class's static properties (table, primaryKey, fillable, casts, …),
+     * so if two Fibers both miss the cache they produce structurally
+     * identical objects, and whichever assignment lands last wins. No
+     * coordination primitives (no spin-wait, no initializing flag, no
+     * token) are needed — the earlier implementation's elaborate
+     * bookkeeping guarded against a race that can't produce an incorrect
+     * result.
      */
     protected static function metadata(): ModelMetadata
     {
-        $class = static::class;
-
-        // Fast path: already cached (most common case)
-        if (isset(self::$metadataCache[$class])) {
-            return self::$metadataCache[$class];
-        }
-
-        // Atomic claim: try to mark this class as initializing
-        // Use a unique token to detect if WE are the initializer
-        $initToken = spl_object_id(new stdClass());
-
-        // Outside a Fiber (traditional PHP-FPM / CLI) there is no concurrency:
-        // no other coroutine can be initializing the same class simultaneously.
-        // Skip the spin-wait entirely and claim directly.
-        if (Fiber::getCurrent() === null) {
-            self::$metadataInitializing[$class] = $initToken;
-        } else {
-            // Fiber context: another Fiber may be initializing — spin-wait.
-            $spinCount = 0;
-            $maxSpins = 1000;
-
-            while (true) {
-                // Check cache first (another Fiber may have finished)
-                if (isset(self::$metadataCache[$class])) {
-                    return self::$metadataCache[$class];
-                }
-
-                // Try to claim initialization
-                if (!isset(self::$metadataInitializing[$class])) {
-                    self::$metadataInitializing[$class] = $initToken;
-                    break;
-                }
-
-                // Another Fiber is initializing — yield and retry
-                if (++$spinCount > $maxSpins) {
-                    // Timeout: force proceed (initialization is idempotent)
-                    self::$metadataInitializing[$class] = $initToken;
-                    break;
-                }
-
-                Fiber::suspend();
-            }
-        }
-
-        try {
-            // Verify we still own the initialization (another Fiber didn't steal it)
-            // If cache is now set, another Fiber beat us - use their result
-            if (isset(self::$metadataCache[$class])) {
-                return self::$metadataCache[$class];
-            }
-
-            // We own initialization - create metadata
-            // This is idempotent: if two Fibers both reach here, they produce identical results
-            $metadata = new ModelMetadata(
-                class: $class,
-                table: static::getTable(),
-                primaryKey: static::$primaryKey,
-                incrementing: static::$incrementing,
-                keyType: static::$keyType,
-                timestamps: static::$timestamps,
-                createdAtColumn: static::$createdAtColumn,
-                updatedAtColumn: static::$updatedAtColumn,
-                fillable: static::$fillable,
-                casts: static::$casts,
-            );
-
-            // Store in cache
-            self::$metadataCache[$class] = $metadata;
-
-            return $metadata;
-        } finally {
-            // Only clear the flag if we set it (check our token)
-            if ((self::$metadataInitializing[$class] ?? null) === $initToken) {
-                unset(self::$metadataInitializing[$class]);
-            }
-        }
+        return self::$metadataCache[static::class] ??= new ModelMetadata(
+            class: static::class,
+            table: static::getTable(),
+            primaryKey: static::$primaryKey,
+            incrementing: static::$incrementing,
+            keyType: static::$keyType,
+            timestamps: static::$timestamps,
+            createdAtColumn: static::$createdAtColumn,
+            updatedAtColumn: static::$updatedAtColumn,
+            fillable: static::$fillable,
+            casts: static::$casts,
+        );
     }
 
     // ========================================
