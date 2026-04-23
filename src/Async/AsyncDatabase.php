@@ -11,18 +11,30 @@ use Throwable;
 /**
  * Deferred database wrapper using Fibers.
  *
- * WARNING: This does NOT provide true non-blocking I/O. PHP's PDO is
- * inherently synchronous, so each query blocks the event loop until
- * the database responds. The Deferred return type allows callers to
- * use a consistent async API, but queries execute sequentially.
+ * ⚠️  THIS CLASS IS NOT PARALLEL / NOT CONCURRENT.
  *
- * For true non-blocking database access, use amphp/mysql or
- * reactphp/mysql with their native event loops.
+ * The name is retained for backwards compatibility, but the behaviour
+ * is better described as "deferred sync": every call is enqueued on
+ * the event loop via `defer()` and then executed sequentially against
+ * a blocking PDO connection. Each query blocks the fiber until the
+ * database responds — there is no pipelining, no overlap, and no
+ * parallelism with other fibers waiting on other queries.
+ *
+ * Given ten `fetchAll` calls, expect wall-clock time ≈ Σ query
+ * durations, NOT max(query durations). If you need genuine
+ * parallelism, use a truly non-blocking driver such as amphp/mysql
+ * or reactphp/mysql with their native event loops.
  *
  * This wrapper is useful for:
- * - Consistent Deferred API across sync/async code paths
- * - Deferring execution to the next event loop tick
- * - Future migration to truly async drivers
+ *  - Consistent Deferred API across sync/async code paths.
+ *  - Deferring execution to the next event loop tick (e.g. to let
+ *    a response flush headers before a query runs).
+ *  - Future migration to truly async drivers without touching
+ *    calling code.
+ *
+ * Do NOT use this class when your goal is to run queries in
+ * parallel — it will silently serialise them and your latency
+ * budget will double.
  *
  * @example
  * $db = new AsyncDatabase($connection);
