@@ -18,7 +18,19 @@ final class ApcuCache implements CacheInterface
 {
     private string $prefix;
 
-    public function __construct(string $prefix = 'fw:')
+    private int $defaultTtl;
+
+    /**
+     * @param int $defaultTtl TTL (seconds) used when a caller passes
+     *                        null. Passing 0 directly to APCu means
+     *                        "no expiry" on current APCu builds, but
+     *                        the framework's own CacheInterface reads
+     *                        null as "use driver default", so we
+     *                        resolve that default here instead of
+     *                        tying framework semantics to APCu-
+     *                        specific zero-handling.
+     */
+    public function __construct(string $prefix = 'fw:', int $defaultTtl = 3600)
     {
         if (!extension_loaded('apcu')) {
             throw new RuntimeException('APCu extension is not loaded');
@@ -29,6 +41,7 @@ final class ApcuCache implements CacheInterface
         }
 
         $this->prefix = $prefix;
+        $this->defaultTtl = $defaultTtl;
     }
 
     /**
@@ -49,7 +62,7 @@ final class ApcuCache implements CacheInterface
 
     public function set(string $key, mixed $value, ?int $ttl = null): bool
     {
-        return apcu_store($this->prefix . $key, $value, $ttl ?? 0);
+        return apcu_store($this->prefix . $key, $value, $ttl ?? $this->defaultTtl);
     }
 
     public function has(string $key): bool
@@ -80,7 +93,7 @@ final class ApcuCache implements CacheInterface
         }
 
         $value = $callback();
-        apcu_store($prefixedKey, $value, $ttl ?? 0);
+        apcu_store($prefixedKey, $value, $ttl ?? $this->defaultTtl);
         return $value;
     }
 
@@ -102,7 +115,7 @@ final class ApcuCache implements CacheInterface
         foreach ($values as $key => $value) {
             $prefixed[$this->prefix . $key] = $value;
         }
-        $errors = apcu_store($prefixed, null, $ttl ?? 0);
+        $errors = apcu_store($prefixed, null, $ttl ?? $this->defaultTtl);
         return empty($errors);
     }
 
@@ -117,7 +130,7 @@ final class ApcuCache implements CacheInterface
 
         // Initialise if missing so the first increment starts from $step
         if (!apcu_exists($prefixedKey)) {
-            apcu_store($prefixedKey, 0, $ttl ?? 0);
+            apcu_store($prefixedKey, 0, $ttl ?? $this->defaultTtl);
         }
 
         return apcu_inc($prefixedKey, $step);
