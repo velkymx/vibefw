@@ -77,7 +77,10 @@ final class Application
         $this->request = new Request();
         $this->response = new Response();
         $this->router = new Router();
-        $this->csrf = new Csrf(fn () => $this->initSession());
+        $this->csrf = new Csrf(
+            fn () => $this->initSession(),
+            (string) ($_ENV['APP_KEY'] ?? getenv('APP_KEY') ?: ''),
+        );
         $this->commands = new CommandBus($this->container->resolver());
         $this->queries = new QueryBus($this->container->resolver());
 

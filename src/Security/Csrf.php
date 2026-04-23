@@ -20,6 +20,7 @@ final class Csrf
      */
     public const string HEADER_NAME = 'x-csrf-token';
     private const string SESSION_KEY = '_csrf_token';
+    private const string SESSION_SEED_KEY = '_csrf_seed';
 
     /**
      * Number of random bytes for token generation.
@@ -34,28 +35,47 @@ final class Csrf
     private Closure $sessionInitializer;
 
     /**
-     * @param Closure(): void $sessionInitializer Callable that starts the session
+     * Optional server secret (usually APP_KEY). When non-empty, the
+     * session stores only a random seed and the public token is
+     * `hash_hmac('sha256', seed, secret)`. Without the secret an
+     * attacker who reads the session file gets the seed but cannot
+     * reconstruct the token. Empty string keeps the legacy plaintext-
+     * in-session behaviour for backward compatibility.
      */
-    public function __construct(Closure $sessionInitializer)
+    private string $secret;
+
+    /**
+     * @param Closure(): void $sessionInitializer Callable that starts the session
+     * @param string $secret Optional server secret; when provided, session
+     *                       storage uses an HMAC seed instead of the raw token
+     */
+    public function __construct(Closure $sessionInitializer, string $secret = '')
     {
         $this->sessionInitializer = $sessionInitializer;
+        $this->secret = $secret;
     }
 
     public function getToken(): string
     {
         $this->ensureSession();
 
-        if (!isset($_SESSION[self::SESSION_KEY])) {
-            $_SESSION[self::SESSION_KEY] = $this->generateToken();
+        if ($this->secret !== '') {
+            $_SESSION[self::SESSION_SEED_KEY] ??= $this->generateToken();
+            return $this->deriveToken($_SESSION[self::SESSION_SEED_KEY]);
         }
 
+        $_SESSION[self::SESSION_KEY] ??= $this->generateToken();
         return $_SESSION[self::SESSION_KEY];
     }
 
     public function regenerateToken(): string
     {
-        // Ensure session is started before accessing $_SESSION
         $this->ensureSession();
+
+        if ($this->secret !== '') {
+            $_SESSION[self::SESSION_SEED_KEY] = $this->generateToken();
+            return $this->deriveToken($_SESSION[self::SESSION_SEED_KEY]);
+        }
 
         $_SESSION[self::SESSION_KEY] = $this->generateToken();
         return $_SESSION[self::SESSION_KEY];
@@ -65,7 +85,18 @@ final class Csrf
     {
         $this->ensureSession();
 
-        if ($token === null || !isset($_SESSION[self::SESSION_KEY])) {
+        if ($token === null) {
+            return false;
+        }
+
+        if ($this->secret !== '') {
+            if (!isset($_SESSION[self::SESSION_SEED_KEY])) {
+                return false;
+            }
+            return hash_equals($this->deriveToken($_SESSION[self::SESSION_SEED_KEY]), $token);
+        }
+
+        if (!isset($_SESSION[self::SESSION_KEY])) {
             return false;
         }
 
@@ -136,5 +167,10 @@ final class Csrf
     private function generateToken(): string
     {
         return bin2hex(random_bytes(self::TOKEN_BYTES));
+    }
+
+    private function deriveToken(string $seed): string
+    {
+        return hash_hmac('sha256', $seed, $this->secret);
     }
 }
