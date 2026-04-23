@@ -109,6 +109,17 @@ final class Cache implements CacheInterface
         return true;
     }
 
+    /**
+     * Memoise a callback in the cache.
+     *
+     * NOTE: this does NOT prevent duplicate work on a concurrent miss —
+     * two requests that miss at once will both invoke $callback. What it
+     * guarantees is convergence: after the callback returns, L2 is re-read;
+     * if another request already stored a value while we were computing,
+     * that existing value is adopted and returned in place of our own.
+     * Full stampede prevention needs a lock primitive on CacheInterface,
+     * which is out of scope here.
+     */
     public function remember(string $key, callable $callback, ?int $ttl = null): mixed
     {
         // Check L1
@@ -126,8 +137,22 @@ final class Cache implements CacheInterface
             }
         }
 
-        // Compute and store
+        // Compute. Another request may also be computing in parallel;
+        // the last writer would otherwise clobber the first, producing
+        // inconsistent results across concurrent callers when the
+        // callback has any non-determinism. Re-check L2 post-callback
+        // and adopt the concurrent winner if one exists.
         $value = $callback();
+
+        if ($this->useL2) {
+            $marker = self::missMarker();
+            $existing = $this->l2->get($key, $marker);
+            if ($existing !== $marker) {
+                $this->l1->set($key, $existing, $ttl);
+                return $existing;
+            }
+        }
+
         $this->set($key, $value, $ttl);
         return $value;
     }
