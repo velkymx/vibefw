@@ -99,6 +99,16 @@ final class TaggedCache implements CacheInterface
 
     /**
      * Generate a tagged cache key.
+     *
+     * The underlying cache sees a deterministic string derived from the
+     * tag set and the user key. Tag segments are joined with `|` and
+     * the user key is appended with an explicit `k:` marker so the
+     * tag-part / key-part boundary is unambiguous.
+     *
+     * The user key is base64-encoded so it cannot re-introduce `|` or
+     * `:` and alias a different `(tags, key)` tuple onto the same
+     * underlying slot — see the collision reproducer in
+     * `TaggedCacheKeyCollisionTest::keyContainingPipeDoesNotCollideWithMultiTagInstance`.
      */
     private function taggedKey(string $key): string
     {
@@ -106,7 +116,7 @@ final class TaggedCache implements CacheInterface
         foreach ($this->tags as $tag) {
             $tagVersions[] = $tag . ':' . $this->getTagVersion($tag);
         }
-        return implode('|', $tagVersions) . '|' . $key;
+        return implode('|', $tagVersions) . '|k:' . base64_encode($key);
     }
 
     /**
