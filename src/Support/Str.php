@@ -14,6 +14,9 @@ use Countable;
  */
 final class Str
 {
+    private const int CACHE_LIMIT = 512;
+    private const int CACHE_TRIM_TO = 256;
+
     /**
      * The cache of studly-cased words.
      *
@@ -31,9 +34,27 @@ final class Str
     /**
      * The cache of snake-cased words.
      *
-     * @var array<string, string>
+     * @var array<string, array<string, string>>
      */
     private static array $snakeCache = [];
+
+    /**
+     * FIFO-trim a cache down to CACHE_TRIM_TO outer keys once it hits
+     * CACHE_LIMIT. Bounded by OUTER key count so a workload with many
+     * nested entries per outer key (e.g. snake() with many delimiters)
+     * cannot trip an array_slice() that accidentally wipes everything.
+     *
+     * @template TVal
+     * @param array<string, TVal> $cache
+     * @return array<string, TVal>
+     */
+    private static function trimCache(array $cache): array
+    {
+        if (count($cache) < self::CACHE_LIMIT) {
+            return $cache;
+        }
+        return array_slice($cache, count($cache) - self::CACHE_TRIM_TO, null, true);
+    }
 
     /**
      * Get a new Stringable object from the given string.
@@ -134,9 +155,7 @@ final class Str
             return self::$camelCache[$value];
         }
 
-        if (count(self::$camelCache) >= 512) {
-            self::$camelCache = array_slice(self::$camelCache, 256, null, true);
-        }
+        self::$camelCache = self::trimCache(self::$camelCache);
 
         return self::$camelCache[$value] = lcfirst(self::studly($value));
     }
@@ -599,12 +618,11 @@ final class Str
             return self::$snakeCache[$key][$delimiter];
         }
 
-        // Count total cached entries across all delimiters, not just top-level keys.
-        // Each word can have multiple entries (one per delimiter), so a simple
-        // count() on the outer array would undercount and allow unbounded growth.
-        if (array_sum(array_map('count', self::$snakeCache)) >= 512) {
-            self::$snakeCache = array_slice(self::$snakeCache, 256, null, true);
-        }
+        // Bound by OUTER key count. The previous `array_sum(array_map('count', ...))`
+        // counted nested entries but still sliced the outer array — any workload
+        // with few source strings and many delimiters (nested >= 512, outer < 256)
+        // would wipe the cache entirely when slice ran past the end.
+        self::$snakeCache = self::trimCache(self::$snakeCache);
 
         if (!ctype_lower($value)) {
             $value = preg_replace('/\s+/u', '', ucwords($value));
@@ -653,9 +671,7 @@ final class Str
             return self::$studlyCache[$key];
         }
 
-        if (count(self::$studlyCache) >= 512) {
-            self::$studlyCache = array_slice(self::$studlyCache, 256, null, true);
-        }
+        self::$studlyCache = self::trimCache(self::$studlyCache);
 
         $words = explode(' ', self::replace(['-', '_'], ' ', $value));
 
