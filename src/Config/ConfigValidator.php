@@ -85,11 +85,21 @@ final class ConfigValidator
                 $errors[] = "Invalid value for $name.$key. Allowed: $allowed";
             }
 
-            // Min/max validation for numbers
-            if (isset($rules['min']) && is_numeric($value) && $value < $rules['min']) {
+            // Min/max validation for numbers.
+            //
+            // The `is_numeric($value)` guard already rejects strings
+            // like "10 apples" (is_numeric returns false for mixed
+            // content), so min/max never silently fires on non-
+            // numeric input. The explicit `(float)` cast below makes
+            // the comparison independent of PHP's implicit numeric-
+            // string coercion rules (which have drifted across
+            // versions and now warn in some contexts) — a numeric
+            // string like "50" or "5e1" is compared as 50.0 with no
+            // ambiguity.
+            if (isset($rules['min']) && is_numeric($value) && (float) $value < $rules['min']) {
                 $errors[] = "$name.$key must be at least {$rules['min']}";
             }
-            if (isset($rules['max']) && is_numeric($value) && $value > $rules['max']) {
+            if (isset($rules['max']) && is_numeric($value) && (float) $value > $rules['max']) {
                 $errors[] = "$name.$key must be at most {$rules['max']}";
             }
 
