@@ -458,11 +458,22 @@ final class AsyncHttp
 
     /**
      * Check if an IP address is within a CIDR range.
+     *
+     * Rejects malformed CIDR inputs ("127.0.0.0", "10.0.0.0/abc")
+     * up-front instead of letting them silently degrade into
+     * `bits=0` which matches everything — a quietly-dangerous
+     * default inside an SSRF allow-list.
      */
     private function ipInCidr(string $ip, string $cidr): bool
     {
-        [$range, $bits] = explode('/', $cidr, 2);
-        $bits = (int) $bits;
+        if (!str_contains($cidr, '/')) {
+            return false;
+        }
+        [$range, $bitsStr] = explode('/', $cidr, 2);
+        if ($bitsStr === '' || !ctype_digit($bitsStr)) {
+            return false;
+        }
+        $bits = (int) $bitsStr;
 
         $ipPacked = @inet_pton($ip);
         $rangePacked = @inet_pton($range);
@@ -472,7 +483,14 @@ final class AsyncHttp
         }
 
         // IPv4 and IPv6 have different lengths — must match
-        if (strlen($ipPacked) !== strlen($rangePacked)) {
+        $addrLen = strlen($ipPacked);
+        if ($addrLen !== strlen($rangePacked)) {
+            return false;
+        }
+
+        // Prefix length must fit the address family (32 for v4, 128 for v6).
+        $maxBits = $addrLen * 8;
+        if ($bits > $maxBits) {
             return false;
         }
 
@@ -485,9 +503,12 @@ final class AsyncHttp
             return false;
         }
 
-        // Compare remaining bits
-        if ($remainingBits > 0 && $fullBytes < strlen($ipPacked)) {
-            $mask = 0xFF << (8 - $remainingBits);
+        // Compare the partial byte under an explicit 8-bit mask so the
+        // shift's implicit wider-integer result can't mislead a future
+        // reader. `(0xFF << (8-R)) & 0xFF` is the canonical top-R-bits
+        // mask for a single byte.
+        if ($remainingBits > 0 && $fullBytes < $addrLen) {
+            $mask = (0xFF << (8 - $remainingBits)) & 0xFF;
             if ((ord($ipPacked[$fullBytes]) & $mask) !== (ord($rangePacked[$fullBytes]) & $mask)) {
                 return false;
             }
