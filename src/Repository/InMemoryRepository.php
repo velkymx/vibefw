@@ -242,7 +242,22 @@ abstract class InMemoryRepository implements Repository
     }
 
     /**
-     * Match a LIKE pattern.
+     * Match an SQL-style LIKE pattern.
+     *
+     * Walks the pattern byte-by-byte so `%`, `_`, and their `\`-escaped
+     * forms are handled directly instead of through a str_replace
+     * double-dance (which couldn't work: `preg_quote` never touched
+     * `%`/`_` so the second pass had nothing to undo, and any
+     * backslash in the pattern corrupted the escapes it actually
+     * cared about).
+     *
+     * Rules:
+     *  - `%` → `.*`
+     *  - `_` → `.`
+     *  - `\%`, `\_`, `\\` → literal `%`, `_`, `\` respectively
+     *  - Every other byte is literal (dots, brackets, pipes, parens,
+     *    `+`, `*`, etc. are NOT regex metacharacters in LIKE).
+     *  - The match is case-insensitive (historical behaviour preserved).
      */
     protected function matchesLike(mixed $value, string $pattern): bool
     {
@@ -250,10 +265,33 @@ abstract class InMemoryRepository implements Repository
             return false;
         }
 
-        // Convert SQL LIKE pattern to regex
-        $regex = '/^' . str_replace(['%', '_'], ['.*', '.'], preg_quote($pattern, '/')) . '$/i';
-        $regex = str_replace(['\\%', '\\_', '\\.*', '\\.'], ['%', '_', '.*', '.'], $regex);
+        $regex = '';
+        $len = strlen($pattern);
+        for ($i = 0; $i < $len; $i++) {
+            $c = $pattern[$i];
+            if ($c === '\\' && $i + 1 < $len) {
+                $next = $pattern[$i + 1];
+                if ($next === '%' || $next === '_' || $next === '\\') {
+                    $regex .= preg_quote($next, '/');
+                    $i++;
+                    continue;
+                }
+                // Unknown escape: keep the backslash literal and let
+                // the next byte be processed normally.
+                $regex .= preg_quote('\\', '/');
+                continue;
+            }
+            if ($c === '%') {
+                $regex .= '.*';
+                continue;
+            }
+            if ($c === '_') {
+                $regex .= '.';
+                continue;
+            }
+            $regex .= preg_quote($c, '/');
+        }
 
-        return preg_match($regex, $value) === 1;
+        return preg_match('/^' . $regex . '$/i', $value) === 1;
     }
 }
