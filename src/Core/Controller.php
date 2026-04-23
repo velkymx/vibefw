@@ -157,22 +157,58 @@ abstract class Controller
     /**
      * Redirect back to the previous page.
      *
-     * Validates the Referer header is same-origin to prevent open redirects.
-     * Attacker-controlled Referer headers are rejected; falls back to '/'.
+     * Validates the Referer header is same-origin to prevent open redirects
+     * and script-scheme XSS. Anything that isn't clearly same-host
+     * http(s) or a clean absolute path falls back to '/'.
      */
     protected function back(): Response
     {
         $referer = $_SERVER['HTTP_REFERER'] ?? '/';
-        $refHost = parse_url($referer, PHP_URL_HOST);
         $appHost = $_SERVER['HTTP_HOST'] ?? '';
 
-        // Reject any Referer that names a different host (or protocol-relative URLs
-        // which parse_url resolves to a host without a scheme).
-        if ($refHost !== null && $refHost !== $appHost) {
+        if (!self::isSafeBackTarget($referer, $appHost)) {
             $referer = '/';
         }
 
         return $this->redirect($referer);
+    }
+
+    /**
+     * Same-origin check for `back()`. A Referer is safe when it is either:
+     *
+     *  - A clean absolute path (`/foo`, `/foo?bar=baz`) that is NOT a
+     *    protocol-relative URL (`//evil.com`) and doesn't start with a
+     *    backslash-trick (`/\evil.com`, `\/evil.com`) some browsers
+     *    normalise to a scheme.
+     *  - A full http(s) URL whose host exactly matches the request host.
+     *
+     * Script schemes (`javascript:`, `data:`, `vbscript:`) parse to a
+     * null host and would previously slip past the old `$refHost !== null`
+     * check, so the scheme must be explicitly whitelisted.
+     */
+    private static function isSafeBackTarget(string $referer, string $appHost): bool
+    {
+        if ($referer === '' || $referer === '/') {
+            return true;
+        }
+
+        if ($referer[0] === '/') {
+            // Reject `//evil.com`, `/\evil.com`, `/\\evil.com`, etc.
+            return !isset($referer[1]) || ($referer[1] !== '/' && $referer[1] !== '\\');
+        }
+
+        // Anything else must be a full URL whose scheme is http(s) AND host
+        // matches the request host. parse_url() happily returns partial
+        // components for malformed input, so every piece is inspected.
+        $parts = parse_url($referer);
+        if (!is_array($parts)) {
+            return false;
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = (string) ($parts['host'] ?? '');
+
+        return ($scheme === 'http' || $scheme === 'https') && $host !== '' && $host === $appHost;
     }
 
     /**

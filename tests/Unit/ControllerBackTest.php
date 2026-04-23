@@ -84,10 +84,19 @@ final class ControllerBackTest extends TestCase
     public static function externalRefererProvider(): array
     {
         return [
-            'evil domain'           => ['https://evil.com/steal'],
-            'subdomain attack'      => ['https://evil.myapp.test/phish'],
-            'protocol-relative'     => ['//evil.com/phish'],
-            'open redirect attempt' => ['https://evil.com/fake?url=myapp.test'],
+            'evil domain'            => ['https://evil.com/steal'],
+            'subdomain attack'       => ['https://evil.myapp.test/phish'],
+            'protocol-relative'      => ['//evil.com/phish'],
+            'open redirect attempt'  => ['https://evil.com/fake?url=myapp.test'],
+            // Item #25: schemes with no host still parse to a null host and
+            // slipped past the old `refHost === null` exemption.
+            'javascript xss'         => ['javascript:alert(1)'],
+            'data uri'               => ['data:text/html,<script>alert(1)</script>'],
+            'vbscript xss'           => ['vbscript:msgbox(1)'],
+            // Backslash-prefixed path tricks: some browsers normalise `/\x`
+            // or `\/x` into `//x` and follow it as protocol-relative.
+            'backslash protocol'     => ['/\\evil.com/path'],
+            'reversed protocol'      => ['\\/evil.com/path'],
         ];
     }
 
