@@ -187,6 +187,16 @@ final class FileCache implements CacheInterface
             $current = is_array($data) ? (int) ($data['value'] ?? 0) : 0;
             $newValue = $current + $step;
 
+            // Clamp at zero when crossing from non-negative into negative.
+            // increment() models a counter; a caller who has never stored
+            // a negative value shouldn't suddenly see one because a
+            // decrement step exceeded the current tally. A caller who
+            // has deliberately stored a negative value (current < 0)
+            // keeps their existing semantics — no retroactive clamp.
+            if ($newValue < 0 && $current >= 0) {
+                $newValue = 0;
+            }
+
             if ($expires === null) {
                 $expires = $ttl !== null ? time() + $ttl : null;
             }
