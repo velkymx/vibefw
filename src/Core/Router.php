@@ -692,6 +692,26 @@ final class Router
             );
         }
 
+        // ReDoS guard: at most ONE unbounded quantifier per constraint.
+        // Adjacent unbounded quantifiers on overlapping character classes
+        // (e.g. `[a-z]+[a-z]+`, `.+.+`, `a+b+`) trigger catastrophic
+        // backtracking on non-matching input. Parens are already blocked
+        // above, so this is the remaining ReDoS foothold.
+        //
+        // Unbounded: `+`, `*`, `{n,}`, `{n,m}` where m is absent.
+        // Bounded `{n,m}` with a finite upper bound cannot explode.
+        // Escaped quantifiers (`\+`, `\*`) are literal and don't count.
+        $unescaped = preg_replace('/\\\\./', '', $constraint) ?? '';
+        $unboundedCount = preg_match_all('/[+*]|\{\d+,\}/', $unescaped);
+        if ($unboundedCount > 1) {
+            throw new InvalidArgumentException(
+                "Route constraint for '{$paramName}' has {$unboundedCount} unbounded quantifiers " .
+                "(`+`, `*`, `{n,}`) — catastrophic backtracking / ReDoS risk. " .
+                "Use at most one unbounded quantifier, or use bounded `{n,m}` repetitions. " .
+                "Predefined constraints: " . implode(', ', array_keys(self::SAFE_CONSTRAINTS))
+            );
+        }
+
         // Test compile the pattern to ensure it's valid regex
         $testPattern = '#' . $constraint . '#';
         if (@preg_match($testPattern, '') === false) {
