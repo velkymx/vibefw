@@ -154,13 +154,32 @@ final class AsyncHttp
             throw new RuntimeException('Invalid URL: missing host');
         }
 
-        // SSRF protection: resolve hostname and reject private/internal IPs
-        if ($this->ssrfProtection) {
-            $this->validateHost($host);
-        }
+        // SSRF protection: resolve hostname once and pin the connect to
+        // the approved IP. This closes the DNS-rebinding window between
+        // validation and the subsequent stream_socket_client() lookup.
+        // When protection is off we fall back to the hostname literal
+        // so public DNS still does its job.
+        $connectTarget = $this->ssrfProtection ? $this->validateHost($host) : $host;
 
         $transport = $scheme === 'https' ? 'ssl' : 'tcp';
-        $address = "{$transport}://{$host}:{$port}";
+        $address = "{$transport}://{$connectTarget}:{$port}";
+
+        // For TLS connections to a pinned IP we must tell OpenSSL which
+        // SNI to send and which name to match the cert against —
+        // otherwise peer verification fails because the IP doesn't
+        // appear in the certificate's SANs.
+        $context = stream_context_create(
+            $scheme === 'https'
+                ? [
+                    'ssl' => [
+                        'peer_name' => $host,
+                        'SNI_enabled' => true,
+                        'verify_peer' => true,
+                        'verify_peer_name' => true,
+                    ],
+                ]
+                : []
+        );
 
         $errno = 0;
         $errstr = '';
@@ -169,7 +188,8 @@ final class AsyncHttp
             $errno,
             $errstr,
             (float) $this->timeout,
-            STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT
+            STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT,
+            $context
         );
 
         if (!$socket) {
@@ -378,14 +398,30 @@ final class AsyncHttp
     /**
      * Validate that the target host is not a private/internal address (SSRF protection).
      *
-     * @throws RuntimeException If the host resolves to a blocked IP range
+     * Returns the first safe resolved IP so the caller can connect
+     * directly to it — closing the DNS-rebinding window between
+     * validation and the actual `stream_socket_client()` resolve.
+     *
+     * @throws RuntimeException If the host resolves to a blocked IP range or cannot be resolved.
      */
-    private function validateHost(string $host): void
+    private function validateHost(string $host): string
     {
-        // Resolve hostname to IP
+        // If the caller handed us a literal IP, honour it directly so
+        // numeric hosts don't round-trip through gethostbynamel (which
+        // still works for IPv4 literals but is wasted work).
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            if ($this->isBlockedIp($host)) {
+                throw new RuntimeException(
+                    "SSRF protection: request to {$host} blocked (resolves to private/internal IP {$host}). " .
+                    "Use withoutSsrfProtection() for trusted internal services."
+                );
+            }
+            return $host;
+        }
+
         $ips = gethostbynamel($host);
 
-        if ($ips === false) {
+        if ($ips === false || $ips === []) {
             throw new RuntimeException("Could not resolve hostname: {$host}");
         }
 
@@ -397,6 +433,8 @@ final class AsyncHttp
                 );
             }
         }
+
+        return $ips[0];
     }
 
     /**
