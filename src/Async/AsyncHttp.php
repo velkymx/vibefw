@@ -43,6 +43,55 @@ final class AsyncHttp
     private bool $ssrfProtection = true;
 
     /**
+     * RFC 7230 §3.2.6 token grammar — the only bytes permitted in a
+     * header name. No spaces, no separators, no control chars, no
+     * non-ASCII.
+     */
+    private const string HEADER_NAME_TOKEN = "/^[!#$%&'*+\\-.^_`|~0-9A-Za-z]+$/";
+
+    /**
+     * Reject header name/value pairs that could enable response
+     * splitting or request smuggling. The old `[\r\n]`-only check
+     * missed every other control byte (NUL, DEL, VT, FF, bare CR/LF)
+     * and silently accepted header names containing spaces, colons,
+     * tabs, or non-ASCII — all of which mangle the wire format.
+     *
+     * Rules:
+     *   - Name must be a non-empty RFC 7230 token.
+     *   - Value must contain no C0 control byte except HTAB, and no
+     *     DEL (0x7F). High bytes (0x80–0xFF) are permitted as
+     *     obs-text, matching PHP/cURL behavior.
+     *
+     * @throws RuntimeException with a sanitized (hex-escaped) marker
+     *     identifying the offending header, so the exception message
+     *     itself can't inherit injected control characters.
+     */
+    private static function assertValidHeader(string $name, string $value): void
+    {
+        if ($name === '' || preg_match(self::HEADER_NAME_TOKEN, $name) !== 1) {
+            throw new RuntimeException(
+                "HTTP header injection detected: invalid name '" . self::sanitizeForError($name) . "'"
+            );
+        }
+
+        // Any byte below SP except HTAB, plus DEL.
+        if (preg_match('/[\x00-\x08\x0A-\x1F\x7F]/', $value) === 1) {
+            throw new RuntimeException(
+                "HTTP header injection detected in '{$name}': value contains control bytes"
+            );
+        }
+    }
+
+    private static function sanitizeForError(string $s): string
+    {
+        return preg_replace_callback(
+            '/[^\x20-\x7E]/',
+            static fn (array $m): string => sprintf('\\x%02X', ord($m[0])),
+            $s
+        ) ?? '';
+    }
+
+    /**
      * Disable SSRF protection for trusted internal service calls.
      */
     public function withoutSsrfProtection(): self
@@ -142,11 +191,8 @@ final class AsyncHttp
             }
         }
 
-        // Validate headers against CRLF injection
         foreach ($allHeaders as $name => $value) {
-            if (preg_match("/[\r\n]/", (string) $name) || preg_match("/[\r\n]/", (string) $value)) {
-                throw new RuntimeException("HTTP header injection detected in '{$name}'");
-            }
+            self::assertValidHeader((string) $name, (string) $value);
         }
 
         $request = "{$method} {$path} HTTP/1.1\r\n";
