@@ -26,9 +26,25 @@ final class Logger
     private bool $enabled;
 
     /**
-     * Whether write failures should be reported (set to false after first failure to prevent loops).
+     * Cap on how many *consecutive* write failures get reported before
+     * we start swallowing them. Prevents a permanently-broken log path
+     * from spewing an unbounded stream of identical error messages,
+     * while still recovering automatically once a single write
+     * succeeds (see `$consecutiveWriteFailures` reset below).
      */
-    private bool $reportWriteFailures = true;
+    private const int MAX_REPORTED_FAILURES = 3;
+
+    /** Running count of consecutive `file_put_contents` failures. Reset on success. */
+    private int $consecutiveWriteFailures = 0;
+
+    /**
+     * Pluggable reporter for write failures. Defaults to stderr (or
+     * `error_log()` when STDERR isn't defined, e.g. mod_php). Tests
+     * swap it to capture reports without polluting the real stderr.
+     *
+     * @var (callable(string): void)|null
+     */
+    private $failureReporter = null;
 
     public function __construct(?string $path = null, ?LogLevel $minimumLevel = null)
     {
@@ -104,18 +120,43 @@ final class Logger
             @chmod($logFile, 0o640);
         }
 
-        // Handle write failure - write to stderr as fallback
-        if ($result === false && $this->reportWriteFailures) {
-            $this->reportWriteFailures = false; // Prevent infinite loops
-            $errorMessage = "[LOGGER ERROR] Failed to write to log file: {$this->getLogFile()}\n";
-            $errorMessage .= "[ORIGINAL MESSAGE] {$entry}\n";
-
-            // Write to stderr as fallback (visible in CLI and server error logs)
-            if (defined('STDERR')) {
-                fwrite(STDERR, $errorMessage);
-            } else {
-                error_log($errorMessage);
+        if ($result === false) {
+            $this->consecutiveWriteFailures++;
+            if ($this->consecutiveWriteFailures <= self::MAX_REPORTED_FAILURES) {
+                $errorMessage = "[LOGGER ERROR] Failed to write to log file: {$this->getLogFile()}\n";
+                $errorMessage .= "[ORIGINAL MESSAGE] {$entry}\n";
+                $this->reportWriteFailure($errorMessage);
             }
+        } elseif ($this->consecutiveWriteFailures > 0) {
+            // Recovery: one good write resets the counter so reporting resumes
+            // for the next outage.
+            $this->consecutiveWriteFailures = 0;
+        }
+    }
+
+    /**
+     * Install a custom reporter for write failures. Primarily a testing
+     * seam, but also lets containers route failures through a dedicated
+     * alerting channel.
+     *
+     * @param callable(string): void $reporter
+     */
+    public function setFailureReporter(callable $reporter): void
+    {
+        $this->failureReporter = $reporter;
+    }
+
+    private function reportWriteFailure(string $errorMessage): void
+    {
+        if ($this->failureReporter !== null) {
+            ($this->failureReporter)($errorMessage);
+            return;
+        }
+
+        if (defined('STDERR')) {
+            fwrite(STDERR, $errorMessage);
+        } else {
+            error_log($errorMessage);
         }
     }
 
@@ -245,9 +286,15 @@ final class Logger
 
     private function ensureDirectoryExists(): void
     {
-        if (!is_dir($this->path)) {
-            mkdir($this->path, 0o750, true);
+        if (is_dir($this->path)) {
+            return;
         }
+
+        // Best-effort: suppress warnings so a misconfigured path (existing
+        // file, unwritable parent, etc.) doesn't noise up every
+        // constructor call. The failure surfaces on the next write
+        // attempt where it's reported through `reportWriteFailure`.
+        @mkdir($this->path, 0o750, true);
     }
 
     /**
