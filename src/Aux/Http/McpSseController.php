@@ -24,7 +24,7 @@ final class McpSseController extends Controller
 
     public function sse(Request $request): StreamedResponse
     {
-        $heartbeat = $this->app->config('aux.sse_heartbeat_seconds', 15);
+        $heartbeat = (int) $this->app->config('aux.sse_heartbeat_seconds', 15);
 
         return $this->streamed(function () use ($heartbeat): void {
             while (ob_get_level() > 0) {
@@ -34,10 +34,21 @@ final class McpSseController extends Controller
             echo "event: endpoint\ndata: /mcp/messages\n\n";
             flush();
 
+            // Schedule heartbeats against wall-clock. A tight usleep()
+            // tick lets the worker notice `connection_aborted()`
+            // within ~100ms — a full-interval blocking wait would pin
+            // the worker fiber for the whole heartbeat and starve
+            // peer connections under load.
+            $tickMicros = 100_000;
+            $nextPingAt = microtime(true) + $heartbeat;
+
             while (!connection_aborted()) {
-                echo ": ping\n\n";
-                flush();
-                sleep($heartbeat);
+                if (microtime(true) >= $nextPingAt) {
+                    echo ": ping\n\n";
+                    flush();
+                    $nextPingAt = microtime(true) + $heartbeat;
+                }
+                usleep($tickMicros);
             }
         });
     }
