@@ -169,8 +169,10 @@ final class Auth
             return Option::some($contextUser);
         }
 
+        $sessionReady = self::ensureSessionStarted();
+
         // Try session
-        if (isset($_SESSION[self::SESSION_KEY])) {
+        if ($sessionReady && isset($_SESSION[self::SESSION_KEY])) {
             $sessionUserId = $_SESSION[self::SESSION_KEY];
 
             // Validate session user ID is a non-empty integer or string (UUID support)
@@ -198,11 +200,14 @@ final class Auth
 
         // Try remember token
         if (isset($_COOKIE[self::REMEMBER_COOKIE])) {
-            $userFromCookie = self::getUserFromRememberToken($_COOKIE[self::REMEMBER_COOKIE]);
+            $userFromCookie = $_COOKIE[self::REMEMBER_COOKIE]
+                |> (static fn (string $token): ?Model => self::getUserFromRememberToken($token));
 
             if ($userFromCookie instanceof Model) {
                 self::setContextUser($userFromCookie);
-                $_SESSION[self::SESSION_KEY] = $userFromCookie->id;
+                if ($sessionReady) {
+                    $_SESSION[self::SESSION_KEY] = $userFromCookie->id;
+                }
                 return Option::some($userFromCookie);
             }
         }

@@ -126,6 +126,7 @@ final class CanMiddleware implements MiddlewareInterface
     private function storeIntendedUrl(string $url): void
     {
         if ($this->isSafeRedirectUrl($url)) {
+            $this->app->initSession();
             $_SESSION['_intended_url'] = $url;
         }
     }
