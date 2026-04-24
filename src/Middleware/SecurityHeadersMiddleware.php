@@ -22,34 +22,37 @@ final class SecurityHeadersMiddleware implements MiddlewareInterface
         $response = $next($request);
 
         if ($response instanceof Response) {
-            $this->applySecurityHeaders($response);
+            $response = $this->applySecurityHeaders($response);
         }
 
         return $response;
     }
 
-    private function applySecurityHeaders(Response $response): void
+    private function applySecurityHeaders(Response $response): Response
     {
-        $response->header('X-Content-Type-Options', 'nosniff');
-
-        $response->header('X-Frame-Options', 'SAMEORIGIN');
-
-        $response->header('X-XSS-Protection', '1; mode=block');
-
-        $response->header('Referrer-Policy', 'strict-origin-when-cross-origin');
-
-        $response->header('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+        $response = $response
+            ->header('X-Content-Type-Options', 'nosniff')
+            ->header('X-Frame-Options', 'SAMEORIGIN')
+            ->header('X-XSS-Protection', '1; mode=block')
+            ->header('Referrer-Policy', 'strict-origin-when-cross-origin')
+            ->header('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
         if ($this->app->request->isSecure()) {
-            $response->header(
+            $response = $response->header(
                 'Strict-Transport-Security',
                 'max-age=31536000; includeSubDomains; preload'
             );
         }
 
+        // Only emit CSP for a concrete non-empty string. Null, false,
+        // empty string, arrays, and numeric config values are all
+        // treated as "do not emit" — stringifying a bool/array/int into
+        // a CSP header is worse than no header at all.
         $csp = $this->app->config('app.csp');
-        if ($csp !== null) {
-            $response->header('Content-Security-Policy', $csp);
+        if (is_string($csp) && $csp !== '') {
+            $response = $response->header('Content-Security-Policy', $csp);
         }
+
+        return $response;
     }
 }
