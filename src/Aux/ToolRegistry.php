@@ -172,10 +172,12 @@ final class ToolRegistry
                 if ($expectedType !== null) {
                     $valid = match ($expectedType) {
                         'string' => is_string($value),
-                        'integer', 'number' => is_int($value),
+                        'integer' => is_int($value),
+                        'number' => is_int($value) || is_float($value),
                         'boolean' => is_bool($value),
                         'array' => is_array($value),
-                        'object' => is_array($value),
+                        'object' => is_object($value)
+                            || (is_array($value) && ($value === [] || !array_is_list($value))),
                         'null' => $value === null,
                         default => true,
                     };
