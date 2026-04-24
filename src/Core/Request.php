@@ -38,8 +38,12 @@ final class Request
 
     public readonly array $headers;
 
+    /** @var array<string, string> */
+    public readonly array $cookies;
+
     /**
      * @param array<string, mixed>|null $parsedJson
+     * @param array<string, string>|null $cookies
      */
     public function __construct(
         ?array $query = null,
@@ -50,7 +54,8 @@ final class Request
         private ?string $rawBody = null,
         private ?array $parsedJson = null,
         ?string $method = null,
-        ?string $uri = null
+        ?string $uri = null,
+        ?array $cookies = null,
     ) {
         if ($query === null && $post === null && $server === null && $files === null && $headers === null) {
             $this->query = $_GET;
@@ -58,17 +63,34 @@ final class Request
             $this->server = $_SERVER;
             $this->files = $_FILES;
             $this->headers = self::parseHeadersFromGlobals($_SERVER);
+            $this->cookies = $cookies ?? $_COOKIE;
         } else {
             $this->query = $query ?? [];
             $this->post = $post ?? [];
             $this->server = $server ?? [];
             $this->files = $files ?? [];
             $this->headers = $headers ?? [];
+            $this->cookies = $cookies ?? [];
         }
 
         $this->fullUri = $uri ?? $this->server['REQUEST_URI'] ?? '/';
         $this->uri = $this->parseUri($this->fullUri);
         $this->method = $method ?? $this->resolveMethod();
+    }
+
+    /**
+     * Read a cookie from this request. Request-scoped — does NOT touch
+     * the $_COOKIE superglobal, so concurrent requests in worker/Fiber
+     * mode stay isolated.
+     */
+    public function cookie(string $name, mixed $default = null): mixed
+    {
+        return $this->cookies[$name] ?? $default;
+    }
+
+    public function hasCookie(string $name): bool
+    {
+        return array_key_exists($name, $this->cookies);
     }
 
     public static function createFromGlobals(): self

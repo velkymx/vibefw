@@ -39,9 +39,12 @@ class GuestPageCacheMiddleware implements MiddlewareInterface
             return $next($request);
         }
 
-        // SECURITY: Never cache for users with session cookies
-        // They might be authenticated or have session-specific state
-        if (isset($_COOKIE[session_name()])) {
+        // SECURITY: Never cache for users with session cookies.
+        // They might be authenticated or have session-specific state.
+        // Request::hasCookie() reads request-scoped state (not the
+        // cookie superglobal) so concurrent requests in worker/Fiber
+        // mode don't leak each other's session presence.
+        if ($request->hasCookie(session_name())) {
             return $next($request);
         }
 
