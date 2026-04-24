@@ -147,7 +147,11 @@ final class QueryWatcher implements ResettableInterface
                     continue;
                 }
             }
-            $location = ($frame['file'] ?? 'unknown') . ':' . ($frame['line'] ?? 0);
+            // Emit basename only: absolute paths in logs document the
+            // server's directory structure without adding debuggability
+            // (the line number is what matters for navigation).
+            $file = isset($frame['file']) ? basename($frame['file']) : 'unknown';
+            $location = $file . ':' . ($frame['line'] ?? 0);
             $call = ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? 'unknown');
             $relevant[] = "{$call} ({$location})";
             if (count($relevant) >= 3) {
