@@ -43,7 +43,7 @@ class PageCacheMiddleware implements MiddlewareInterface
             return $next($request);
         }
 
-        $cacheKey = 'page:static:' . md5($request->uri);
+        $cacheKey = $this->buildCacheKey($request);
 
         // Check cache (early check in Application may have already served this)
         $cached = $this->cache->get($cacheKey);
@@ -62,5 +62,18 @@ class PageCacheMiddleware implements MiddlewareInterface
         }
 
         return $response;
+    }
+
+    /**
+     * Compose a cache key that partitions on method, host, and the
+     * full URI (path + query string). Keyed with sha256 so a
+     * wildcard-host multi-tenant app, or two distinct query strings
+     * on the same path, do not collide.
+     */
+    private function buildCacheKey(Request $request): string
+    {
+        $host = (string) ($request->server['HTTP_HOST'] ?? '');
+        $components = $request->method . '|' . $host . '|' . $request->fullUri;
+        return 'page:static:' . hash('sha256', $components);
     }
 }
