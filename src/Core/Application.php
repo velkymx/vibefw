@@ -87,6 +87,7 @@ final class Application
         // 4. Initialize Provider Registry
         $this->providers = new ProviderRegistry($this, $this->container, $this->log);
         $this->registerCoreProviders();
+        $this->providers->loadFrom(BASE_PATH . '/config/providers.php');
 
         // 5. Bind core singletons manually so they are available before full boot
         $this->registerCoreSingletons();

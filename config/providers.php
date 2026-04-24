@@ -13,14 +13,6 @@ declare(strict_types=1);
  */
 
 return [
-    // Framework Providers
-    Fw\Providers\EventServiceProvider::class,
-    Fw\Providers\BusServiceProvider::class,
-    Fw\Providers\MiddlewareServiceProvider::class,
-    Fw\Providers\DatabaseServiceProvider::class,
-    Fw\Providers\CacheServiceProvider::class,
-
     // Application Providers
-    App\Providers\AppServiceProvider::class,
-    App\Providers\EventServiceProvider::class,
+    // App\Providers\FeatureIndexProvider::class,
 ];
