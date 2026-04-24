@@ -45,6 +45,16 @@ final class Validator
     private static array $ruleCache = [];
 
     /**
+     * Request-scoped Connection used by DatabaseRule subclasses. When
+     * null (the default), resolveDbRule() falls back to the legacy
+     * Connection::getInstance() path for backwards compatibility with
+     * callers that haven't been wired through DI yet.
+     */
+    public function __construct(private ?Connection $connection = null)
+    {
+    }
+
+    /**
      * Clear the rule cache (useful for testing).
      */
     public static function clearCache(): void
@@ -163,15 +173,18 @@ final class Validator
     /** @param array<string, mixed> $data */
     private function resolveDbRule(DatabaseRule $rule, mixed $value, string $field, array $data): ?string
     {
-        try {
-            $connection = Connection::getInstance();
-        } catch (LogicException $e) {
-            throw new RuntimeException(
-                'A database-backed validation rule requires an active database connection. ' .
-                $e->getMessage(),
-                0,
-                $e
-            );
+        $connection = $this->connection;
+        if ($connection === null) {
+            try {
+                $connection = Connection::getInstance();
+            } catch (LogicException $e) {
+                throw new RuntimeException(
+                    'A database-backed validation rule requires an active database connection. ' .
+                    $e->getMessage(),
+                    0,
+                    $e
+                );
+            }
         }
 
         return $rule->resolveWithDb($connection, $value, $field, $data);
