@@ -130,6 +130,19 @@ final class Application
         return self::$instance ??= new self();
     }
 
+    /**
+     * Replace the boot-time Request placeholder with the live per-request
+     * object. HttpKernel calls this once at the start of every handle()
+     * invocation so middleware reading $app->request, and any service
+     * resolving Request::class from the container, observe the active
+     * request — never the stale boot snapshot.
+     */
+    public function bindRequest(Request $request): void
+    {
+        $this->request = $request;
+        $this->container->instance(Request::class, $request);
+    }
+
     public function initSession(): void
     {
         if (session_status() !== PHP_SESSION_NONE) {

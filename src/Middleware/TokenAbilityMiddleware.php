@@ -36,7 +36,7 @@ final class TokenAbilityMiddleware implements MiddlewareInterface
     {
         // Ensure user is authenticated via token
         if (!TokenGuard::check()) {
-            return $this->forbidden('Token authentication required');
+            return $this->forbidden($request, 'Token authentication required');
         }
 
         // Parse required abilities
@@ -56,6 +56,7 @@ final class TokenAbilityMiddleware implements MiddlewareInterface
 
         // Token lacks all required abilities
         return $this->forbidden(
+            $request,
             'Token does not have required abilities: ' . implode(', ', $requiredAbilities)
         );
     }
@@ -75,9 +76,9 @@ final class TokenAbilityMiddleware implements MiddlewareInterface
     /**
      * Return a 403 Forbidden JSON response.
      */
-    private function forbidden(string $detail): Response
+    private function forbidden(Request $request, string $detail): Response
     {
         $api = new ApiResponse($this->app->response);
-        return $api->forbidden($detail, $this->app->request->uri);
+        return $api->forbidden($detail, $request->uri);
     }
 }

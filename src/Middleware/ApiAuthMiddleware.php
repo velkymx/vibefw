@@ -32,14 +32,14 @@ final class ApiAuthMiddleware implements MiddlewareInterface
         $token = $request->bearerToken();
 
         if ($token === null) {
-            return $this->unauthorized('No API token provided');
+            return $this->unauthorized($request, 'No API token provided');
         }
 
         // Attempt token authentication
         $user = TokenGuard::authenticate($request);
 
         if ($user === null) {
-            return $this->unauthorized('Invalid or expired API token');
+            return $this->unauthorized($request, 'Invalid or expired API token');
         }
 
         return $next($request);
@@ -48,9 +48,9 @@ final class ApiAuthMiddleware implements MiddlewareInterface
     /**
      * Return a 401 Unauthorized JSON response.
      */
-    private function unauthorized(string $detail): Response
+    private function unauthorized(Request $request, string $detail): Response
     {
         $api = new ApiResponse($this->app->response);
-        return $api->unauthorized($detail, $this->app->request->uri);
+        return $api->unauthorized($detail, $request->uri);
     }
 }

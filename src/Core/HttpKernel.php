@@ -46,6 +46,13 @@ final class HttpKernel
             throw new RuntimeException('State Leak Detected');
         }
 
+        // Replace the boot-time Request placeholder with the live request so
+        // middleware ($app->request) and container resolutions
+        // (Request::class) observe the active object instead of the stale
+        // boot snapshot. Must run before any cache lookup, dispatch, or
+        // pipeline execution that may consult the bound request.
+        $this->app->bindRequest($request);
+
         // Early cache check
         $cacheKey = null;
         if ($cached = $this->tryGetFromCache($request, $cacheKey)) {
@@ -227,12 +234,14 @@ final class HttpKernel
             $this->flattenMiddleware($match->middleware)
         );
 
-        // Resolve the handler
-        $resolvedHandler = $this->resolveHandler($match->handler);
+        // Resolve the handler against the live request so traditional
+        // controllers and Components receive the active object, not the
+        // boot placeholder pulled from the container.
+        $resolvedHandler = $this->resolveHandler($match->handler, $request);
 
         // Destination function for middleware pipeline
         $destination = function (Request $request) use ($resolvedHandler, $match): Response {
-            return $this->executeInFiber($resolvedHandler, $match->params);
+            return $this->executeInFiber($resolvedHandler, $match->params, $request);
         };
 
         // Run through middleware pipeline
@@ -272,10 +281,9 @@ final class HttpKernel
     /**
      * Execute handler inside a Fiber.
      */
-    private function executeInFiber(Component|callable $handler, array $params): Response
+    private function executeInFiber(Component|callable $handler, array $params, Request $request): Response
     {
         $loop = $this->container->get(EventLoop::class);
-        $request = $this->container->get(Request::class);
 
         $fiber = new RequestFiber($this->app, $request, $handler, $params);
         $fiber->start();
@@ -314,10 +322,8 @@ final class HttpKernel
     /**
      * Resolve handler to Component or callable.
      */
-    private function resolveHandler(mixed $handler): Component|callable
+    private function resolveHandler(mixed $handler, Request $request): Component|callable
     {
-        $request = $this->container->get(Request::class);
-
         if (is_string($handler) && class_exists($handler) && is_subclass_of($handler, Component::class)) {
             return new $handler($this->app, $request);
         }

@@ -22,13 +22,13 @@ final class SecurityHeadersMiddleware implements MiddlewareInterface
         $response = $next($request);
 
         if ($response instanceof Response) {
-            $response = $this->applySecurityHeaders($response);
+            $response = $this->applySecurityHeaders($response, $request);
         }
 
         return $response;
     }
 
-    private function applySecurityHeaders(Response $response): Response
+    private function applySecurityHeaders(Response $response, Request $request): Response
     {
         $response = $response
             ->header('X-Content-Type-Options', 'nosniff')
@@ -37,7 +37,7 @@ final class SecurityHeadersMiddleware implements MiddlewareInterface
             ->header('Referrer-Policy', 'strict-origin-when-cross-origin')
             ->header('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
-        if ($this->app->request->isSecure()) {
+        if ($request->isSecure()) {
             $response = $response->header(
                 'Strict-Transport-Security',
                 'max-age=31536000; includeSubDomains; preload'

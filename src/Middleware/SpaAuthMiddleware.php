@@ -33,18 +33,18 @@ final class SpaAuthMiddleware implements MiddlewareInterface
     {
         // Validate origin/referer for same-origin enforcement
         if (!$this->validateOrigin($request)) {
-            return $this->forbidden('Cross-origin requests not allowed');
+            return $this->forbidden($request, 'Cross-origin requests not allowed');
         }
 
         // Check session authentication
         if (!Auth::check()) {
-            return $this->unauthorized('Authentication required');
+            return $this->unauthorized($request, 'Authentication required');
         }
 
         // Validate CSRF token for non-GET requests
         if (!in_array($request->method, ['GET', 'HEAD', 'OPTIONS'], true)) {
             if (!$this->validateCsrf($request)) {
-                return $this->forbidden('CSRF token mismatch');
+                return $this->forbidden($request, 'CSRF token mismatch');
             }
         }
 
@@ -141,18 +141,18 @@ final class SpaAuthMiddleware implements MiddlewareInterface
     /**
      * Return a 401 Unauthorized JSON response.
      */
-    private function unauthorized(string $detail): Response
+    private function unauthorized(Request $request, string $detail): Response
     {
         $api = new ApiResponse($this->app->response);
-        return $api->unauthorized($detail, $this->app->request->uri);
+        return $api->unauthorized($detail, $request->uri);
     }
 
     /**
      * Return a 403 Forbidden JSON response.
      */
-    private function forbidden(string $detail): Response
+    private function forbidden(Request $request, string $detail): Response
     {
         $api = new ApiResponse($this->app->response);
-        return $api->forbidden($detail, $this->app->request->uri);
+        return $api->forbidden($detail, $request->uri);
     }
 }
