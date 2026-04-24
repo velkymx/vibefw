@@ -61,8 +61,7 @@ final class ErrorHandler
             'method' => $request->method,
         ]);
 
-        $response = new Response();
-        $response->setStatus(500);
+        $response = new Response()->setStatus(500);
 
         if ($debug) {
             return $response
