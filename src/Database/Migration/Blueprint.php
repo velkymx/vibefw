@@ -170,6 +170,17 @@ final class Blueprint
         $lastIndex = count($this->columns) - 1;
         if ($lastIndex >= 0) {
             if (is_string($value)) {
+                // Reject backslashes, NUL, and control characters. MySQL
+                // default mode treats `\` as an escape char inside string
+                // literals, so `\' ...` would break out of the quoted
+                // DEFAULT and inject SQL. Apostrophes are safe via the
+                // `''` doubling escape (SQL-standard across dialects).
+                if (preg_match('/[\x00-\x1F\x7F\\\\]/', $value) === 1) {
+                    throw new InvalidArgumentException(
+                        'Blueprint default value contains disallowed characters '
+                        . '(backslash, NUL, or control character).'
+                    );
+                }
                 $value = "'" . str_replace("'", "''", $value) . "'";
             } elseif (is_bool($value)) {
                 $value = $value ? '1' : '0';
