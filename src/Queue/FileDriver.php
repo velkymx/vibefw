@@ -343,23 +343,25 @@ final class FileDriver implements DriverInterface
             // Generate a new key
             $key = bin2hex(random_bytes(32));
 
-            // Set restrictive umask BEFORE writing to prevent race condition
-            // where file is briefly world-readable
-            $oldUmask = umask(0o077);
-
-            try {
-                // Write to temp file first, then rename for atomicity
-                $tempFile = $keyFile . '.' . bin2hex(random_bytes(8)) . '.tmp';
-                file_put_contents($tempFile, $key, LOCK_EX);
-                chmod($tempFile, 0o600);
-
-                // Atomic rename
-                if (!rename($tempFile, $keyFile)) {
-                    @unlink($tempFile);
-                    throw new RuntimeException('Failed to atomically create queue key file');
-                }
-            } finally {
-                umask($oldUmask);
+            // Order: create empty temp file, tighten perms BEFORE key bytes
+            // land, then write + atomic rename. Avoids a process-wide
+            // permission-mask side effect that could affect concurrent
+            // file creation in other fibers / extensions.
+            $tempFile = $keyFile . '.' . bin2hex(random_bytes(8)) . '.tmp';
+            if (!touch($tempFile)) {
+                throw new RuntimeException('Failed to create queue key temp file');
+            }
+            if (!chmod($tempFile, 0o600)) {
+                @unlink($tempFile);
+                throw new RuntimeException('Failed to set permissions on queue key temp file');
+            }
+            if (file_put_contents($tempFile, $key, LOCK_EX) === false) {
+                @unlink($tempFile);
+                throw new RuntimeException('Failed to write queue key temp file');
+            }
+            if (!rename($tempFile, $keyFile)) {
+                @unlink($tempFile);
+                throw new RuntimeException('Failed to atomically create queue key file');
             }
 
             // Verify permissions were set correctly
