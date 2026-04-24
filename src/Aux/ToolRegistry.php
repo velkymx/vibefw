@@ -169,30 +169,48 @@ final class ToolRegistry
                 $propSchema = $schema['properties'][$field];
                 $expectedType = $propSchema['type'] ?? null;
 
-                if ($expectedType !== null) {
-                    $valid = match ($expectedType) {
-                        'string' => is_string($value),
-                        'integer' => is_int($value),
-                        'number' => is_int($value) || is_float($value),
-                        'boolean' => is_bool($value),
-                        'array' => is_array($value),
-                        'object' => is_object($value)
-                            || (is_array($value) && ($value === [] || !array_is_list($value))),
-                        'null' => $value === null,
-                        default => true,
-                    };
+                if ($expectedType !== null && !$this->isValueValidType($value, $expectedType)) {
+                    return Result::err(
+                        new ToolValidationException(
+                            "Field '{$field}' must be of type {$expectedType}",
+                        ),
+                    );
+                }
 
-                    if (!$valid) {
-                        return Result::err(
-                            new ToolValidationException(
-                                "Field '{$field}' must be of type {$expectedType}",
-                            ),
-                        );
+                if ($expectedType === 'array'
+                    && is_array($value)
+                    && isset($propSchema['items']['type'])
+                    && is_string($propSchema['items']['type'])
+                ) {
+                    $itemType = $propSchema['items']['type'];
+                    foreach ($value as $index => $element) {
+                        if (!$this->isValueValidType($element, $itemType)) {
+                            return Result::err(
+                                new ToolValidationException(
+                                    "Field '{$field}' element at index {$index} must be of type {$itemType}",
+                                ),
+                            );
+                        }
                     }
                 }
             }
         }
 
         return Result::ok(null);
+    }
+
+    private function isValueValidType(mixed $value, string $type): bool
+    {
+        return match ($type) {
+            'string' => is_string($value),
+            'integer' => is_int($value),
+            'number' => is_int($value) || is_float($value),
+            'boolean' => is_bool($value),
+            'array' => is_array($value),
+            'object' => is_object($value)
+                || (is_array($value) && ($value === [] || !array_is_list($value))),
+            'null' => $value === null,
+            default => true,
+        };
     }
 }
