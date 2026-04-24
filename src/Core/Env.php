@@ -17,6 +17,13 @@ final class Env
 
     private array $variables = [];
 
+    /**
+     * Keys injected into $_ENV by this loader.
+     *
+     * @var array<string, true>
+     */
+    private array $exportedKeys = [];
+
     public static function getInstance(): self
     {
         return self::$instance ??= new self();
@@ -113,8 +120,13 @@ final class Env
                 $value = str_replace("\\'", "'", $value);
             }
 
+            if (array_key_exists($key, $_ENV) || getenv($key) !== false) {
+                continue;
+            }
+
             $this->variables[$key] = $value;
             $_ENV[$key] = $value;
+            $this->exportedKeys[$key] = true;
         }
 
         $this->loaded = true;
@@ -122,16 +134,19 @@ final class Env
 
     public function getVar(string $key, mixed $default = null): mixed
     {
-        if (isset($this->variables[$key])) {
-            return $this->castValue($this->variables[$key]);
+        if (array_key_exists($key, $_ENV)) {
+            return $this->normalizeValue($_ENV[$key]);
         }
-        if (isset($_ENV[$key])) {
-            return $this->castValue($_ENV[$key]);
-        }
+
         $value = getenv($key);
         if ($value !== false) {
             return $this->castValue($value);
         }
+
+        if (array_key_exists($key, $this->variables)) {
+            return $this->castValue($this->variables[$key]);
+        }
+
         return $default;
     }
 
@@ -190,8 +205,18 @@ final class Env
 
     public function resetVars(): void
     {
+        foreach (array_keys($this->exportedKeys) as $key) {
+            unset($_ENV[$key]);
+        }
+
         $this->variables = [];
+        $this->exportedKeys = [];
         $this->loaded = false;
+    }
+
+    private function normalizeValue(mixed $value): mixed
+    {
+        return is_string($value) ? $this->castValue($value) : $value;
     }
 
     private function castValue(string $value): mixed
