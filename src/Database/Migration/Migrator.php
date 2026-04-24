@@ -243,9 +243,11 @@ final class Migrator
             );
         }
 
+        // Inline the LIMIT as (int): $steps is a typed ?int parameter,
+        // and some PDO drivers reject bound integers in LIMIT clauses.
         return $this->db->select(
-            'SELECT migration FROM ' . $this->quoteTable() . ' ORDER BY batch DESC, id DESC LIMIT ?',
-            [$steps]
+            'SELECT migration FROM ' . $this->quoteTable()
+            . ' ORDER BY batch DESC, id DESC LIMIT ' . (int) $steps
         );
     }
 
