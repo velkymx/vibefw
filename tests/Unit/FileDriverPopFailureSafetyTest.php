@@ -41,7 +41,8 @@ final class FileDriverPopFailureSafetyTest extends TestCase
 
         $this->dir = sys_get_temp_dir() . '/fw_filedriver_popsafety_' . bin2hex(random_bytes(4));
         mkdir($this->dir, 0o750, true);
-        $this->driver = new FileDriver($this->dir);
+        $this->driver = (new FileDriver($this->dir))
+            ->allowClasses([DummyPopSafetyJob::class]);
     }
 
     protected function tearDown(): void

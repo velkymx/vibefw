@@ -20,14 +20,18 @@ final class QueueServiceProvider extends ServiceProvider
         $this->container->singleton(Queue::class, function ($container) {
             $config = $this->app->config('queue', []);
             $driverType = $config['driver'] ?? 'file';
+            /** @var list<class-string> $allowedClasses */
+            $allowedClasses = $config['allowed_classes'] ?? [];
 
             $driver = match ($driverType) {
                 'sync' => new SyncDriver(),
-                'database' => new DatabaseDriver(
+                'database' => (new DatabaseDriver(
                     $container->get(Connection::class),
-                    $config['table'] ?? 'jobs'
-                ),
-                'file' => new FileDriver($config['path'] ?? BASE_PATH . '/storage/queue'),
+                    $config['table'] ?? 'jobs',
+                ))->allowClasses($allowedClasses),
+                'file' => (new FileDriver(
+                    $config['path'] ?? BASE_PATH . '/storage/queue',
+                ))->allowClasses($allowedClasses),
                 default => throw new InvalidArgumentException("Unknown queue driver: $driverType"),
             };
 

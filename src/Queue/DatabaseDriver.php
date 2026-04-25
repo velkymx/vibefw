@@ -20,14 +20,16 @@ final class DatabaseDriver implements DriverInterface
     private string $secretKey;
 
     /**
-     * Allowed classes for unserialize. Defaults to true (all classes) because
-     * HMAC signature verification ensures only your own signed payloads are
-     * deserialized. Narrow this to a list of concrete job class names for
-     * defense-in-depth in high-security environments.
+     * Allowed classes for unserialize. Fail-closed by default — pop() refuses
+     * to deserialize until an explicit list of JobInterface implementations is
+     * supplied via allowClasses(). HMAC signing prevents external tampering,
+     * but if the database row or HMAC key ever leaks, a wide-open allowlist
+     * would turn any class with a __destruct/__wakeup gadget into an RCE
+     * primitive.
      *
-     * @var list<class-string>|true
+     * @var list<class-string<JobInterface>>
      */
-    private array|true $allowedClasses = true;
+    private array $allowedClasses = [];
 
     public function __construct(Connection $db, string $table = 'jobs', ?string $secretKey = null)
     {
@@ -72,14 +74,36 @@ final class DatabaseDriver implements DriverInterface
     }
 
     /**
-     * Restrict deserialization to a specific set of job class names.
-     * Call this after construction to enable defense-in-depth.
+     * Restrict deserialization to a specific set of JobInterface implementations.
+     * Wildcards (`*`) and non-Job classes are rejected so misconfiguration
+     * fails loudly at wiring time, not silently at pop().
      *
-     * @param list<class-string> $classes
+     * @param list<class-string<JobInterface>> $classes
+     * @throws InvalidArgumentException If any entry is a wildcard, an unknown
+     *         class, or a class that does not implement JobInterface.
      */
     public function allowClasses(array $classes): self
     {
-        $this->allowedClasses = $classes;
+        foreach ($classes as $class) {
+            if (!is_string($class) || $class === '' || $class === '*') {
+                throw new InvalidArgumentException(
+                    'Queue allowed_classes must be a list of class-strings; '
+                    . "wildcards are not permitted (got: " . var_export($class, true) . ')'
+                );
+            }
+            if (!class_exists($class)) {
+                throw new InvalidArgumentException(
+                    "Queue allowed_classes entry '{$class}' does not exist or is not autoloadable."
+                );
+            }
+            if (!is_subclass_of($class, JobInterface::class)) {
+                throw new InvalidArgumentException(
+                    "Queue allowed_classes entry '{$class}' must implement " . JobInterface::class . '.'
+                );
+            }
+        }
+
+        $this->allowedClasses = array_values($classes);
         return $this;
     }
 
@@ -145,6 +169,14 @@ final class DatabaseDriver implements DriverInterface
                 // Tampered or corrupted job - delete it
                 $db->delete($this->table, ['id' => $row['id']]);
                 throw $e;
+            }
+
+            if ($this->allowedClasses === []) {
+                throw new RuntimeException(
+                    'Queue allowed_classes is empty — refusing to unserialize. '
+                    . 'Configure queue.allowed_classes (list of JobInterface implementations) '
+                    . 'or call DatabaseDriver::allowClasses([...]) before pop().'
+                );
             }
 
             $job = unserialize($serialized, ['allowed_classes' => $this->allowedClasses]);
