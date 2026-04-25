@@ -288,7 +288,11 @@ final class Router
      */
     public function dispatch(string $method, string $uri): Result
     {
-        $uri = '/' . trim(parse_url($uri, PHP_URL_PATH) ?? '', '/');
+        $normalized = $this->normalizePath($uri);
+        if ($normalized === null) {
+            return Result::err(RouteNotFound::forRequest($method, $uri));
+        }
+        $uri = $normalized;
 
         if ($method === 'HEAD') {
             $method = 'GET';
@@ -336,7 +340,11 @@ final class Router
      */
     public function getAllowedMethods(string $uri): array
     {
-        $uri = '/' . trim(parse_url($uri, PHP_URL_PATH) ?? '', '/');
+        $normalized = $this->normalizePath($uri);
+        if ($normalized === null) {
+            return [];
+        }
+        $uri = $normalized;
         $allowed = [];
 
         foreach ($this->routes as $method => $_) {
@@ -395,15 +403,32 @@ final class Router
         return $this->namedRoutes;
     }
 
+    /**
+     * Load routes from the cache file.
+     *
+     * The cache is a pure-data JSON document, never `require`'d. An attacker
+     * who can write into the cache directory can at worst cause a JSON decode
+     * failure and a fresh route-tree build — they cannot execute code at
+     * bootstrap.
+     */
     public function loadCache(): bool
     {
         if ($this->cacheFile === null || !file_exists($this->cacheFile)) {
             return false;
         }
 
-        $data = require $this->cacheFile;
+        $content = @file_get_contents($this->cacheFile);
+        if ($content === false || $content === '') {
+            return false;
+        }
 
-        if (!is_array($data)) {
+        try {
+            $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return false;
+        }
+
+        if (!is_array($data) || !isset($data['routes'])) {
             return false;
         }
 
@@ -414,6 +439,13 @@ final class Router
         return true;
     }
 
+    /**
+     * Persist the compiled route table as JSON.
+     *
+     * Closures and object-instance handlers/middleware are filtered out
+     * because they have no JSON representation; production deployments are
+     * expected to use class-string handlers that round-trip cleanly.
+     */
     public function saveCache(): bool
     {
         if ($this->cacheFile === null) {
@@ -426,30 +458,15 @@ final class Router
             return false;
         }
 
-        // Filter out routes that contain closures as they cannot be serialized by var_export
         $serializableRoutes = [];
         $serializableNames = [];
 
         foreach ($this->routes as $method => $routes) {
             foreach ($routes as $route) {
-                // Check if handler cannot be serialized by var_export
-                if ($route['handler'] instanceof Closure) {
+                if (!$this->isJsonSerializableHandler($route['handler'])) {
                     continue;
                 }
-                if (is_array($route['handler']) && isset($route['handler'][0]) && is_object($route['handler'][0])) {
-                    continue;
-                }
-
-                // Check if any middleware cannot be serialized by var_export
-                $hasUnserializableMiddleware = false;
-                foreach ($route['middleware'] as $m) {
-                    if ($m instanceof Closure || (is_array($m) && isset($m[0]) && is_object($m[0])) || (is_object($m) && !($m instanceof Closure))) {
-                        $hasUnserializableMiddleware = true;
-                        break;
-                    }
-                }
-
-                if ($hasUnserializableMiddleware) {
+                if (!$this->isJsonSerializableMiddlewareList($route['middleware'])) {
                     continue;
                 }
 
@@ -457,28 +474,57 @@ final class Router
             }
         }
 
-        // Only include names for routes that were actually serialized
         foreach ($this->namedRoutes as $name => $path) {
-            $isSerializable = false;
             foreach ($serializableRoutes as $methodRoutes) {
                 foreach ($methodRoutes as $route) {
                     if ($route['path'] === $path) {
-                        $isSerializable = true;
-                        break 2;
+                        $serializableNames[$name] = $path;
+                        continue 3;
                     }
                 }
             }
-            if ($isSerializable) {
-                $serializableNames[$name] = $path;
-            }
         }
 
-        $content = "<?php\nreturn " . var_export([
-            'routes' => $serializableRoutes,
-            'named' => $serializableNames,
-        ], true) . ";\n";
+        try {
+            $json = json_encode(
+                ['routes' => $serializableRoutes, 'named' => $serializableNames],
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES,
+            );
+        } catch (\JsonException) {
+            return false;
+        }
 
-        return file_put_contents($this->cacheFile, $content, LOCK_EX) !== false;
+        return file_put_contents($this->cacheFile, $json, LOCK_EX) !== false;
+    }
+
+    private function isJsonSerializableHandler(mixed $handler): bool
+    {
+        if ($handler instanceof Closure) {
+            return false;
+        }
+        if (is_array($handler) && isset($handler[0]) && is_object($handler[0])) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param list<mixed> $middleware
+     */
+    private function isJsonSerializableMiddlewareList(array $middleware): bool
+    {
+        foreach ($middleware as $m) {
+            if ($m instanceof Closure) {
+                return false;
+            }
+            if (is_array($m) && isset($m[0]) && is_object($m[0])) {
+                return false;
+            }
+            if (is_object($m)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -540,6 +586,28 @@ final class Router
             return '*';
         }
         return $first;
+    }
+
+    /**
+     * Normalize a request URI to a route-matching path.
+     *
+     * Strips query string and fragment so callers can pass either a raw
+     * `REQUEST_URI` or a pre-extracted path. Rejects protocol-relative
+     * paths (`//host/x`): `parse_url()` silently strips the host and
+     * the leftover `/x` would otherwise match a registered `/x` route.
+     */
+    private function normalizePath(string $uri): ?string
+    {
+        if (str_starts_with($uri, '//')) {
+            return null;
+        }
+
+        $cut = strcspn($uri, '?#');
+        if ($cut < strlen($uri)) {
+            $uri = substr($uri, 0, $cut);
+        }
+
+        return '/' . trim($uri, '/');
     }
 
     private function firstUriSegment(string $uri): string

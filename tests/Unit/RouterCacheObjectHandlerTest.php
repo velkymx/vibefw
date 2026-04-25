@@ -14,7 +14,16 @@ final class RouterCacheObjectHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->cacheFile = sys_get_temp_dir() . '/fw_router_test_' . uniqid() . '.php';
+        $this->cacheFile = sys_get_temp_dir() . '/fw_router_test_' . uniqid() . '.cache';
+    }
+
+    private function readCache(): array
+    {
+        $content = file_get_contents($this->cacheFile);
+        $this->assertNotFalse($content);
+        $decoded = json_decode($content, true);
+        $this->assertIsArray($decoded);
+        return $decoded;
     }
 
     protected function tearDown(): void
@@ -39,15 +48,14 @@ final class RouterCacheObjectHandlerTest extends TestCase
         };
         $router->get('/object', [$controller, 'index']);
 
-        // Should not throw — var_export would fail on object handler
+        // Should not throw — JSON encode would fail on object handler
         $result = $router->saveCache();
 
         $this->assertTrue($result);
         $this->assertFileExists($this->cacheFile);
 
-        // Cache file must be valid PHP
-        $cached = require $this->cacheFile;
-        $this->assertIsArray($cached);
+        // Cache file is JSON, not PHP — must not be require'd.
+        $cached = $this->readCache();
 
         // Normal route must be present
         $this->assertArrayHasKey('GET', $cached['routes']);
@@ -94,7 +102,7 @@ final class RouterCacheObjectHandlerTest extends TestCase
         $result = $router->saveCache();
         $this->assertTrue($result);
 
-        $cached = require $this->cacheFile;
+        $cached = $this->readCache();
 
         // /open must be cached, /guarded must be skipped
         $paths = array_column($cached['routes']['GET'] ?? [], 'path');
