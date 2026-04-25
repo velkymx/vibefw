@@ -124,8 +124,15 @@ final class FileDriver implements DriverInterface
         foreach ($files as $file) {
             $lockFile = $file . '.lock';
 
-            // Try to acquire lock
-            $lock = fopen($lockFile, 'c');
+            // Try to acquire lock. fopen() returning false (unwritable
+            // dir, ENFILE/EMFILE, disk full) MUST NOT flow into flock(),
+            // which would TypeError on PHP 8+ and kill the worker. Skip
+            // the job; another worker (or a later poll) can retry.
+            $lock = @fopen($lockFile, 'c');
+            if ($lock === false) {
+                error_log("Queue: skipping job — cannot open lock file: {$lockFile}");
+                continue;
+            }
             if (!flock($lock, LOCK_EX | LOCK_NB)) {
                 fclose($lock);
                 continue;
@@ -138,7 +145,19 @@ final class FileDriver implements DriverInterface
                 continue;
             }
 
-            $content = file_get_contents($file);
+            // file_get_contents() returning false is "unreadable", NOT
+            // "corrupt". Permission flips, EIO, EBUSY mid-pop must not
+            // be misclassified as a malformed payload — silently
+            // unlinking on a transient read failure destroys legitimate
+            // work. Release the lock and skip; the file stays on disk
+            // for the next pop attempt to read.
+            $content = @file_get_contents($file);
+            if ($content === false) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+                error_log("Queue: skipping unreadable job file: {$file}");
+                continue;
+            }
 
             try {
                 $payload = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
