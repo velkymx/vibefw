@@ -163,8 +163,8 @@ abstract class Controller
      */
     protected function back(): Response
     {
-        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
-        $appHost = $_SERVER['HTTP_HOST'] ?? '';
+        $referer = $this->app->request->header('referer') ?? '/';
+        $appHost = $this->app->request->header('host') ?? '';
 
         if (!self::isSafeBackTarget($referer, $appHost)) {
             $referer = '/';

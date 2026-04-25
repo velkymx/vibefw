@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Tests\Unit;
 
+use Fw\Core\Application;
 use Fw\Core\Controller;
 use Fw\Core\Request;
 use Fw\Core\Response;
@@ -11,10 +12,8 @@ use Fw\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
+use ReflectionProperty;
 
-/**
- * Exposes Controller::back() for testing.
- */
 final class BackTestableController extends Controller
 {
     public function index(Request $request): Response
@@ -33,28 +32,43 @@ final class BackTestableController extends Controller
  *
  * C2: HTTP_REFERER is attacker-controlled. Without validation,
  * back() can redirect users off-site (open redirect).
+ *
+ * H12: back() must read headers from the Request object, not
+ * from $_SERVER directly (worker-mode safety).
  */
 final class ControllerBackTest extends TestCase
 {
     private BackTestableController $controller;
 
+    private Request $request;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $_SERVER['HTTP_HOST'] = 'myapp.test';
+        $this->request = new Request(
+            headers: ['host' => 'myapp.test'],
+        );
+
+        $app = (new ReflectionClass(Application::class))
+            ->newInstanceWithoutConstructor();
+
+        $reqProp = new ReflectionProperty(Application::class, 'request');
+        $reqProp->setValue($app, $this->request);
 
         $rc = new ReflectionClass(BackTestableController::class);
         /** @var BackTestableController $ctrl */
         $ctrl = $rc->newInstanceWithoutConstructor();
+
+        $appProp = new ReflectionProperty(Controller::class, 'app');
+        $appProp->setValue($ctrl, $app);
+
         $this->controller = $ctrl;
     }
 
     #[Test]
     public function backRedirectsToSlashWhenNoReferer(): void
     {
-        unset($_SERVER['HTTP_REFERER']);
-
         $response = $this->controller->exposeBack();
 
         $this->assertSame('/', $this->locationOf($response));
@@ -63,7 +77,10 @@ final class ControllerBackTest extends TestCase
     #[Test]
     public function backRedirectsToSameOriginReferer(): void
     {
-        $_SERVER['HTTP_REFERER'] = 'http://myapp.test/dashboard';
+        $this->request = new Request(
+            headers: ['host' => 'myapp.test', 'referer' => 'http://myapp.test/dashboard'],
+        );
+        $this->refreshAppRequest();
 
         $response = $this->controller->exposeBack();
 
@@ -73,7 +90,10 @@ final class ControllerBackTest extends TestCase
     #[Test]
     public function backRedirectsToPathOnlyReferer(): void
     {
-        $_SERVER['HTTP_REFERER'] = '/some/path?foo=bar';
+        $this->request = new Request(
+            headers: ['host' => 'myapp.test', 'referer' => '/some/path?foo=bar'],
+        );
+        $this->refreshAppRequest();
 
         $response = $this->controller->exposeBack();
 
@@ -84,19 +104,15 @@ final class ControllerBackTest extends TestCase
     public static function externalRefererProvider(): array
     {
         return [
-            'evil domain'            => ['https://evil.com/steal'],
-            'subdomain attack'       => ['https://evil.myapp.test/phish'],
-            'protocol-relative'      => ['//evil.com/phish'],
-            'open redirect attempt'  => ['https://evil.com/fake?url=myapp.test'],
-            // Item #25: schemes with no host still parse to a null host and
-            // slipped past the old `refHost === null` exemption.
-            'javascript xss'         => ['javascript:alert(1)'],
-            'data uri'               => ['data:text/html,<script>alert(1)</script>'],
-            'vbscript xss'           => ['vbscript:msgbox(1)'],
-            // Backslash-prefixed path tricks: some browsers normalise `/\x`
-            // or `\/x` into `//x` and follow it as protocol-relative.
-            'backslash protocol'     => ['/\\evil.com/path'],
-            'reversed protocol'      => ['\\/evil.com/path'],
+            'evil domain' => ['https://evil.com/steal'],
+            'subdomain attack' => ['https://evil.myapp.test/phish'],
+            'protocol-relative' => ['//evil.com/phish'],
+            'open redirect attempt' => ['https://evil.com/fake?url=myapp.test'],
+            'javascript xss' => ['javascript:alert(1)'],
+            'data uri' => ['data:text/html,<script>alert(1)</script>'],
+            'vbscript xss' => ['vbscript:msgbox(1)'],
+            'backslash protocol' => ['/\\evil.com/path'],
+            'reversed protocol' => ['\\/evil.com/path'],
         ];
     }
 
@@ -104,7 +120,10 @@ final class ControllerBackTest extends TestCase
     #[DataProvider('externalRefererProvider')]
     public function backRefusesExternalRefererAndFallsBackToSlash(string $maliciousReferer): void
     {
-        $_SERVER['HTTP_REFERER'] = $maliciousReferer;
+        $this->request = new Request(
+            headers: ['host' => 'myapp.test', 'referer' => $maliciousReferer],
+        );
+        $this->refreshAppRequest();
 
         $response = $this->controller->exposeBack();
 
@@ -114,6 +133,18 @@ final class ControllerBackTest extends TestCase
             $location,
             "back() must not follow external referer: $maliciousReferer"
         );
+    }
+
+    private function refreshAppRequest(): void
+    {
+        $rc = new ReflectionClass(Application::class);
+        $app = $rc->newInstanceWithoutConstructor();
+
+        $reqProp = new ReflectionProperty(Application::class, 'request');
+        $reqProp->setValue($app, $this->request);
+
+        $appProp = new ReflectionProperty(Controller::class, 'app');
+        $appProp->setValue($this->controller, $app);
     }
 
     private function locationOf(Response $response): string
