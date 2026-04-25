@@ -206,6 +206,12 @@ final class Auth
             if ($userFromCookie instanceof Model) {
                 self::setContextUser($userFromCookie);
                 if ($sessionReady) {
+                    // Session-fixation defense: a pre-auth attacker-known
+                    // PHPSESSID must not survive the anonymous → authenticated
+                    // elevation. Mirror login(): regenerate session id + CSRF
+                    // token before writing the authenticated session key.
+                    session_regenerate_id(true);
+                    self::regenerateCsrfToken();
                     $_SESSION[self::SESSION_KEY] = $userFromCookie->id;
                 }
                 return Option::some($userFromCookie);
