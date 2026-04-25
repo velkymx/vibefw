@@ -17,14 +17,16 @@ final class ProfileController extends Controller
 {
     public function update(Request $request): Response
     {
-        try {
-            $data = UpdateProfileRequest::fromRequest($request);
-        } catch (ValidationException $e) {
-            return $this->json(['errors' => $e->errors], 422);
-        }
-
         return Auth::user()->match(
-            some: function ($user) use ($data) {
+            some: function ($user) use ($request) {
+                UpdateProfileRequest::$ignoreId = (int) $user->id;
+
+                try {
+                    $data = UpdateProfileRequest::fromRequest($request);
+                } catch (ValidationException $e) {
+                    return $this->json(['errors' => $e->errors], 422);
+                }
+
                 $user->fill($data->toArray())->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
                 return $this->json([
                     'user' => $user,
