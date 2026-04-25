@@ -184,19 +184,64 @@ final class Validator
         return $value;
     }
 
+    /**
+     * Allowed `validate*` methods that map onto user-facing rule names.
+     * Anything not in this set is rejected at apply time, so typos like
+     * `requied` fail loudly instead of silently passing.
+     *
+     * Built lazily from MESSAGES so adding a rule message + matching
+     * `validate{Name}()` method automatically extends the allowlist.
+     *
+     * @var array<string, true>|null
+     */
+    private static ?array $knownRules = null;
+
     private function applyRule(string $field, mixed $value, string $rule): void
     {
         [$ruleName, $param] = array_pad(explode(':', $rule, 2), 2, null);
 
-        $method = 'validate' . ucfirst($ruleName);
-
-        if (!method_exists($this, $method)) {
-            return;
+        if (!is_string($ruleName) || $ruleName === '') {
+            throw new InvalidArgumentException(
+                "Empty validation rule for field '{$field}' — check for accidental '||' "
+                . "or trailing pipes in the rule string."
+            );
         }
+
+        if (!isset(self::knownRules()[$ruleName])) {
+            throw new InvalidArgumentException(
+                "Unknown validation rule '{$ruleName}' for field '{$field}'. "
+                . 'Known rules: ' . implode(', ', array_keys(self::knownRules())) . '.'
+            );
+        }
+
+        $method = 'validate' . ucfirst($ruleName);
 
         if (!$this->$method($value, $param, $field)) {
             $this->addError($field, $ruleName, $param);
         }
+    }
+
+    /**
+     * Cross-check MESSAGES against actual validate*() methods; rule names
+     * that are documented but unimplemented (e.g. 'unique', 'exists',
+     * 'file', 'image', 'mimes', 'size') stay out of the allowlist so
+     * callers learn at the first apply that the framework doesn't ship
+     * an implementation, rather than silently passing.
+     *
+     * @return array<string, true>
+     */
+    private static function knownRules(): array
+    {
+        if (self::$knownRules !== null) {
+            return self::$knownRules;
+        }
+        $known = [];
+        foreach (array_keys(self::MESSAGES) as $name) {
+            if (method_exists(self::class, 'validate' . ucfirst($name))) {
+                $known[$name] = true;
+            }
+        }
+        return self::$knownRules = $known;
     }
 
     private function addError(string $field, string $rule, ?string $param): void
