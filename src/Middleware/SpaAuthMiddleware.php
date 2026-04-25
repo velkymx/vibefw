@@ -104,12 +104,13 @@ final class SpaAuthMiddleware implements MiddlewareInterface
             // A missing Origin/Referer means either a same-origin request
             // (safe) or a non-browser client. Reject in production to be safe;
             // the CSRF check alone is insufficient for SPA protection.
-            $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
-            return ! ($env === 'production')
+        $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
 
-            // In development, allow requests without origin headers
-            // (e.g. curl, Postman) for convenience.
-            ;
+        if ($env === 'production') {
+            return false;
+        }
+
+        return true;
         }
 
         $parsed = parse_url($checkUrl);
