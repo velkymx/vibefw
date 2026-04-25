@@ -13,44 +13,16 @@ use ReflectionClass;
 use stdClass;
 
 /**
- * P-03: Pipeline::loadAliases() must cache file-loaded aliases so the config
- * file is not re-read on every Pipeline instantiation.
+ * Pipeline::loadAliases() loads aliases from the container
+ * (set by MiddlewareServiceProvider). No static cache or
+ * file fallback — aliases are per-Pipeline-instance, loaded
+ * fresh from the container on each instantiation.
  */
 final class PipelineAliasCacheTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        Pipeline::clearAliasCache();
-    }
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Build a minimal Application stub (no constructor side-effects) wired to
-     * a fresh Container that has no 'middleware.config' binding — forcing the
-     * file fallback path in loadAliases().
-     */
-    private function appWithEmptyContainer(): Application
-    {
-        $container = new Container();
-
-        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
-        (new ReflectionClass($app))->getProperty('container')->setValue($app, $container);
-
-        return $app;
-    }
-
-    /**
-     * Build a minimal Application stub wired to a Container that has
-     * 'middleware.config' bound with the given aliases.
-     *
-     * @param array<string, class-string> $aliases
-     */
     private function appWithContainerAliases(array $aliases): Application
     {
-        $cfg          = new stdClass();
+        $cfg = new stdClass();
         $cfg->aliases = $aliases;
 
         $container = new Container();
@@ -62,20 +34,21 @@ final class PipelineAliasCacheTest extends TestCase
         return $app;
     }
 
-    /**
-     * Read the private $aliases property of a Pipeline via Reflection.
-     *
-     * @return array<string, string>
-     */
+    private function appWithEmptyContainer(): Application
+    {
+        $container = new Container();
+
+        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+        (new ReflectionClass($app))->getProperty('container')->setValue($app, $container);
+
+        return $app;
+    }
+
     private function getAliases(Pipeline $pipeline): array
     {
         $prop = (new ReflectionClass($pipeline))->getProperty('aliases');
         return $prop->getValue($pipeline);
     }
-
-    // -------------------------------------------------------------------------
-    // Container path
-    // -------------------------------------------------------------------------
 
     #[Test]
     public function containerAliasesLoadedWhenConfigBound(): void
@@ -88,68 +61,32 @@ final class PipelineAliasCacheTest extends TestCase
     }
 
     #[Test]
-    public function containerAliasesOverrideFileAliases(): void
+    public function emptyAliasesWhenContainerHasNoConfig(): void
     {
-        // When middleware.config is bound, the file fallback is never read.
-        $app = $this->appWithContainerAliases(['custom' => 'App\Middleware\CustomMiddleware']);
-
-        $aliases = $this->getAliases(new Pipeline($app));
-
-        $this->assertArrayHasKey('custom', $aliases);
-        $this->assertArrayNotHasKey('auth', $aliases); // real file has 'auth', container doesn't
-    }
-
-    // -------------------------------------------------------------------------
-    // File fallback path
-    // -------------------------------------------------------------------------
-
-    #[Test]
-    public function fileFallbackLoadsRealAliasesWhenContainerEmpty(): void
-    {
-        // BASE_PATH/config/middleware.php exists and defines 'auth', 'can', 'throttle'
         $pipeline = new Pipeline($this->appWithEmptyContainer());
-        $aliases  = $this->getAliases($pipeline);
 
-        $this->assertArrayHasKey('auth', $aliases);
-        $this->assertArrayHasKey('can', $aliases);
-        $this->assertArrayHasKey('throttle', $aliases);
+        $this->assertSame([], $this->getAliases($pipeline), 'Pipeline must have empty aliases when container has no middleware.config — no file fallback.');
     }
 
     #[Test]
-    public function secondPipelineGetsSameFileFallbackAliases(): void
+    public function eachPipelineInstanceGetsFreshAliases(): void
     {
-        $app1    = $this->appWithEmptyContainer();
-        $app2    = $this->appWithEmptyContainer();
+        $app1 = $this->appWithContainerAliases(['auth' => 'App\Middleware\AuthMiddleware']);
+        $app2 = $this->appWithContainerAliases(['custom' => 'App\Middleware\CustomMiddleware']);
 
         $aliases1 = $this->getAliases(new Pipeline($app1));
         $aliases2 = $this->getAliases(new Pipeline($app2));
 
-        // Both instances must see the same aliases — proves cache is populated
-        // and consistent (file not re-read inconsistently).
-        $this->assertSame($aliases1, $aliases2);
-    }
-
-    // -------------------------------------------------------------------------
-    // Cache management
-    // -------------------------------------------------------------------------
-
-    #[Test]
-    public function clearAliasCacheResetsState(): void
-    {
-        // First load populates cache
-        new Pipeline($this->appWithEmptyContainer());
-
-        // Clear and reload — must still work correctly
-        Pipeline::clearAliasCache();
-        $pipeline = new Pipeline($this->appWithEmptyContainer());
-
-        $this->assertArrayHasKey('auth', $this->getAliases($pipeline));
+        $this->assertArrayHasKey('auth', $aliases1);
+        $this->assertArrayNotHasKey('custom', $aliases1);
+        $this->assertArrayHasKey('custom', $aliases2);
+        $this->assertArrayNotHasKey('auth', $aliases2);
     }
 
     #[Test]
     public function aliasMethodAppendsToLoadedAliases(): void
     {
-        $app      = $this->appWithContainerAliases(['auth' => 'App\Middleware\AuthMiddleware']);
+        $app = $this->appWithContainerAliases(['auth' => 'App\Middleware\AuthMiddleware']);
         $pipeline = (new Pipeline($app))->alias('admin', 'App\Middleware\AdminMiddleware');
 
         $aliases = $this->getAliases($pipeline);

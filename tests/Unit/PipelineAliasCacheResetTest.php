@@ -11,38 +11,40 @@ use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
 
 /**
- * M-03: HttpKernel::resetState() must clear Pipeline's alias cache so that
- * middleware.php changes take effect on the next request without a restart.
+ * H14: Pipeline must not use a static alias cache that survives across
+ * requests in worker mode. Aliases are loaded from the container
+ * (set by MiddlewareServiceProvider) per-instance, so config changes
+ * are always picked up without needing a cache-clear call.
  */
 final class PipelineAliasCacheResetTest extends TestCase
 {
     #[Test]
-    public function httpKernelResetStateCallsClearAliasCache(): void
+    public function httpKernelResetStateDoesNotReferenceClearAliasCache(): void
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/src/Core/HttpKernel.php');
         $this->assertIsString($source);
 
-        $this->assertStringContainsString(
+        $this->assertStringNotContainsString(
             'Pipeline::clearAliasCache()',
             $source,
-            'HttpKernel::resetState() must call Pipeline::clearAliasCache() so ' .
-            'middleware config changes take effect on the next request without a process restart'
+            'HttpKernel::resetState() must not call Pipeline::clearAliasCache() — the static cache it cleared no longer exists.',
         );
     }
 
     #[Test]
-    public function clearAliasCacheNullsTheStaticProperty(): void
+    public function pipelineHasNoStaticAliasCacheProperty(): void
     {
-        // Populate the cache by reading the Reflection property then setting it
-        $ref  = new ReflectionClass(Pipeline::class);
-        $prop = $ref->getProperty('cachedFileAliases');
+        $rc = new ReflectionClass(Pipeline::class);
+        $staticProps = array_filter(
+            $rc->getProperties(),
+            fn ($p) => $p->isStatic(),
+        );
+        $staticNames = array_map(fn ($p) => $p->getName(), $staticProps);
 
-        // Seed a non-null value to confirm clearAliasCache() actually resets it
-        $prop->setValue(null, ['auth' => 'App\\Middleware\\AuthMiddleware']);
-        $this->assertNotNull($prop->getValue(null));
-
-        Pipeline::clearAliasCache();
-
-        $this->assertNull($prop->getValue(null), 'clearAliasCache() must set $cachedFileAliases to null');
+        $this->assertNotContains(
+            'cachedFileAliases',
+            $staticNames,
+            'Pipeline must not have a static $cachedFileAliases property.',
+        );
     }
 }

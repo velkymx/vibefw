@@ -38,13 +38,6 @@ final class BrokenMiddleware implements MiddlewareInterface
  */
 final class PipelineResolveErrorTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        Pipeline::clearAliasCache();
-    }
-
-    // -------------------------------------------------------------------------
-
     private function appWithAlias(string $alias, string $class): Application
     {
         $cfg          = new stdClass();
