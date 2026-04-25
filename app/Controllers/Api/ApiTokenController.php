@@ -33,13 +33,24 @@ final class ApiTokenController extends Controller
             return $this->json(['errors' => $e->errors], 422);
         }
 
-        $abilities = $request->input('abilities', ['*']);
+        $requested = $request->input('abilities', ['read']);
+        if (!is_array($requested)) {
+            $requested = ['read'];
+        }
+
+        $selfServiceAllowlist = $this->app->config->get('api.self_service_abilities', ['read']);
 
         return Auth::user()->match(
-            some: function ($user) use ($data, $abilities) {
+            some: function ($user) use ($data, $requested, $selfServiceAllowlist) {
+                $abilities = array_values(array_intersect($requested, $selfServiceAllowlist));
+                if ($abilities === []) {
+                    $abilities = ['read'];
+                }
+
                 $token = $user->createToken($data->name, $abilities);
                 return $this->json([
                     'token' => $token->plainTextToken,
+                    'abilities' => $abilities,
                     'message' => 'Token created successfully.',
                 ], 201);
             },

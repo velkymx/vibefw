@@ -57,23 +57,41 @@ return [
     |
     */
     'abilities' => [
-        '*',              // Full access (superuser)
-        'read',           // Read-only access to all resources
-        'write',          // Write access to all resources
+        '*', // Full access (superuser — admin only, not self-service)
+        'read', // Read-only access to all resources
+        'write', // Write access to all resources
 
         // Posts
-        'posts:read',     // Read posts
-        'posts:write',    // Create/update posts
-        'posts:delete',   // Delete posts
+        'posts:read', // Read posts
+        'posts:write', // Create/update posts
+        'posts:delete', // Delete posts
 
         // Users
-        'users:read',     // Read user data
-        'users:write',    // Update user data
+        'users:read', // Read user data
+        'users:write', // Update user data (admin only)
 
-        // Rate limit tiers (assigned as abilities)
+        // Rate limit tiers (assigned as abilities — admin only)
         'tier:standard',
         'tier:premium',
         'tier:unlimited',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Self-Service Token Abilities
+    |--------------------------------------------------------------------------
+    |
+    | Abilities that a non-admin user can assign to their own tokens via the
+    | self-service endpoint. Anything NOT in this list is silently stripped.
+    | Admin tokens (created by admins out-of-band) are not constrained here.
+    |
+    */
+    'self_service_abilities' => [
+        'read',
+        'write',
+        'posts:read',
+        'posts:write',
+        'posts:delete',
     ],
 
     /*
