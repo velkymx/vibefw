@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fw\Middleware;
 
 use Fw\Cache\CacheInterface;
+use Fw\Cache\GuestCacheKey;
 use Fw\Core\Request;
 use Fw\Core\Response;
 
@@ -48,7 +49,11 @@ class GuestPageCacheMiddleware implements MiddlewareInterface
             return $next($request);
         }
 
-        $cacheKey = 'page:guest:' . md5($request->uri);
+        $cacheKey = GuestCacheKey::build(
+            $request->method,
+            (string) $request->header('host', ''),
+            $request->fullUri,
+        );
 
         // Early check handled in Application::tryServeFromCache()
         // This is a fallback for when that didn't trigger

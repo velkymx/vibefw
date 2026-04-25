@@ -10,6 +10,7 @@ use Fw\Auth\EmailVerification;
 use Fw\Auth\Gate;
 use Fw\Auth\PasswordReset;
 use Fw\Cache\CacheInterface;
+use Fw\Cache\GuestCacheKey;
 use Fw\Events\EventDispatcher;
 use Fw\Lifecycle\Component;
 use Fw\Lifecycle\RequestFiber;
@@ -146,8 +147,11 @@ final class HttpKernel
         }
 
         $cache = $this->container->get(CacheInterface::class);
-        $normalizedUri = $this->normalizeCacheUri($request->uri);
-        $key = 'page:guest:' . hash('sha256', $normalizedUri);
+        $key = GuestCacheKey::build(
+            $request->method,
+            (string) $request->header('host', ''),
+            $request->fullUri,
+        );
 
         $cached = $cache->get($key);
 
@@ -212,37 +216,6 @@ final class HttpKernel
         }
 
         return new Response($decoded['body'], $decoded['status'])->headers($decoded['headers']);
-    }
-
-    /**
-     * Normalize URI for consistent cache keys.
-     */
-    private function normalizeCacheUri(string $uri): string
-    {
-        if (str_contains($uri, "\0") || str_starts_with($uri, '//')) {
-            return '/invalid-uri-' . hash('sha256', $uri);
-        }
-
-        $parsed = parse_url($uri);
-        if ($parsed === false) {
-            return '/malformed-uri-' . hash('sha256', $uri);
-        }
-
-        $path = strtolower($parsed['path'] ?? '/');
-
-        // Hash the raw query string after sorting its key=value pairs alphabetically.
-        // Using the raw string (not parse_str + rebuild) preserves array params like
-        // ?ids[]=1&ids[]=2 which parse_str collapses and http_build_query re-orders,
-        // causing different URLs to share the same cache key.
-        $query = '';
-        if (isset($parsed['query']) && $parsed['query'] !== '') {
-            $pairs = explode('&', $parsed['query']);
-            $pairs = array_filter($pairs, fn ($p) => $p !== '');
-            sort($pairs); // stable sort; normalises key ordering across browsers
-            $query = '?' . implode('&', $pairs);
-        }
-
-        return $path . $query;
     }
 
     /**
