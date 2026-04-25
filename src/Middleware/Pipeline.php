@@ -8,6 +8,8 @@ use Fw\Core\Application;
 use Fw\Core\Request;
 use Fw\Core\Response;
 use InvalidArgumentException;
+use ReflectionClass;
+use ReflectionNamedType;
 
 final class Pipeline
 {
@@ -144,13 +146,15 @@ final class Pipeline
      * Resolve a middleware string with optional parameters.
      *
      * Formats:
-     *   'auth'           -> AuthMiddleware
-     *   'can:edit,post'  -> CanMiddleware with params ['edit', 'post']
+     *   'auth'                         -> AuthMiddleware
+     *   'can:edit,post'                -> CanMiddleware($ability='edit', $model='post')
+     *   'page_cache:300'               -> PageCacheMiddleware($ttl='300')
+     *   'ability:posts:read,posts:write' -> TokenAbilityMiddleware($abilities='posts:read,posts:write')
      *   'Fw\Middleware\AuthMiddleware' -> Direct class instantiation
      */
     private function resolveString(string $middleware): MiddlewareInterface
     {
-        [$name, $params] = $this->parseMiddleware($middleware);
+        [$name, $rawParams] = $this->parseMiddleware($middleware);
 
         $class = $this->aliases[$name] ?? $name;
 
@@ -158,14 +162,8 @@ final class Pipeline
             throw new InvalidArgumentException("Middleware '$name' not found");
         }
 
-        // CanMiddleware needs params as 'permissions' constructor arg
-        if ($class === \Fw\Middleware\CanMiddleware::class && !empty($params)) {
-            $instance = $this->app->getContainer()->make($class, [
-                'permissions' => $params,
-            ]);
-        } else {
-            $instance = $this->app->getContainer()->make($class, $params);
-        }
+        $args = $this->bindUserParams($class, $rawParams);
+        $instance = $this->app->getContainer()->make($class, $args);
 
         if (!$instance instanceof MiddlewareInterface) {
             throw new InvalidArgumentException(
@@ -177,21 +175,67 @@ final class Pipeline
     }
 
     /**
-     * Parse middleware string into name and parameters.
+     * Split `name:rest` once. Everything after the first colon is the raw
+     * argument string — caller decides whether to comma-split it.
      *
-     * 'can:edit,post' -> ['can', ['edit', 'post']]
-     * 'auth'          -> ['auth', []]
+     * 'can:edit,post' -> ['can', 'edit,post']
+     * 'auth'          -> ['auth', '']
      */
     private function parseMiddleware(string $middleware): array
     {
         if (!str_contains($middleware, ':')) {
-            return [$middleware, []];
+            return [$middleware, ''];
         }
 
-        $parts = explode(':', $middleware, 2);
-        $name = $parts[0];
-        $params = isset($parts[1]) ? explode(',', $parts[1]) : [];
+        [$name, $rest] = explode(':', $middleware, 2);
+        return [$name, $rest];
+    }
 
-        return [$name, $params];
+    /**
+     * Map the raw post-colon string onto the middleware constructor's
+     * non-typed parameters by name.
+     *
+     * Container::make() resolves typed (class) parameters via auto-wiring,
+     * so we only fill the remaining string/scalar parameters here. When
+     * the middleware declares exactly one user-provided parameter, the
+     * raw string is passed through whole — that preserves embedded
+     * commas/colons (e.g. `ability:posts:read,posts:write` reaches
+     * TokenAbilityMiddleware as `posts:read,posts:write`). When it
+     * declares N, the raw string is comma-split into N tokens.
+     *
+     * @return array<string, string>
+     */
+    private function bindUserParams(string $class, string $rawParams): array
+    {
+        $constructor = (new ReflectionClass($class))->getConstructor();
+        if ($constructor === null) {
+            return [];
+        }
+
+        $userParamNames = [];
+        foreach ($constructor->getParameters() as $param) {
+            $type = $param->getType();
+            if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
+                continue;
+            }
+            $userParamNames[] = $param->getName();
+        }
+
+        if ($rawParams === '' || $userParamNames === []) {
+            return [];
+        }
+
+        if (count($userParamNames) === 1) {
+            return [$userParamNames[0] => $rawParams];
+        }
+
+        $tokens = array_map('trim', explode(',', $rawParams));
+        $args = [];
+        foreach ($userParamNames as $i => $paramName) {
+            if (array_key_exists($i, $tokens)) {
+                $args[$paramName] = $tokens[$i];
+            }
+        }
+        return $args;
     }
 }

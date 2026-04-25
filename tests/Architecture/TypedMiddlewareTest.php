@@ -13,7 +13,9 @@ use PHPUnit\Framework\TestCase;
  * Step 8: Typed middleware registration.
  *
  * - Router has a with() method accepting a class-string and callable
- * - Route groups reject plain string middleware names (must be class-strings)
+ * - Route groups accept class-strings AND alias-form names that the
+ *   Pipeline resolves at dispatch time (e.g. `auth`, `page_cache:300`,
+ *   `ability:posts:read`). Garbage strings are still rejected.
  */
 final class TypedMiddlewareTest extends TestCase
 {
@@ -54,7 +56,26 @@ final class TypedMiddlewareTest extends TestCase
     }
 
     #[Test]
-    public function groupRejectsPlainStringMiddleware(): void
+    public function groupAcceptsAliasFormMiddleware(): void
+    {
+        $router = new Router();
+
+        // Alias-form middleware (resolved by the Pipeline at dispatch time)
+        // is registered without throwing — including parameterized aliases.
+        $router->group('/admin', function (Router $router) {
+            $router->get('/dashboard', [self::class, 'dummyAction']);
+        }, ['auth', 'ability:posts:read']);
+
+        $result = $router->dispatch('GET', '/admin/dashboard');
+        $this->assertTrue($result->isOk());
+
+        $match = $result->unwrapOr(null);
+        $this->assertContains('auth', $match->middleware);
+        $this->assertContains('ability:posts:read', $match->middleware);
+    }
+
+    #[Test]
+    public function groupRejectsMalformedMiddlewareString(): void
     {
         $router = new Router();
 
@@ -63,7 +84,7 @@ final class TypedMiddlewareTest extends TestCase
 
         $router->group('/admin', function (Router $router) {
             $router->get('/dashboard', [self::class, 'dummyAction']);
-        }, ['auth']);
+        }, ['not a valid alias!']);
     }
 
     #[Test]
@@ -84,7 +105,22 @@ final class TypedMiddlewareTest extends TestCase
     }
 
     #[Test]
-    public function middlewareMethodOnRouteRejectsPlainString(): void
+    public function middlewareMethodOnRouteAcceptsAliasForm(): void
+    {
+        $router = new Router();
+
+        $router->get('/admin', [self::class, 'dummyAction'])
+            ->middleware('page_cache:300');
+
+        $result = $router->dispatch('GET', '/admin');
+        $this->assertTrue($result->isOk());
+
+        $match = $result->unwrapOr(null);
+        $this->assertContains('page_cache:300', $match->middleware);
+    }
+
+    #[Test]
+    public function middlewareMethodOnRouteRejectsMalformedString(): void
     {
         $router = new Router();
 
@@ -92,7 +128,7 @@ final class TypedMiddlewareTest extends TestCase
         $this->expectExceptionMessage('class-string');
 
         $router->get('/admin', [self::class, 'dummyAction'])
-            ->middleware('auth');
+            ->middleware('not a valid alias!');
     }
 
     #[Test]

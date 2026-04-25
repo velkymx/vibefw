@@ -634,23 +634,37 @@ final class Router
     }
 
     /**
-     * Validate that a middleware string looks like a class-string (contains backslash or class_exists).
-     * Allows 'ClassName:param' format where the part before ':' is a valid class.
+     * Validate a middleware reference at registration time.
+     *
+     * Accepts three shapes (Pipeline does the actual resolution):
+     *   - FQCN class-string (`Fw\Middleware\AuthMiddleware`)
+     *   - currently-loadable class (`AuthMiddleware`)
+     *   - bare alias identifier (`auth`, `page_cache`, `ability:posts:read`)
+     *
+     * The alias path exists so route definitions can be parameterized
+     * via `name:arg1,arg2` without forcing every config file to import
+     * an FQCN. The Pipeline resolves aliases against `config/middleware.php`
+     * when the route is dispatched.
      */
     private function validateMiddlewareClassString(string $middleware): void
     {
         $colonPos = strpos($middleware, ':');
-        $className = $colonPos !== false
+        $name = $colonPos !== false
             ? substr($middleware, 0, $colonPos)
             : $middleware;
 
-        if (!str_contains($className, '\\') && !class_exists($className)) {
-            throw new InvalidArgumentException(
-                "Middleware '{$middleware}' must be a class-string (e.g. AuthMiddleware::class). "
-                . "Plain string aliases are no longer supported. "
-                . "Run: php fw fix to update middleware references."
-            );
+        if (str_contains($name, '\\') || class_exists($name)) {
+            return;
         }
+
+        if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $name) === 1) {
+            return;
+        }
+
+        throw new InvalidArgumentException(
+            "Middleware '{$middleware}' must be a class-string (e.g. AuthMiddleware::class) "
+            . "or a registered alias name. Run: php fw fix to update middleware references."
+        );
     }
 
     /**
