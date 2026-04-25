@@ -125,7 +125,16 @@ final class Auth
         // calls self::user() internally and will return null if context is gone first.
         if (isset($_COOKIE[self::REMEMBER_COOKIE])) {
             self::clearRememberToken();
-            setcookie(self::REMEMBER_COOKIE, '', time() - 3600, '/', '', self::isHttps(), true);
+            $params = self::cookieParams();
+            setcookie(
+                self::REMEMBER_COOKIE,
+                '',
+                time() - 3600,
+                $params['path'],
+                $params['domain'],
+                $params['secure'],
+                true,
+            );
         }
 
         self::clearContextUser();
@@ -388,14 +397,15 @@ final class Auth
         $signature = hash_hmac('sha256', $cookieValue, self::getCookieSecret());
         $signedCookie = $signature . '.' . $cookieValue;
 
+        $params = self::cookieParams();
         setcookie(
             self::REMEMBER_COOKIE,
             $signedCookie,
             time() + self::REMEMBER_DURATION,
-            '/',
-            '',
-            self::isHttps(),
-            true
+            $params['path'],
+            $params['domain'],
+            $params['secure'],
+            true,
         );
     }
 
@@ -475,6 +485,34 @@ final class Auth
         // proxy (or a CLI worker running behind one) flip the cookie secure
         // flag based on unvalidated input.
         return RequestContext::current()?->getRequest()->isSecure() ?? false;
+    }
+
+    /**
+     * Resolve the cookie parameters (path, domain, secure, samesite) from
+     * application config. Both setRememberToken() and logout() must use the
+     * same values — a mismatch on domain means the delete call creates a
+     * host-scoped cookie instead of removing the domain-scoped one, leaving
+     * the remember token alive in the browser after logout.
+     *
+     * @return array{path: string, domain: string, secure: bool, samesite: string}
+     */
+    private static function cookieParams(): array
+    {
+        $domain = $_ENV['SESSION_DOMAIN'] ?? getenv('SESSION_DOMAIN') ?: '';
+
+        $sameSite = $_ENV['SESSION_SAME_SITE'] ?? getenv('SESSION_SAME_SITE') ?: 'Strict';
+        $sameSite = match (true) {
+            in_array($sameSite, ['Lax', 'lax'], true) => 'Lax',
+            in_array($sameSite, ['None', 'none'], true) => 'None',
+            default => 'Strict',
+        };
+
+        return [
+            'path' => '/',
+            'domain' => $domain !== false ? $domain : '',
+            'secure' => self::isHttps(),
+            'samesite' => $sameSite,
+        ];
     }
 
     /**

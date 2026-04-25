@@ -164,10 +164,11 @@ final class Application
 
         $secure = $this->resolveSecureCookieSetting();
         $sameSite = $this->resolveSameSiteSetting();
+        $domain = $this->configRepository->get('app.session_domain', '');
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => '/',
-            'domain' => '',
+            'domain' => $domain,
             'secure' => $secure,
             'httponly' => true,
             'samesite' => $sameSite,
