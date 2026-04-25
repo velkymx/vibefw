@@ -973,8 +973,9 @@ abstract class Model implements JsonSerializable
      * Cast a value to a class instance.
      *
      * Only instantiates classes that have a recognized factory method (wrap, from,
-     * fromTrusted) or are backed enums. Falls back to constructor only if the class
-     * is in a known-safe namespace (Fw\Domain\, App\).
+     * fromTrusted), are backed enums, or implement Castable. The constructor
+     * fallback is restricted to Castable classes to prevent arbitrary class
+     * instantiation from database values.
      */
     protected function castToClass(string $class, mixed $value): mixed
     {
@@ -1006,15 +1007,16 @@ abstract class Model implements JsonSerializable
             return $class::fromTrusted($value);
         }
 
-        // Constructor fallback — only for framework and application classes
-        // to prevent arbitrary class instantiation from database values.
-        if (str_starts_with($class, 'Fw\\') || str_starts_with($class, 'App\\')) {
+        // Constructor fallback — only for classes that explicitly opt in
+        // via the Castable interface. This prevents arbitrary class
+        // instantiation if a cast class name is ever sourced from untrusted input.
+        if (class_exists($class) && is_subclass_of($class, Castable::class)) {
             return new $class($value);
         }
 
         throw new RuntimeException(
-            "Cannot cast to {$class}: class has no wrap/from/fromTrusted method " .
-            "and is not in an allowed namespace (Fw\\, App\\)."
+            "Cannot cast to {$class}: class has no wrap/from/fromTrusted method, " .
+            "is not a backed enum, and does not implement Castable."
         );
     }
 
