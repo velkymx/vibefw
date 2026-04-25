@@ -155,7 +155,7 @@ final class HttpKernel
 
         $cached = $cache->get($key);
 
-        if (is_string($cached) && ($rehydrated = self::decodeCacheEnvelope($cached)) !== null) {
+        if (is_string($cached) && ($rehydrated = GuestCacheKey::decodeEnvelope($cached)) !== null) {
             return $rehydrated->header('X-Cache', 'HIT');
         }
 
@@ -173,49 +173,7 @@ final class HttpKernel
     private function cacheGuestResponse(string $key, Response $response, int $ttl = 60): void
     {
         $cache = $this->container->get(CacheInterface::class);
-        $cache->set($key, self::encodeCacheEnvelope($response), $ttl);
-    }
-
-    /**
-     * Encode a Response as a JSON envelope for the guest page cache.
-     *
-     * JSON keeps the cache payload portable, inspectable, and outside
-     * the PHP object-deserialization RCE surface.
-     */
-    private static function encodeCacheEnvelope(Response $response): string
-    {
-        return json_encode([
-            'status' => $response->getStatusCode(),
-            'headers' => $response->getHeaders(),
-            'body' => $response->getBody(),
-        ], JSON_THROW_ON_ERROR);
-    }
-
-    /**
-     * Decode a cache envelope back into a Response.
-     *
-     * Returns null on corruption / partial entries / wrong shape so
-     * the kernel falls through to a fresh pipeline run instead of
-     * serving garbage.
-     */
-    private static function decodeCacheEnvelope(string $payload): ?Response
-    {
-        try {
-            $decoded = json_decode($payload, true, 8, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return null;
-        }
-
-        if (!is_array($decoded)
-            || !isset($decoded['status'], $decoded['headers'], $decoded['body'])
-            || !is_int($decoded['status'])
-            || !is_array($decoded['headers'])
-            || !is_string($decoded['body'])
-        ) {
-            return null;
-        }
-
-        return new Response($decoded['body'], $decoded['status'])->headers($decoded['headers']);
+        $cache->set($key, GuestCacheKey::encodeEnvelope($response), $ttl);
     }
 
     /**

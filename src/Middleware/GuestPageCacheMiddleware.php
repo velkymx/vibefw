@@ -63,7 +63,7 @@ class GuestPageCacheMiddleware implements MiddlewareInterface
 
         // Cache successful responses for future guest requests
         if ($response instanceof Response && $response->getStatusCode() === 200) {
-            $this->cache->set($cacheKey, $response->getBody(), $this->ttl);
+            $this->cache->set($cacheKey, GuestCacheKey::encodeEnvelope($response), $this->ttl);
         } elseif (is_string($response)) {
             $this->cache->set($cacheKey, $response, $this->ttl);
         }

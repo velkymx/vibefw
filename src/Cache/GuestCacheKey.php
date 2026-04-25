@@ -27,6 +27,48 @@ final class GuestCacheKey
     }
 
     /**
+     * Encode a Response as a JSON envelope for the guest page cache.
+     *
+     * JSON keeps the cache payload portable, inspectable, and outside
+     * the PHP object-deserialization RCE surface.
+     */
+    public static function encodeEnvelope(\Fw\Core\Response $response): string
+    {
+        return json_encode([
+            'status' => $response->getStatusCode(),
+            'headers' => $response->getHeaders(),
+            'body' => $response->getBody(),
+        ], JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Decode a cache envelope back into a Response.
+     *
+     * Returns null on corruption / partial entries / wrong shape so
+     * callers fall through to a fresh pipeline run instead of
+     * serving garbage.
+     */
+    public static function decodeEnvelope(string $payload): ?\Fw\Core\Response
+    {
+        try {
+            $decoded = json_decode($payload, true, 8, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        if (!is_array($decoded)
+            || !isset($decoded['status'], $decoded['headers'], $decoded['body'])
+            || !is_int($decoded['status'])
+            || !is_array($decoded['headers'])
+            || !is_string($decoded['body'])
+        ) {
+            return null;
+        }
+
+        return new \Fw\Core\Response($decoded['body'], $decoded['status'])->headers($decoded['headers']);
+    }
+
+    /**
      * Normalize a request URI for stable cache keying.
      *
      * Lowercases the path; sorts query pairs alphabetically (preserving
