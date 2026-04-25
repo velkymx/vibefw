@@ -87,25 +87,9 @@ final class Container
         }
 
         if (self::$initializing) {
-            $spins = 0;
-            while (self::$initializing && self::$instance === null && $spins < 1000) {
-                if (Fiber::getCurrent() !== null) {
-                    Fiber::suspend();
-                } else {
-                    usleep(100);
-                }
-                $spins++;
-            }
-            if (self::$instance !== null) {
-                return self::$instance;
-            }
-            // If we exhausted the spin budget and still have no instance, the
-            // initialising fiber likely crashed. Throw rather than silently
-            // creating a second, partially-configured container.
             throw new RuntimeException(
-                'Container initialisation deadlock: another context started initialising ' .
-                'the container but did not complete within the spin budget. ' .
-                'This usually means the bootstrapping Fiber threw an uncaught exception.'
+                'Container initialisation deadlock: re-entrant call to getInstance() detected. '
+                . 'This usually means a binding factory tried to resolve the container itself during bootstrap.',
             );
         }
 
