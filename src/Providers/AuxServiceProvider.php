@@ -119,10 +119,14 @@ class AuxServiceProvider extends ServiceProvider
         }
 
         if ($this->app->config('aux.http_agent_enabled', true)) {
+            $auxMax = (int) $this->app->config('aux.agent_rate_limit.max_requests', 100);
+            $auxWindow = (int) $this->app->config('aux.agent_rate_limit.window_seconds', 60);
+            $auxThrottle = RateLimitMiddleware::class . ':' . $auxMax . ',' . $auxWindow;
+
             $router->group('/agent', function ($r): void {
                 $r->get('/tools', [AgentController::class, 'index']);
                 $r->post('/tools/{name}', [AgentController::class, 'invoke']);
-            }, middleware: [ApiAuthMiddleware::class, AgentMiddleware::class, RateLimitMiddleware::class]);
+            }, middleware: [ApiAuthMiddleware::class, AgentMiddleware::class, $auxThrottle]);
         }
     }
 }

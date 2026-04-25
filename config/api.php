@@ -18,7 +18,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Rate Limits
+    | Rate Limit (per-IP, default for RateLimitMiddleware)
+    |--------------------------------------------------------------------------
+    |
+    | Default sliding-window limits applied by RateLimitMiddleware when no
+    | explicit ctor override is supplied. Routes/providers can pin their own
+    | values via the parameterized middleware string (e.g. `throttle:100,60`).
+    |
+    */
+    'rate_limit' => [
+        'max'    => Env::int('API_RATE_LIMIT_MAX', 60),
+        'window' => Env::int('API_RATE_LIMIT_WINDOW', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limits (per-token tier)
     |--------------------------------------------------------------------------
     |
     | Rate limits per token tier. The key is the tier name, value is requests

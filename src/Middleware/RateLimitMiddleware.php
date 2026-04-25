@@ -27,12 +27,24 @@ final class RateLimitMiddleware implements MiddlewareInterface
 
     private int $windowSeconds;
 
-    public function __construct(Application $app, CacheInterface $cache)
-    {
+    /**
+     * Explicit `$max` / `$window` win over config so a route or provider
+     * can pin its own limits via the parameterized middleware string
+     * (e.g. `RateLimitMiddleware::class . ':100,60'`). When omitted, fall
+     * back to the canonical `api.rate_limit.max` / `api.rate_limit.window`
+     * keys — `app.rate_limit.*` was a stale name no shipped config wrote
+     * to, so env overrides silently no-op'd.
+     */
+    public function __construct(
+        Application $app,
+        CacheInterface $cache,
+        int|string|null $max = null,
+        int|string|null $window = null,
+    ) {
         $this->app = $app;
         $this->cache = $cache;
-        $this->maxRequests = (int) $app->config('app.rate_limit.max', 60);
-        $this->windowSeconds = (int) $app->config('app.rate_limit.window', 60);
+        $this->maxRequests = (int) ($max ?? $app->config('api.rate_limit.max', 60));
+        $this->windowSeconds = (int) ($window ?? $app->config('api.rate_limit.window', 60));
     }
 
     public function handle(Request $request, callable $next): Response|string|array
