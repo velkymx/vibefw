@@ -63,6 +63,11 @@ abstract class Job implements JobInterface
         $this->attempts++;
     }
 
+    public function setAttempts(int $attempts): void
+    {
+        $this->attempts = $attempts;
+    }
+
     public function setJobId(string $id): void
     {
         $this->jobId = $id;

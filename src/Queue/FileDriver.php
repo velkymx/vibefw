@@ -247,11 +247,8 @@ final class FileDriver implements DriverInterface
             if (!$job instanceof JobInterface) {
                 throw new RuntimeException('Invalid job payload: not a JobInterface');
             }
-            $job->setJobId($payload['id']);
-
-            for ($i = 0; $i < $payload['attempts']; $i++) {
-                $job->incrementAttempts();
-            }
+        $job->setJobId($payload['id']);
+        $job->setAttempts($payload['attempts']);
 
             return [
                 'id' => $payload['id'],

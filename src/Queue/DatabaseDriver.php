@@ -256,10 +256,7 @@ final class DatabaseDriver implements DriverInterface
      */
     private function replayAttemptsFromStoredRow(JobInterface $job, int $storedAttemptsBeforeUpdate): void
     {
-        $target = $storedAttemptsBeforeUpdate + 1;
-        for ($i = 0; $i < $target; $i++) {
-            $job->incrementAttempts();
-        }
+        $job->setAttempts($storedAttemptsBeforeUpdate + 1);
     }
 
     /**

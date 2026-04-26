@@ -29,6 +29,12 @@ interface JobInterface
     public function getRetryAfter(): int;
 
     /**
+     * Set the attempt counter to a specific value.
+     * Used by drivers to sync in-memory state after deserialization.
+     */
+    public function setAttempts(int $attempts): void;
+
+    /**
      * Handle a job failure.
      */
     public function failed(Throwable $exception): void;
