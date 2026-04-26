@@ -83,6 +83,17 @@ final class View
         $this->router = $router;
         $this->csrf = $csrf;
         $this->initHelpers();
+        // Closure with null scope so $this is unbound inside included templates.
+        // Variables are passed via the $vars array and extracted inside the closure
+        // so templates have access to helpers and data without reaching View internals.
+        $this->templateRenderer = Closure::bind(
+            static function (string $path, array $vars): void {
+                extract($vars, EXTR_SKIP);
+                include $path;
+            },
+            null,
+            null,
+        );
     }
 
     /**
@@ -234,35 +245,36 @@ final class View
         $data = array_merge($this->shared, $data);
         $this->validateViewData($data);
 
-        // Extract helpers
-        $e = $this->helpers['e'];
-        $url = $this->helpers['url'];
-        $csrf = $this->helpers['csrf'];
-        $old = $this->helpers['old'];
-        $section = $this->helpers['section'];
-        $endSection = $this->helpers['endSection'];
-        $yield = $this->helpers['yield'];
-        $strLimit = $this->helpers['strLimit'];
-        $strSlug = $this->helpers['strSlug'];
-        $strUpper = $this->helpers['strUpper'];
-        $strLower = $this->helpers['strLower'];
-        $strTitle = $this->helpers['strTitle'];
-        $strExcerpt = $this->helpers['strExcerpt'];
-        $formatDate = $this->helpers['formatDate'];
-        $timeAgo = $this->helpers['timeAgo'];
+        // Collect all template variables (same structure as renderView)
+        $vars = [
+            'e' => $this->helpers['e'],
+            'url' => $this->helpers['url'],
+            'csrf' => $this->helpers['csrf'],
+            'old' => $this->helpers['old'],
+            'section' => $this->helpers['section'],
+            'endSection' => $this->helpers['endSection'],
+            'yield' => $this->helpers['yield'],
+            'strLimit' => $this->helpers['strLimit'],
+            'strSlug' => $this->helpers['strSlug'],
+            'strUpper' => $this->helpers['strUpper'],
+            'strLower' => $this->helpers['strLower'],
+            'strTitle' => $this->helpers['strTitle'],
+            'strExcerpt' => $this->helpers['strExcerpt'],
+            'formatDate' => $this->helpers['formatDate'],
+            'timeAgo' => $this->helpers['timeAgo'],
+            // No caching in stream mode (stubs that do nothing)
+            'cache' => fn (string $key, int $ttl = 3600): bool => true,
+            'endCache' => function (): void {},
+            // Support classes
+            'Str' => Str::class,
+            'DateTime' => DateTime::class,
+            'Arr' => Arr::class,
+            // View data
+            ...$data,
+        ];
 
-        // No caching in stream mode (stubs that do nothing)
-        $cache = fn (string $key, int $ttl = 3600): bool => true;
-        $endCache = function (): void {};
-
-        $Str = Str::class;
-        $DateTime = DateTime::class;
-        $Arr = Arr::class;
-
-        extract($data, EXTR_SKIP);
-
-        // Direct output, no buffering
-        include $path;
+        // Direct output, no buffering — $this is unbound via renderTemplate()
+        $this->renderTemplate($path, $vars);
 
         // Flush after each chunk for true streaming
         if (ob_get_level() > 0) {
@@ -289,7 +301,7 @@ final class View
             'e' => fn (string $value): string => $this->escape($value),
             'url' => fn (string $name, array $params = []): string => $this->url($name, $params),
             'csrf' => fn (): string => $this->csrfField(),
-            'old' => fn (string $key, mixed $default = null): mixed => (session_status() === PHP_SESSION_ACTIVE ? ($_SESSION['_old_input'][$key] ?? $default) : $default),
+            'old' => fn (string $key, mixed $default = null): mixed => self::getOldInput($key, $default),
             'section' => function (string $name): void {
                 $this->section($name);
             },
@@ -319,42 +331,43 @@ final class View
         $data = array_merge($this->shared, $data);
         $this->validateViewData($data);
 
-        // Extract pre-built helpers (created once in constructor)
-        $e = $this->helpers['e'];
-        $url = $this->helpers['url'];
-        $csrf = $this->helpers['csrf'];
-        $old = $this->helpers['old'];
-        $section = $this->helpers['section'];
-        $endSection = $this->helpers['endSection'];
-        $yield = $this->helpers['yield'];
-        $strLimit = $this->helpers['strLimit'];
-        $strSlug = $this->helpers['strSlug'];
-        $strUpper = $this->helpers['strUpper'];
-        $strLower = $this->helpers['strLower'];
-        $strTitle = $this->helpers['strTitle'];
-        $strExcerpt = $this->helpers['strExcerpt'];
-        $formatDate = $this->helpers['formatDate'];
-        $timeAgo = $this->helpers['timeAgo'];
-
-        // Fragment caching helpers
-        $cache = fn (string $key, int $ttl = 3600): bool => $this->startCache($key, $ttl);
-        $endCache = function (): void {
-            $this->endCache();
-        };
-
-        // Support classes available directly
-        $Str = Str::class;
-        $DateTime = DateTime::class;
-        $Arr = Arr::class;
-
-        // EXTR_SKIP prevents overwriting existing variables as a safety net
-        extract($data, EXTR_SKIP);
+        // Collect all template variables: helpers + support classes + data.
+        // These are extracted inside the null-bound closure so templates
+        // cannot access $this (View internals).
+        $vars = [
+            'e' => $this->helpers['e'],
+            'url' => $this->helpers['url'],
+            'csrf' => $this->helpers['csrf'],
+            'old' => $this->helpers['old'],
+            'section' => $this->helpers['section'],
+            'endSection' => $this->helpers['endSection'],
+            'yield' => $this->helpers['yield'],
+            'strLimit' => $this->helpers['strLimit'],
+            'strSlug' => $this->helpers['strSlug'],
+            'strUpper' => $this->helpers['strUpper'],
+            'strLower' => $this->helpers['strLower'],
+            'strTitle' => $this->helpers['strTitle'],
+            'strExcerpt' => $this->helpers['strExcerpt'],
+            'formatDate' => $this->helpers['formatDate'],
+            'timeAgo' => $this->helpers['timeAgo'],
+            // Fragment caching helpers
+            'cache' => fn (string $key, int $ttl = 3600): bool => $this->startCache($key, $ttl),
+            'endCache' => function (): void {
+                $this->endCache();
+            },
+            // Support classes
+            'Str' => Str::class,
+            'DateTime' => DateTime::class,
+            'Arr' => Arr::class,
+            // View data (EXTR_SKIP in the closure prevents overwriting helpers)
+            ...$data,
+        ];
 
         $obLevel = ob_get_level();
         ob_start();
 
         try {
-            include $path;
+            $this->renderTemplate($path, $vars);
             return ob_get_clean() ?: '';
         } catch (Throwable $ex) {
             // Clean all output buffers opened since we started (handles nested
@@ -364,6 +377,48 @@ final class View
             }
             throw $ex;
         }
+    }
+
+    /**
+     * Render a template file with $this unbound.
+     *
+     * The templateRenderer closure is bound to null scope, so $this
+     * is not available inside the included template. All variables
+     * (helpers + data) are passed via the $vars array and extracted
+     * inside the closure.
+     */
+    private function renderTemplate(string $path, array $vars): void
+    {
+        ($this->templateRenderer)($path, $vars);
+    }
+
+    /**
+     * Closure used to render templates with $this unbound.
+     *
+     * Created once in the constructor for performance.
+     * @var Closure(string): void
+     */
+    private Closure $templateRenderer;
+
+    /**
+     * Retrieve old input from RequestContext (fiber-safe) or $_SESSION fallback.
+     */
+    private static function getOldInput(string $key, mixed $default = null): mixed
+    {
+        $ctx = RequestContext::current();
+        if ($ctx !== null && $ctx->has('_old_input')) {
+            $oldInput = $ctx->get('_old_input')->unwrapOr([]);
+            if (is_array($oldInput) && array_key_exists($key, $oldInput)) {
+                return $oldInput[$key];
+            }
+            return $default;
+        }
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return $_SESSION['_old_input'][$key] ?? $default;
+        }
+
+        return $default;
     }
 
     private function resolvePath(string $view): string

@@ -147,7 +147,11 @@ final class Application
     public function initSession(): void
     {
         if (session_status() !== PHP_SESSION_NONE) {
-            // Session already active — nothing to do.
+            // Session already active — still ensure old input is in RequestContext.
+            $ctx = RequestContext::current();
+            if ($ctx !== null && !$ctx->has('_old_input') && isset($_SESSION['_old_input'])) {
+                $ctx->set('_old_input', $_SESSION['_old_input']);
+            }
             return;
         }
 
@@ -174,6 +178,13 @@ final class Application
             'samesite' => $sameSite,
         ]);
         session_start();
+
+        // Seed old input into RequestContext so the View $old() helper
+        // reads from context (fiber-safe) instead of $_SESSION directly.
+        $ctx = RequestContext::current();
+        if ($ctx !== null && isset($_SESSION['_old_input'])) {
+            $ctx->set('_old_input', $_SESSION['_old_input']);
+        }
     }
 
     public function config(string $key, mixed $default = null): mixed
