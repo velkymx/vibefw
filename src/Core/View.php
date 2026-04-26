@@ -445,11 +445,51 @@ final class View
             return $path;
         }
 
+        // SECURITY: Check for recently created symlinks in the path BEFORE
+        // checking path traversal. We check the original path (not the resolved
+        // path) because realpath() follows symlinks, so we need to check the
+        // path components for symlinks before they're resolved.
+        $this->checkForRecentSymlinks($path);
+
         if (!str_starts_with($realPath, $realBase)) {
             throw new RuntimeException("View path traversal detected: {$view}");
         }
 
         return $realPath;
+    }
+
+    /**
+     * Check if any component of the path is a symlink created recently.
+     *
+     * @throws RuntimeException If a symlink was created in the last 5 minutes
+     */
+    private function checkForRecentSymlinks(string $path): void
+    {
+        $now = time();
+        $symlinkAgeThreshold = 300; // 5 minutes
+
+        // Check each component of the path for symlinks
+        $parts = explode('/', $path);
+        $currentPath = '';
+
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+
+            $currentPath .= '/' . $part;
+
+            if (is_link($currentPath)) {
+                $mtime = @filemtime($currentPath);
+                if ($mtime !== false && ($now - $mtime) < $symlinkAgeThreshold) {
+                    throw new RuntimeException(
+                        "View path contains a recently created symlink: {$currentPath}. " .
+                        "This may be a path traversal attempt. Symlinks must be at least " .
+                        "{$symlinkAgeThreshold} seconds old."
+                    );
+                }
+            }
+        }
     }
 
     /**
