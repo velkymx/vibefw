@@ -205,7 +205,7 @@ final readonly class Result
      * @return Result<U, E>
      */
     #[NoDiscard]
-    public function map(callable $fn): self
+    public function map(callable $fn): Result
     {
         if (!$this->success) {
             return $this;
@@ -222,7 +222,7 @@ final readonly class Result
      * @return Result<T, F>
      */
     #[NoDiscard]
-    public function mapErr(callable $fn): self
+    public function mapErr(callable $fn): Result
     {
         if ($this->success) {
             return $this;
@@ -238,7 +238,7 @@ final readonly class Result
      * @param callable(T): Result<U, E> $fn
      * @return Result<U, E>
      */
-    public function flatMap(callable $fn): self
+    public function flatMap(callable $fn): Result
     {
         if (!$this->success) {
             return $this;
