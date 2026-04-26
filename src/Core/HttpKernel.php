@@ -57,6 +57,7 @@ final class HttpKernel
         // Early cache check
         $cacheKey = null;
         if ($cached = $this->tryGetFromCache($request, $cacheKey)) {
+            RequestContext::clear();
             return $cached;
         }
 
