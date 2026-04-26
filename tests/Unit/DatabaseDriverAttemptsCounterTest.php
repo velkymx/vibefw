@@ -84,23 +84,23 @@ final class DatabaseDriverAttemptsCounterTest extends TestCase
     public function replayIsIdempotentPerJobInstance(): void
     {
         // Replay is not meant to run twice on the same job for the
-        // same row. Pin that calling it twice increments past the DB
+        // same row. Pin that calling it twice overwrites the correct
         // value — this documents the precondition (fresh deserialised
         // job) so a future refactor can't silently call replay twice
-        // and double-count.
+        // and lose the correct value.
         $job = new NoOpTestJob();
         $method = new ReflectionMethod(DatabaseDriver::class, 'replayAttemptsFromStoredRow');
         $method->invoke($this->driver(), $job, 2);
         $this->assertSame(3, $job->attempts);
 
-        // Second call on the same job intentionally goes past the
+        // Second call on the same job intentionally overwrites the
         // correct value — the test encodes "don't call twice" rather
         // than hiding the precondition.
         $method->invoke($this->driver(), $job, 2);
         $this->assertSame(
-            6,
+            3,
             $job->attempts,
-            'calling replay twice on the same job over-counts — precondition is fresh deserialised job'
+            'calling replay twice on the same job overwrites the value — precondition is fresh deserialised job'
         );
     }
 

@@ -31,6 +31,8 @@ final class AlwaysFailingJob implements JobInterface
     public function getRetryAfter(): int { return 0; }
 
     public function failed(Throwable $exception): void {}
+
+    public function setAttempts(int $attempts): void {}
 }
 
 /**
