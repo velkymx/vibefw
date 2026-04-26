@@ -22,7 +22,7 @@ final class Router
         'uuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
         'alpha' => '[a-zA-Z]+',
         'alphanum' => '[a-zA-Z0-9]+',
-        'any' => '.+',
+        'any' => '[^/]+',
     ];
 
     private array $routes = [];
