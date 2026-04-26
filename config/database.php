@@ -17,6 +17,7 @@ return [
     'username' => Env::string('DB_USERNAME', 'root'),
     'password' => Env::string('DB_PASSWORD', ''),
     'charset' => Env::string('DB_CHARSET', 'utf8mb4'),
+    'collation' => Env::string('DB_COLLATION', ''),
     'logging' => Env::bool('DB_LOGGING', false),
 
     // Persistent connections - reuses connections across PHP-FPM workers

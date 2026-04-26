@@ -114,7 +114,12 @@ final class Connection
             $initCommandAttr = defined('Pdo\Mysql::ATTR_INIT_COMMAND')
                 ? \Pdo\Mysql::ATTR_INIT_COMMAND
                 : (defined('PDO::MYSQL_ATTR_INIT_COMMAND') ? PDO::MYSQL_ATTR_INIT_COMMAND : 1002);
-            $options[$initCommandAttr] = "SET NAMES $charset COLLATE {$charset}_unicode_ci";
+            $collation = $config['collation'] ?? '';
+            $initCommand = "SET NAMES $charset";
+            if ($collation !== '') {
+                $initCommand .= " COLLATE $collation";
+            }
+            $options[$initCommandAttr] = $initCommand;
         }
 
         $this->pdo = match ($this->driver) {
