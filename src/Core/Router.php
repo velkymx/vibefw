@@ -806,6 +806,11 @@ final class Router
     /**
      * Suggest a controller name and method from a route path.
      *
+     * Uses the last meaningful segment as the controller name. For nested routes
+     * like `/api/v1/users`, this suggests `UsersController` (from the last segment),
+     * which may not match the intended controller structure. Users should manually rename
+     * the generated controller if needed.
+     *
      * @return array{controller: string, method: string}
      */
     private function suggestControllerName(string $method, string $path): array

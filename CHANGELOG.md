@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Post-release hardening pass (`R5`–`R61`) covering Phase 1–5 code review of the whole `src/` tree. 57 findings triaged — production code changes for the real issues, regression tests for each, false positives pinned by reflection-based contracts so they can't regress.
+
+### Security
+
+- **`[R9]`** — `Router`: bounded route-parameter replacement (unbounded match could be abused for ReDoS).
+- **`[R11]`** — `Auth`: guard `session_regenerate_id()` behind an explicit session-started check.
+- **`[R14]`** — `Gate`: policy cache moved off a static into `resetState()` scope so a worker doesn't leak resolutions across requests.
+- **`[R16]`** — `Connection`: DSN components validated (`assertDsnComponent/Port/NoControl`) before PDO construction. Rejects `;`, `=`, quotes, and control chars in host/database/charset.
+- **`[R17]`** — `View::share()`: reserved-name / malformed keys validated eagerly at the call site instead of silently corrupting render state.
+- **`[R18]`** — `Response`: removed `data:` from `DEFAULT_CSP` `img-src`. Apps needing inline image URIs opt in via `Response::setDefaultCsp(...)`.
+- **`[R19]`** — `Csrf`: tokens now stored hashed in session (SHA-256), constant-time compared on verify.
+- **`[R20]`** — `Router::compilePattern`: custom constraint bypass closed — regex fragments can't escape the parameter pattern boundary.
+- **`[R22]`** — `EventLoop::processStreams`: stream-filter race fixed; filters attach under the watcher lock.
+- **`[R25]`** — `Controller::back()`: referer validated against the app's own host/scheme before redirect.
+- **`[R32]`** — `EventDispatcher::resolveListener`: clear `RuntimeException` naming the listener + required resolver when DI is missing, replacing an opaque `ArgumentCountError`.
+- **`[R35]`** — `AsyncHttp`: header injection detection upgraded to RFC 7230 §3.2.6 token grammar. Rejects names containing spaces/colons/tabs/high-ASCII, and values with any C0 control except HTAB, plus DEL.
+- **`[R36]`** — `AsyncHttp`: DNS-rebinding window closed. `validateHost()` returns the approved IP; the socket pins to that literal IP while TLS still verifies `peer_name = $host` + SNI.
+- **`[R37]`** — `AsyncHttp::ipInCidr`: explicit single-byte mask, rejection of malformed CIDRs (previously silently `bits=0`), clamp on prefix length per address family.
+- **`[R41]`** — `TaggedCache::taggedKey`: base64-encoded key with `k:` marker between tag versions and user key, closing cross-scope alias collisions like `tags=['a'], key='b:1|x'` vs `tags=['a','b'], key='x'`.
+- **`[R47]`** — `FileDriver::getOrCreateSecretKey`: replaced process-wide `umask(0o077)` with atomic `touch → chmod 0600 → write → rename`. No TOCTOU window, no cross-fiber umask leakage.
+- **`[R48]`** — `Blueprint::default()`: rejects backslash / NUL / control chars in default values that would survive apostrophe-doubling under MySQL's backslash-escape semantics.
+- **`[R50]`** — `Regex` validation rule: `preg_match` wrapped in `ini_set('pcre.backtrack_limit', 100_000)` with finally-restored original limit, preventing ReDoS from user-provided patterns.
+- **`[R51]`** — `SecurityHeadersMiddleware`: header chain now reassigns clones (was emitting **no** headers due to a dropped `Response::header()` return), plus narrowed CSP type guard — falsy `null|false|""|array|int` values skip the header instead of being stringified.
+- **`[R54]`** — `QueryWatcher::normalizeQueryPattern`: 8192-char input cap pinned by regression; prevents ReDoS on pathological queries (e.g. 10K-value `IN` lists).
+- **`[R55]`** — `QueryWatcher::getSimplifiedTrace`: emits `basename()` of each frame's file. Log files no longer disclose the server's directory layout / deploy-user home.
+- **`[R57]`** — `WebhookChannel`: scheme allowlist (`http`, `https` only — rejects `file://`, `php://`, `gopher://`, etc.) + IP-resolution guard against the same blocked-range list used by `AsyncHttp`. Opt-in `allowInternalTargets: true` for trusted internal webhooks.
+
+### Fixed
+
+- **`[R5]`** / **`[R7]`** — `Model::$lazyLoadReporter`: injectable N+1 warning reporter; silences stderr in tests. `ReleaseTagIntegrityTest` locks R1–R5 into the `v3.0.0` tag.
+- **`[R8]`** — `QueryBuilder::whereIn`: eager compilation, no hidden N+1 against a subquery.
+- **`[R10]`** — `Application`: `events->dispatch()` no longer called before the container finishes booting.
+- **`[R12]`** — `Model::updateOrCreate`: race handling now has a retry limit; prevents infinite loop under persistent constraint failure.
+- **`[R13]`** — `Container::flush()`: resets all binding scopes consistently, matching `reset()` semantics.
+- **`[R15]`** — `QueryBuilder::where` / `orWhere`: argument-count dispatch via `func_num_args()`. 2-arg form treats the second argument as a literal value with an implicit `=`; 3-arg form requires an explicit string operator. `addWhere()` strict-typechecks the operator. `Model::where()` and `ModelQueryBuilder::where()` propagate arg count through all layers.
+- **`[R21]`** — `Str::excerpt()`: verified `preg_quote($phrase, '/')` is called with the matching delimiter; regression suite covers `/` / `#` / regex metachars / multi-byte / no-match.
+- **`[R23]`** — `Response::header()`: immutable clone-pattern; chains return consistent `Response` instances.
+- **`[R27]`** — Stale TODO pinned by regression (no production change).
+- **`[R30]`** — Verified: PHP global functions need no imports (no production change).
+- **`[R33]`** — `Logger`: sticky `reportWriteFailures` bool replaced with `$consecutiveWriteFailures` counter capped at 3, reset on first successful write. Added `setFailureReporter()` DI seam.
+- **`[R34]`** — `ApiResponse::send()`: `@deprecated` docblock expanded to call out the worker-mode hazard (FrankenPHP/RoadRunner/Swoole/ReactPHP) and document when `exit` is still safe.
+- **`[R38]`** — `AsyncDatabase`: class docblock now includes explicit "⚠️ NOT PARALLEL / NOT CONCURRENT" banner, wall-clock example, "blocks the fiber" clause, and pointers to `amphp/mysql` + `reactphp/mysql` for callers who need actual parallelism.
+- **`[R39]`** — `InMemoryRepository::matchesLike`: regex conversion rewritten as a byte-by-byte walker handling `\%`, `\_`, `\\` escapes directly, passing all other bytes through `preg_quote`. Fixes silent misbehaviour on regex-metachar literals (`a.b` no longer matches `axb`).
+- **`[R40]`** — `FileCache::increment`: missing/non-negative key with negative step clamps to `0` rather than producing a retroactively negative counter.
+- **`[R42]`** — `ApcuCache`: constructor accepts `int $defaultTtl = 3600`. All write paths resolve `$ttl ?? $this->defaultTtl` so `CacheInterface`'s null-means-default semantics are owned by the framework, not APCu's zero-handling.
+- **`[R43]`** — `ConfigValidator`: `(float)` cast on min/max comparisons so behaviour doesn't depend on PHP's implicit numeric-string coercion rules.
+- **`[R44]`** — `DatabaseDriver::pop`: extracted `replayAttemptsFromStoredRow()` so the attempts-counter invariant is unit-testable without a MySQL server running `FOR UPDATE SKIP LOCKED`.
+- **`[R45]`** — `FileDriver::later()`: size-check ordering pinned — oversized payloads rejected before the HMAC work runs, no wasted CPU on malicious/oversized payloads.
+- **`[R46]`** — `FileDriver::generateId`: queue name encoded as `{queue}@{ts}_{rand}`; `delete()` / `release()` extract the prefix (validated against `[a-zA-Z0-9_-]{1,64}`) and hit the target file directly. Legacy opaque IDs still fall back to a scan for clean upgrades.
+- **`[R49]`** — `Migrator::getMigrationsToRollback`: `LIMIT` inlined as `(int)` cast rather than bound parameter; MySQL 8 + some drivers reject prepared `LIMIT` with emulation off.
+- **`[R52]`** — `Request`: `public readonly array $cookies` + `cookie()` / `hasCookie()` methods. `GuestPageCacheMiddleware` switched from `$_COOKIE[session_name()]` to `$request->hasCookie(session_name())` — worker-safe, no superglobal reach.
+- **`[R53]`** — `PageCacheMiddleware`: cache key is now `sha256(method|host|fullUri)` instead of `md5(uri)`. Defeats host-header spoofing into peer cache scope and prevents method confusion (GET/HEAD aliasing).
+- **`[R56]`** — `Validator`: constructor accepts optional `?Connection` dependency. `resolveDbRule()` prefers the injected connection over `Connection::getInstance()`, fixing the `DatabaseRule` worker-mode singleton leak. Legacy callers still fall back to the singleton for back-compat.
+- **`[R58]`** — `ToolRegistry::validateInput`: split `'integer', 'number'` type match. `number` accepts `is_int || is_float` (JSON Schema semantics); `object` requires `is_object` OR a non-list/empty array (list arrays are JSON arrays, not objects).
+- **`[R59]`** — `AuxStats::record`: full read-modify-write cycle now runs under `flock(LOCK_EX)` — reloads from disk inside the lock so two workers can't each compute a new entry from stale in-memory snapshots.
+- **`[R60]`** — `McpSseController::sse`: blocking `sleep($heartbeat)` replaced with a 100ms `usleep` tick against `microtime(true)`-scheduled cadence. Aborted clients free their worker within ~100ms instead of up to 15s.
+- **`[R61]`** — `ToolRegistry::validateInput`: array properties with an `items.type` sub-schema now have each element type-checked (error includes offending index). Arrays without an `items` schema retain permissive passthrough.
+
+### Verified (no code change)
+
+- **`[R24]`** — `ArrayHelper` perceived missing import: non-issue, `Arr::` is the canonical support class.
+- **`[R26]`** — `EventDispatcher` wildcard matching: false positive.
+- **`[R44']`** — `Migrator` raw SQL quoting: false positive, `quoteTable()` is used correctly.
+
 ## [3.0.0] - 2026-04-21
 
 First major release on PHP 8.5. Clean break from v2: typed validation rules, prescriptive errors, AUX (Agentic User Experience) layer, and a full release-prep hardening pass. See `UPGRADE-v3.md` for migration steps.
