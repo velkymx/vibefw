@@ -192,11 +192,16 @@ final class EventLoop
                 }
 
                 if (!$hasReadyTimer && !empty($this->timers)) {
-                    // Sleep until next timer
+                    // Sleep until next timer, but wake up periodically to check for new work
                     $nextTimeout = min(array_column($this->timers, 'timeout'));
                     $sleepTime = max(0, $nextTimeout - $now);
                     if ($sleepTime > 0) {
-                        usleep((int) ($sleepTime * 1000000));
+                        $chunkSize = 0.1; // 100ms chunks
+                        while ($sleepTime > 0 && $this->deferred->isEmpty() && empty($this->readStreams) && empty($this->writeStreams)) {
+                            $chunk = min($sleepTime, $chunkSize);
+                            usleep((int) ($chunk * 1000000));
+                            $sleepTime -= $chunk;
+                        }
                     }
                 }
             }
