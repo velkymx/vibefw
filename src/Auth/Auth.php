@@ -390,6 +390,7 @@ final class Auth
         $hashedToken = hash('sha256', $token);
 
         $user->remember_token = $hashedToken;
+        $user->remember_token_updated_at = new \DateTime();
         $user->save()->match(ok: fn () => null, err: fn ($e) => throw $e);
 
         // Create cookie value with HMAC signature for integrity
@@ -469,9 +470,23 @@ final class Auth
             return null;
         }
 
-        // Rotate the remember token after successful use to prevent replay attacks.
-        // The old token is invalidated and a fresh one is issued.
-        self::setRememberToken($user);
+        // Rotate the remember token after successful use to prevent replay attacks,
+        // but only if the token is older than the grace period (5 minutes). This reduces
+        // cookie churn while still providing security against replay attacks.
+        $gracePeriod = 300; // 5 minutes
+        $shouldRotate = true;
+
+        // Check if the user has a remember_token_updated_at timestamp
+        if (isset($user->remember_token_updated_at) && $user->remember_token_updated_at instanceof \DateTime) {
+            $tokenAge = time() - $user->remember_token_updated_at->getTimestamp();
+            if ($tokenAge < $gracePeriod) {
+                $shouldRotate = false;
+            }
+        }
+
+        if ($shouldRotate) {
+            self::setRememberToken($user);
+        }
 
         return $user;
     }
