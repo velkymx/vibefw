@@ -28,4 +28,9 @@ final class MinLength implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'min:' . $this->length;
+    }
 }

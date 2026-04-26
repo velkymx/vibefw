@@ -29,4 +29,9 @@ final class Email implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'email';
+    }
 }

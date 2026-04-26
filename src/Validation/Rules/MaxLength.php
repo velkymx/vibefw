@@ -28,4 +28,9 @@ final class MaxLength implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'max:' . $this->length;
+    }
 }

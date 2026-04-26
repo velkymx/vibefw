@@ -54,4 +54,9 @@ final class Regex implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'regex:' . $this->pattern;
+    }
 }

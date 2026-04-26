@@ -39,4 +39,9 @@ final class In implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'in:' . implode(',', $this->values);
+    }
 }

@@ -29,4 +29,9 @@ final class Url implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'url';
+    }
 }

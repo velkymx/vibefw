@@ -33,4 +33,9 @@ final class Confirmed implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'confirmed';
+    }
 }

@@ -29,4 +29,9 @@ final class AlphaNumeric implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'alphanumeric';
+    }
 }

@@ -25,4 +25,9 @@ final class Required implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'required';
+    }
 }

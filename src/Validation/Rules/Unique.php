@@ -48,4 +48,9 @@ final class Unique implements DatabaseRule
 
         return $query->exists() ? str_replace(':field', $field, $this->message) : null;
     }
+
+    public function __toString(): string
+    {
+        return 'unique:' . $this->table . ',' . $this->column;
+    }
 }

@@ -29,4 +29,9 @@ final class Numeric implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'numeric';
+    }
 }

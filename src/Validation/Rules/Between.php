@@ -58,4 +58,9 @@ final class Between implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'between:' . $this->min . ',' . $this->max;
+    }
 }

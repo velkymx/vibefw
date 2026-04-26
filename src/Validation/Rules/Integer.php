@@ -29,4 +29,9 @@ final class Integer implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'integer';
+    }
 }

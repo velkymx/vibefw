@@ -31,4 +31,9 @@ final class Uuid implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'uuid';
+    }
 }

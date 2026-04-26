@@ -22,4 +22,9 @@ final class Nullable implements Rule
         // Other validators skip null values by default
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'nullable';
+    }
 }

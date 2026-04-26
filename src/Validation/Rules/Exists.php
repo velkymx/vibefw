@@ -42,4 +42,9 @@ final class Exists implements DatabaseRule
 
         return $exists ? null : str_replace(':field', $field, $this->message);
     }
+
+    public function __toString(): string
+    {
+        return 'exists:' . $this->table . ',' . $this->column;
+    }
 }

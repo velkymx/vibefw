@@ -41,4 +41,9 @@ final class InEnum implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'enum:' . $this->enumClass;
+    }
 }

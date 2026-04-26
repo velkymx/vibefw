@@ -42,4 +42,9 @@ final class Date implements Rule
 
         return null;
     }
+
+    public function __toString(): string
+    {
+        return 'date';
+    }
 }
