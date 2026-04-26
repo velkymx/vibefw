@@ -520,6 +520,16 @@ final class FileDriver implements DriverInterface
         }
     }
 
+    /**
+     * Sanitize a queue name for filesystem safety.
+     *
+     * Removes all characters except alphanumeric, underscore, and hyphen.
+     * If the input contains no valid characters, falls back to 'default'.
+     * Limits the queue name to 64 characters to prevent filesystem issues.
+     *
+     * @param string $queue The raw queue name
+     * @return string The sanitized queue name (or 'default' if invalid)
+     */
     private function sanitizeQueueName(string $queue): string
     {
         $sanitized = preg_replace('/[^a-zA-Z0-9_-]/', '', $queue) ?: 'default';
