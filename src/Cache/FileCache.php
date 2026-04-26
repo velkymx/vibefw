@@ -133,10 +133,13 @@ final class FileCache implements CacheInterface
 
     public function setMany(array $values, ?int $ttl = null): bool
     {
+        $allOk = true;
         foreach ($values as $key => $value) {
-            $this->set($key, $value, $ttl);
+            if (!$this->set($key, $value, $ttl)) {
+                $allOk = false;
+            }
         }
-        return true;
+        return $allOk;
     }
 
     /**

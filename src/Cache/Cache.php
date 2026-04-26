@@ -187,13 +187,13 @@ final class Cache implements CacheInterface
 
     public function setMany(array $values, ?int $ttl = null): bool
     {
-        $this->l1->setMany($values, $ttl);
+        $l1Ok = $this->l1->setMany($values, $ttl);
 
         if ($this->useL2) {
-            return $this->l2->setMany($values, $ttl);
+            return $this->l2->setMany($values, $ttl) && $l1Ok;
         }
 
-        return true;
+        return $l1Ok;
     }
 
     public function increment(string $key, int $step = 1, ?int $ttl = null): int|false
