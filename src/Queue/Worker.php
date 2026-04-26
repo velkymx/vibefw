@@ -86,10 +86,10 @@ final class Worker
 
                 $job = $this->queue->pop($queue);
 
-                if ($job === null) {
-                    sleep($this->sleep);
-                    continue;
-                }
+            if ($job === null) {
+                $this->idleSleep();
+                continue;
+            }
 
                 $this->processJob($job);
                 $this->processedJobs++;
@@ -294,6 +294,22 @@ final class Worker
             ($this->outputHandler)($formatted);
         } else {
             echo $formatted . PHP_EOL;
+        }
+    }
+
+    private function idleSleep(): void
+    {
+        $remaining = $this->sleep * 1_000_000;
+        $chunk = 250_000;
+
+        while ($remaining > 0 && !$this->shouldStop) {
+            $sleepUs = min($chunk, $remaining);
+            usleep($sleepUs);
+            $remaining -= $sleepUs;
+
+            if (extension_loaded('pcntl')) {
+                pcntl_signal_dispatch();
+            }
         }
     }
 }
