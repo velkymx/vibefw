@@ -248,14 +248,11 @@ final class Validator
     {
         $message = self::MESSAGES[$rule] ?? "The :field field is invalid.";
 
-        // Escape field name to prevent XSS if error messages are rendered in HTML
-        $safeField = htmlspecialchars(str_replace('_', ' ', $field), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $message = str_replace(':field', $safeField, $message);
+        $readableField = str_replace('_', ' ', $field);
+        $message = str_replace(':field', $readableField, $message);
 
         if ($param !== null) {
-            // Also escape param as it could contain user input
-            $safeParam = htmlspecialchars($param, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $message = str_replace(':param', $safeParam, $message);
+            $message = str_replace(':param', $param, $message);
         }
 
         $this->errors[$field][] = $message;
