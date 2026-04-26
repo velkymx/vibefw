@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Async;
 
+use Fiber;
 use RuntimeException;
 use Throwable;
 
@@ -159,26 +160,28 @@ final class AsyncHttp
         // validation and the subsequent stream_socket_client() lookup.
         // When protection is off we fall back to the hostname literal
         // so public DNS still does its job.
-        $connectTarget = $this->ssrfProtection ? $this->validateHost($host) : $host;
+        $connectTarget = $this->ssrfProtection ? $this->validateHost($host, $loop) : $host;
 
-        $transport = $scheme === 'https' ? 'ssl' : 'tcp';
+        $isHttps = $scheme === 'https';
+        $transport = 'tcp';
         $address = "{$transport}://{$connectTarget}:{$port}";
 
         // For TLS connections to a pinned IP we must tell OpenSSL which
         // SNI to send and which name to match the cert against —
         // otherwise peer verification fails because the IP doesn't
-        // appear in the certificate's SANs.
+        // appear in the certificate's SANs. TLS is enabled after the
+        // TCP connect completes (non-blocking handshake below).
         $context = stream_context_create(
-            $scheme === 'https'
-                ? [
-                    'ssl' => [
-                        'peer_name' => $host,
-                        'SNI_enabled' => true,
-                        'verify_peer' => true,
-                        'verify_peer_name' => true,
-                    ],
-                ]
-                : []
+            $isHttps
+            ? [
+                'ssl' => [
+                    'peer_name' => $host,
+                    'SNI_enabled' => true,
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
+                ],
+            ]
+            : []
         );
 
         $errno = 0;
@@ -198,7 +201,114 @@ final class AsyncHttp
 
         stream_set_blocking($socket, false);
 
-        // Build request
+        // Wait for the TCP connection to complete before writing or
+        // starting the TLS handshake.
+        $connectWatcherId = $loop->addWriteStream($socket, function ($socket) use ($loop, $deferred, $isHttps, $host, &$connectWatcherId, $method, $path, $body, $headers): void {
+            if ($connectWatcherId !== null) {
+                $loop->removeWriteStream($connectWatcherId);
+            }
+
+            // Check if the TCP connect actually succeeded (async connect
+            // can still fail — e.g. ECONNREFUSED).
+            $info = @stream_get_meta_data($socket);
+            if (isset($info['timed_out']) && $info['timed_out']) {
+                $deferred->reject(new RuntimeException("Connection timed out"));
+                return;
+            }
+
+            if ($isHttps) {
+                // Non-blocking TLS handshake: poll stream_select until
+                // crypto is established, yielding to the event loop
+                // between attempts so peer fibers can progress.
+                $this->performTlsHandshake($socket, $loop, $deferred, $host, $method, $path, $body, $headers);
+                return;
+            }
+
+            // Plain TCP — start writing the request immediately.
+            $this->sendRequest($socket, $loop, $deferred, $method, $path, $body, $headers, $host);
+        });
+    }
+
+    private function waitForResponse($socket, EventLoop $loop, Deferred $deferred): void
+    {
+        $buffer = '';
+        $readWatcherId = null;
+        $readWatcherId = $loop->addReadStream($socket, function ($socket) use (&$buffer, $loop, $deferred, &$readWatcherId): void {
+            $chunk = fread($socket, 8192);
+            if ($chunk === false) {
+                if ($readWatcherId !== null) {
+                    $loop->removeReadStream($readWatcherId, true);
+                }
+                $deferred->reject(new RuntimeException("Read failed"));
+                return;
+            }
+
+            if ($chunk === '') {
+                if (feof($socket)) {
+                    if ($readWatcherId !== null) {
+                        $loop->removeReadStream($readWatcherId, true);
+                    }
+                    $this->parseResponse($buffer, $deferred);
+                }
+                return;
+            }
+
+            $buffer .= $chunk;
+
+            // Short-circuit for responses with explicit length metadata so
+            // keep-alive connections resolve without waiting for EOF.
+            if ($this->isResponseComplete($buffer)) {
+                if ($readWatcherId !== null) {
+                    $loop->removeReadStream($readWatcherId, true);
+                }
+                $this->parseResponse($buffer, $deferred);
+            }
+        });
+    }
+
+    /**
+     * Perform a non-blocking TLS handshake.
+     *
+     * Polls stream_socket_enable_crypto() with short yields to the
+     * EventLoop so peer fibers can progress during the handshake.
+     * Once TLS is established, proceeds to send the HTTP request.
+     */
+    private function performTlsHandshake($socket, EventLoop $loop, Deferred $deferred, string $host, string $method, string $path, mixed $body, array $headers): void
+    {
+        $timeout = $this->timeout;
+        $deadline = microtime(true) + $timeout;
+
+        $pollTls = function () use ($socket, $loop, $deferred, $host, $method, $path, $body, $headers, $deadline, &$pollTls): void {
+            if (microtime(true) > $deadline) {
+                $deferred->reject(new RuntimeException("TLS handshake timed out after {$this->timeout}s for {$host}"));
+                return;
+            }
+
+            $result = @stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT);
+
+            if ($result === true) {
+                // TLS established — send the request
+                $this->sendRequest($socket, $loop, $deferred, $method, $path, $body, $headers, $host);
+                return;
+            }
+
+            if ($result === false) {
+                $deferred->reject(new RuntimeException("TLS handshake failed for {$host}"));
+                return;
+            }
+
+            // $result === 0 — not ready yet. Schedule another attempt.
+            $loop->defer($pollTls);
+        };
+
+        $pollTls();
+    }
+
+    /**
+     * Build and send the HTTP request, then wait for the response.
+     */
+    private function sendRequest($socket, EventLoop $loop, Deferred $deferred, string $method, string $path, mixed $body, array $headers, string $host): void
+    {
         $allHeaders = array_merge($this->defaultHeaders, $headers);
         $allHeaders['Host'] = $host;
 
@@ -238,43 +348,6 @@ final class AsyncHttp
                     $loop->removeWriteStream($writeWatcherId);
                 }
                 $this->waitForResponse($socket, $loop, $deferred);
-            }
-        });
-    }
-
-    private function waitForResponse($socket, EventLoop $loop, Deferred $deferred): void
-    {
-        $buffer = '';
-        $readWatcherId = null;
-        $readWatcherId = $loop->addReadStream($socket, function ($socket) use (&$buffer, $loop, $deferred, &$readWatcherId): void {
-            $chunk = fread($socket, 8192);
-            if ($chunk === false) {
-                if ($readWatcherId !== null) {
-                    $loop->removeReadStream($readWatcherId, true);
-                }
-                $deferred->reject(new RuntimeException("Read failed"));
-                return;
-            }
-
-            if ($chunk === '') {
-                if (feof($socket)) {
-                    if ($readWatcherId !== null) {
-                        $loop->removeReadStream($readWatcherId, true);
-                    }
-                    $this->parseResponse($buffer, $deferred);
-                }
-                return;
-            }
-
-            $buffer .= $chunk;
-
-            // Short-circuit for responses with explicit length metadata so
-            // keep-alive connections resolve without waiting for EOF.
-            if ($this->isResponseComplete($buffer)) {
-                if ($readWatcherId !== null) {
-                    $loop->removeReadStream($readWatcherId, true);
-                }
-                $this->parseResponse($buffer, $deferred);
             }
         });
     }
@@ -402,34 +475,40 @@ final class AsyncHttp
      * directly to it — closing the DNS-rebinding window between
      * validation and the actual `stream_socket_client()` resolve.
      *
+     * Uses dns_get_record() with a short timeout instead of the
+     * blocking gethostbynamel(), and yields to the EventLoop between
+     * retry attempts so peer fibers are not stalled during resolution.
+     *
      * @throws RuntimeException If the host resolves to a blocked IP range or cannot be resolved.
      */
-    private function validateHost(string $host): string
+    private function validateHost(string $host, EventLoop $loop): string
     {
         // If the caller handed us a literal IP, honour it directly so
-        // numeric hosts don't round-trip through gethostbynamel (which
-        // still works for IPv4 literals but is wasted work).
+        // numeric hosts don't round-trip through DNS resolution.
         if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
             if ($this->isBlockedIp($host)) {
                 throw new RuntimeException(
-                    "SSRF protection: request to {$host} blocked (resolves to private/internal IP {$host}). " .
-                    "Use withoutSsrfProtection() for trusted internal services."
+                    "SSRF protection: request to {$host} blocked (resolves to private/internal IP {$host}). "
+                    . "Use withoutSsrfProtection() for trusted internal services."
                 );
             }
             return $host;
         }
 
-        $ips = gethostbynamel($host);
+        // Non-blocking DNS resolution: dns_get_record() with a timeout
+        // is significantly faster to fail than gethostbynamel() which
+        // can block for the system's full resolver timeout (often 30s).
+        $ips = $this->resolveHostNonBlocking($host, $loop);
 
-        if ($ips === false || $ips === []) {
+        if ($ips === []) {
             throw new RuntimeException("Could not resolve hostname: {$host}");
         }
 
         foreach ($ips as $ip) {
             if ($this->isBlockedIp($ip)) {
                 throw new RuntimeException(
-                    "SSRF protection: request to {$host} blocked (resolves to private/internal IP {$ip}). " .
-                    "Use withoutSsrfProtection() for trusted internal services."
+                    "SSRF protection: request to {$host} blocked (resolves to private/internal IP {$ip}). "
+                    . "Use withoutSsrfProtection() for trusted internal services."
                 );
             }
         }
@@ -438,6 +517,59 @@ final class AsyncHttp
     }
 
     /**
+     * Resolve a hostname using dns_get_record() with a short timeout,
+     * yielding to the EventLoop between retry attempts.
+     *
+     * Falls back to gethostbynamel() after exhausting retries so that
+     * hosts resolvable only via the system resolver (e.g. /etc/hosts,
+     * mDNS) still work. The fallback is still blocking but only runs
+     * after the fast path has already failed.
+     *
+     * @return list<string> Resolved IP addresses
+     */
+    private function resolveHostNonBlocking(string $host, EventLoop $loop): array
+    {
+        $maxAttempts = 3;
+        $attempt = 0;
+        $ips = [];
+
+        while ($attempt < $maxAttempts) {
+            $attempt++;
+
+            // dns_get_record() respects its own timeout and returns
+            // quickly on local-network DNS. A records give IPv4,
+            // AAAA records give IPv6.
+            $records = @dns_get_record($host, DNS_A | DNS_AAAA);
+
+            if (is_array($records)) {
+                foreach ($records as $record) {
+                    $ip = $record['ip'] ?? $record['ipv6'] ?? null;
+                    if ($ip !== null && filter_var($ip, FILTER_VALIDATE_IP) !== false) {
+                        $ips[] = $ip;
+                    }
+                }
+            }
+
+            if ($ips !== []) {
+                return $ips;
+            }
+
+            // Yield to the event loop between retries so peer fibers
+            // are not blocked by DNS resolution.
+            if ($attempt < $maxAttempts) {
+                Fiber::suspend();
+                $loop->tick();
+            }
+        }
+
+        // Fallback: system resolver (blocking but only reached when
+        // dns_get_record() failed — e.g. /etc/hosts entries or
+        // resolvers that don't answer DNS queries directly).
+        $fallback = gethostbynamel($host);
+	return is_array($fallback) ? $fallback : [];
+	}
+
+	/**
      * Check if an IP address falls within any blocked range.
      */
     private function isBlockedIp(string $ip): bool

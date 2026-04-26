@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Fw\Tests\Unit;
 
 use Fw\Async\AsyncHttp;
+use Fw\Async\EventLoop;
+use Fiber;
 use PHPUnit\Framework\Attributes\Test;
+use Throwable;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use RuntimeException;
@@ -24,20 +27,54 @@ use RuntimeException;
  */
 final class AsyncHttpSsrfRebindingTest extends TestCase
 {
-    private static function validateHost(string $host): string
+    private static function validateHostViaReflection(AsyncHttp $http, string $host, EventLoop $loop): string
     {
-        $http = new AsyncHttp();
         $m = (new ReflectionClass(AsyncHttp::class))->getMethod('validateHost');
         /** @var string $ip */
-        $ip = $m->invoke($http, $host);
+        $ip = $m->invoke($http, $host, $loop);
         return $ip;
+    }
+
+    private static function validateHostIpLiteral(string $host): string
+    {
+        return self::validateHostViaReflection(new AsyncHttp(), $host, new EventLoop());
+    }
+
+    private static function validateHostWithFiber(string $host): string
+    {
+        $http = new AsyncHttp();
+        $loop = new EventLoop();
+        $result = null;
+        $exception = null;
+
+        $fiber = new Fiber(function () use ($http, $host, $loop, &$result, &$exception): void {
+            try {
+                $result = self::validateHostViaReflection($http, $host, $loop);
+            } catch (Throwable $e) {
+                $exception = $e;
+            }
+        });
+
+        $fiber->start();
+
+        while (!$fiber->isTerminated()) {
+            $loop->tick();
+            if ($fiber->isSuspended()) {
+                $fiber->resume();
+            }
+        }
+
+        if ($exception !== null) {
+            throw $exception;
+        }
+
+        return $result;
     }
 
     #[Test]
     public function returnsResolvedIpForPublicHost(): void
     {
-        // 8.8.8.8 is a numeric public IP; gethostbynamel returns [$ip].
-        $ip = self::validateHost('8.8.8.8');
+        $ip = self::validateHostIpLiteral('8.8.8.8');
         $this->assertSame('8.8.8.8', $ip);
     }
 
@@ -46,21 +83,21 @@ final class AsyncHttpSsrfRebindingTest extends TestCase
     {
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('127.0.0.1');
-        self::validateHost('127.0.0.1');
+        self::validateHostIpLiteral('127.0.0.1');
     }
 
     #[Test]
     public function rejectsPrivateClassA(): void
     {
         $this->expectException(RuntimeException::class);
-        self::validateHost('10.0.0.1');
+        self::validateHostIpLiteral('10.0.0.1');
     }
 
     #[Test]
     public function rejectsCloudMetadataAddress(): void
     {
         $this->expectException(RuntimeException::class);
-        self::validateHost('169.254.169.254');
+        self::validateHostIpLiteral('169.254.169.254');
     }
 
     #[Test]
@@ -68,8 +105,7 @@ final class AsyncHttpSsrfRebindingTest extends TestCase
     {
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Could not resolve');
-        // `.invalid` TLD is guaranteed never to resolve (RFC 2606).
-        self::validateHost('no-such-host-exists.invalid');
+        self::validateHostWithFiber('no-such-host-exists.invalid');
     }
 
     #[Test]
