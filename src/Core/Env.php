@@ -134,6 +134,7 @@ final class Env
 
     public function getVar(string $key, mixed $default = null): mixed
     {
+        // Try exact match first
         if (array_key_exists($key, $_ENV)) {
             return $this->normalizeValue($_ENV[$key]);
         }
@@ -145,6 +146,21 @@ final class Env
 
         if (array_key_exists($key, $this->variables)) {
             return $this->castValue($this->variables[$key]);
+        }
+
+        // Try with dots converted to underscores (for env vars like DB_HOST_NAME)
+        $underscoreKey = strtoupper(str_replace('.', '_', $key));
+        if (array_key_exists($underscoreKey, $_ENV)) {
+            return $this->normalizeValue($_ENV[$underscoreKey]);
+        }
+
+        $value = getenv($underscoreKey);
+        if ($value !== false) {
+            return $this->castValue($value);
+        }
+
+        if (array_key_exists($underscoreKey, $this->variables)) {
+            return $this->castValue($this->variables[$underscoreKey]);
         }
 
         return $default;
