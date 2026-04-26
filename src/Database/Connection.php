@@ -432,7 +432,24 @@ final class Connection
     private function runWithRetry(Closure $op): mixed
     {
         if ($this->inTransaction()) {
-            return $op();
+            try {
+                return $op();
+            } catch (PDOException $e) {
+                if ($this->shouldRetry($e)) {
+                    $sqlState = $e->errorInfo[0] ?? $e->getCode();
+                    $message = sprintf(
+                        'Transient database error occurred inside an active transaction. ' .
+                        'Retry was skipped to avoid replaying partial work. ' .
+                        'SQLSTATE: %s, Error: %s. ' .
+                        'Consider wrapping the transaction in your own retry loop.',
+                        $sqlState,
+                        $e->getMessage()
+                    );
+                    error_log($message);
+                    throw new PDOException($message, (int) $e->getCode(), $e);
+                }
+                throw $e;
+            }
         }
 
         $attempt = 0;
