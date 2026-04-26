@@ -468,20 +468,18 @@ abstract class Model implements JsonSerializable
             try {
                 return static::create(array_merge($attributes, $values));
             } catch (PDOException $e) {
-                // Race condition: concurrent worker inserted between our SELECT
-                // and INSERT (SQLSTATE 23xxx = unique/integrity violation).
-                // Loop back: the SELECT on the next attempt will find the row
-                // the other worker created and hit the `some:` branch.
-                if (!str_starts_with((string) $e->getCode(), '23')) {
+                $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+                if (!str_starts_with($sqlState, '23')) {
                     throw $e;
                 }
                 $lastException = $e;
+
+                if ($attempt < self::MAX_UPSERT_RETRIES) {
+                    usleep(min(50_000 * (2 ** $attempt), 1_000_000) + random_int(0, 50_000));
+                }
             }
         }
 
-        // Retry budget exhausted — conflict is permanent (e.g. unique
-        // violation on a column not covered by $attributes). Surface the
-        // last driver exception so callers see the real cause.
         throw $lastException ?? new RuntimeException(
             static::class . '::updateOrCreate() exhausted its retry budget.'
         );
@@ -510,10 +508,15 @@ abstract class Model implements JsonSerializable
             try {
                 return static::create(array_merge($attributes, $values));
             } catch (PDOException $e) {
-                if (!str_starts_with((string) $e->getCode(), '23')) {
+                $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+                if (!str_starts_with($sqlState, '23')) {
                     throw $e;
                 }
                 $lastException = $e;
+
+                if ($attempt < self::MAX_UPSERT_RETRIES) {
+                    usleep(min(50_000 * (2 ** $attempt), 1_000_000) + random_int(0, 50_000));
+                }
             }
         }
 
