@@ -108,9 +108,30 @@ When starting a new feature or project:
        {
            $posts = Post::all();
            return $this->view('posts.index', ['posts' => $posts]);
-       }
-   }
-   ```
+    }
+}
+```
+
+#### Lazy Load Reporter
+
+The Model class includes a lazy load reporter that helps detect N+1 query problems during development. When a lazy relationship is accessed in debug mode, the reporter logs a warning.
+
+```php
+// Default behavior: logs to error_log()
+// No configuration needed
+
+// Custom reporter for testing
+Model::$lazyLoadReporter = function (string $message): void {
+    // Capture the message for assertions
+    $this->lazyLoadMessages[] = $message;
+};
+
+// Silence lazy load warnings in specific tests
+Model::$lazyLoadReporter = null; // Uses default error_log()
+Model::$lazyLoadReporter = fn () => null; // Silences all warnings
+```
+
+The reporter receives a message describing the lazy load path, making it easy to identify and fix N+1 query issues.
 
 2. **Models** go in `app/Models/`
    ```php
