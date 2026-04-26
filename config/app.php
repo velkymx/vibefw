@@ -7,6 +7,7 @@ use Fw\Core\Response;
 
 return [
     'name' => Env::string('APP_NAME', 'VibeFw Framework'),
+    'version' => Env::string('APP_VERSION', '3.0.0'),
     'env' => Env::string('APP_ENV', 'local'),
     'debug' => Env::bool('APP_DEBUG', true),
     'timezone' => Env::string('APP_TIMEZONE', 'UTC'),

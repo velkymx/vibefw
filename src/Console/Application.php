@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fw\Console;
 
+use Fw\Core\Env;
 use Throwable;
 
 /**
@@ -11,7 +12,7 @@ use Throwable;
  */
 final class Application
 {
-    private const VERSION = '3.0.0';
+    private const DEFAULT_VERSION = '3.0.0';
 
     /** @var array<string, Command> */
     private array $commands = [];
@@ -20,10 +21,28 @@ final class Application
 
     private string $basePath;
 
+    private string $appName;
+
+    private string $appVersion;
+
     public function __construct(string $basePath, ?Output $output = null)
     {
         $this->basePath = $basePath;
         $this->output = $output ?? new Output();
+
+        // Load environment variables
+        Env::load($basePath . '/.env');
+
+        // Load app config
+        $appConfig = [];
+        $configPath = $basePath . '/config/app.php';
+        if (file_exists($configPath)) {
+            $appConfig = require $configPath;
+        }
+
+        $this->appName = $appConfig['name'] ?? 'VibeFw Framework';
+        $this->appVersion = $appConfig['version'] ?? self::DEFAULT_VERSION;
+
         $this->registerBuiltinCommands();
     }
 
@@ -183,7 +202,7 @@ final class Application
      */
     private function showVersion(): int
     {
-        $this->output->line('VibeFw Framework ' . $this->output->color('v' . self::VERSION, 'green'));
+        $this->output->line($this->appName . ' ' . $this->output->color('v' . $this->appVersion, 'green'));
         return 0;
     }
 
@@ -193,7 +212,7 @@ final class Application
     private function showHelp(): int
     {
         $this->output->line('');
-        $this->output->line($this->output->color('VibeFw Framework', 'green') . ' ' . $this->output->color('v' . self::VERSION, 'yellow'));
+        $this->output->line($this->output->color($this->appName, 'green') . ' ' . $this->output->color('v' . $this->appVersion, 'yellow'));
         $this->output->line('');
         $this->output->line($this->output->color('Usage:', 'yellow'));
         $this->output->line('  command [options] [arguments]');
